@@ -50,7 +50,8 @@ button { color: inherit; }
 .app-expanded .pet-wrap { left: 4px; right: 4px; top: 78px; bottom: 35px; }
 .live2d-host { position: absolute; inset: 0; overflow: visible; cursor: pointer; opacity: 0; transition: opacity .35s ease; }
 .live2d-host.live2d-ready { opacity: 1; }
-.live2d-canvas { width: 100%; height: 100%; display: block; }
+.live2d-frame { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: fill; pointer-events: none; }
+.live2d-frame:not([src]) { visibility: hidden; }
 .live2d-loading, .live2d-error { position: absolute; inset: 0; display: grid; place-items: center; color: #b45a70; font-size: 11px; font-weight: 800; }
 .live2d-loading::before { content: ""; position: absolute; width: 70px; height: 70px; border: 3px solid rgba(226,126,148,.18); border-top-color: #e27e94; border-radius: 50%; animation: live2d-spin 1.1s linear infinite; }
 .live2d-error { align-content: center; gap: 5px; color: #b54455; border: 1px dashed rgba(181,68,85,.22); border-radius: 8px; background: rgba(255,244,246,.84); text-align: center; }

@@ -26,7 +26,7 @@ interface Live2DPetProps {
 
 export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const frameRef = useRef<HTMLImageElement>(null)
   const modelRef = useRef<Live2DModel | null>(null)
   const moodRef = useRef<PetMood>(mood)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
@@ -35,21 +35,27 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
 
   useEffect(() => {
     const host = hostRef.current
-    const canvas = canvasRef.current
-    if (!host || !canvas) return
+    const frame = frameRef.current
+    if (!host || !frame) return
 
     window.PIXI = PIXI
+    const renderCanvas = document.createElement('canvas')
     let app: PIXI.Application | null = null
     let disposed = false
+    let animationFrame = 0
+    let framePending = false
+    let frameUrl: string | null = null
+    let firstFramePresented = false
     let observer: ResizeObserver | undefined
 
     try {
       app = new PIXI.Application({
-        view: canvas,
+        view: renderCanvas,
         resizeTo: host,
         backgroundAlpha: 0,
         antialias: true,
         autoDensity: true,
+        preserveDrawingBuffer: true,
         resolution: Math.min(window.devicePixelRatio, 2)
       })
     } catch (error) {
@@ -59,6 +65,52 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
     }
 
     const pixiApp = app
+    const frameTexture = PIXI.RenderTexture.create({
+      width: Math.max(1, host.clientWidth),
+      height: Math.max(1, host.clientHeight),
+      resolution: 1.5
+    })
+    let lastCopiedAt = 0
+
+    const copyFrame = (timestamp: number): void => {
+      if (disposed) return
+      animationFrame = window.requestAnimationFrame(copyFrame)
+      if (!modelRef.current || timestamp - lastCopiedAt < 80 || framePending) return
+      lastCopiedAt = timestamp
+      pixiApp.renderer.render(pixiApp.stage, { renderTexture: frameTexture, clear: true })
+      const extractedFrame = pixiApp.renderer.plugins.extract.canvas(frameTexture)
+      if (!firstFramePresented) {
+        const context = extractedFrame.getContext('2d')
+        const pixels = context?.getImageData(0, 0, extractedFrame.width, extractedFrame.height).data
+        let hasVisiblePixel = false
+        if (pixels) {
+          for (let index = 3; index < pixels.length; index += 4) {
+            if (pixels[index] > 8) {
+              hasVisiblePixel = true
+              break
+            }
+          }
+        }
+        if (!hasVisiblePixel) return
+      }
+      framePending = true
+      extractedFrame.toBlob((blob: Blob | null) => {
+        framePending = false
+        if (disposed || !blob) return
+        const nextUrl = URL.createObjectURL(blob)
+        const previousUrl = frameUrl
+        frameUrl = nextUrl
+        frame.onload = () => {
+          if (!firstFramePresented) {
+            firstFramePresented = true
+            setState('ready')
+          }
+        }
+        frame.src = nextUrl
+        if (previousUrl) URL.revokeObjectURL(previousUrl)
+      }, 'image/webp', 0.92)
+    }
+    animationFrame = window.requestAnimationFrame(copyFrame)
 
     const placeModel = (model: Live2DModel): void => {
       const width = host.clientWidth
@@ -82,9 +134,11 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
       pixiApp.stage.addChild(model)
       placeModel(model)
       void model.expression(expressionForMood[moodRef.current])
-      observer = new ResizeObserver(() => placeModel(model))
+      observer = new ResizeObserver(() => {
+        frameTexture.resize(Math.max(1, host.clientWidth), Math.max(1, host.clientHeight), true)
+        placeModel(model)
+      })
       observer.observe(host)
-      setState('ready')
     }).catch((error: unknown) => {
       console.error('Live2D model failed to load', error)
       setState('error')
@@ -96,15 +150,18 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
     const handlePointerDown = (): void => {
       void modelRef.current?.motion('TapBody')
     }
-    canvas.addEventListener('pointermove', handlePointerMove)
-    canvas.addEventListener('pointerdown', handlePointerDown)
+    host.addEventListener('pointermove', handlePointerMove)
+    host.addEventListener('pointerdown', handlePointerDown)
 
     return () => {
       disposed = true
+      window.cancelAnimationFrame(animationFrame)
+      if (frameUrl) URL.revokeObjectURL(frameUrl)
       observer?.disconnect()
-      canvas.removeEventListener('pointermove', handlePointerMove)
-      canvas.removeEventListener('pointerdown', handlePointerDown)
+      host.removeEventListener('pointermove', handlePointerMove)
+      host.removeEventListener('pointerdown', handlePointerDown)
       modelRef.current = null
+      frameTexture.destroy(true)
       pixiApp.destroy(false, { children: true, texture: true, baseTexture: true })
     }
   }, [])
@@ -118,7 +175,7 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
 
   return (
     <div ref={hostRef} className={`live2d-host live2d-${state}`} data-live2d-ready={state === 'ready'}>
-      <canvas ref={canvasRef} className="live2d-canvas" aria-label="Live2D 财仔" />
+      <img ref={frameRef} className="live2d-frame" draggable={false} alt="" />
       {state === 'loading' && <div className="live2d-loading">财仔正在梳头发...</div>}
       {state === 'error' && <div className="live2d-error"><strong>财仔暂时睡着了</strong><span>请检查显卡加速后再叫醒她</span></div>}
     </div>
