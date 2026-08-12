@@ -1,0 +1,74 @@
+{
+  "name": "finpet",
+  "version": "0.1.0",
+  "description": "A local-first financial desktop companion",
+  "main": "out/main/index.js",
+  "author": "FinPet contributors",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "assets": "node scripts/generate-assets.mjs",
+    "postinstall": "npm run assets",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "relay:demo": "node server/demo-relay.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && node tests/electron.e2e.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "package:win": "npm run assets && npm run build && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "@pixi/unsafe-eval": "^6.5.10",
+    "@vitejs/plugin-react": "5.1.4",
+    "lightweight-charts": "^5.2.0",
+    "lucide-react": "latest",
+    "pixi-live2d-display": "0.4.0",
+    "pixi.js": "6.5.10",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "ws": "latest",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/ws": "latest",
+    "electron": "^43.3.0",
+    "electron-builder": "latest",
+    "electron-vite": "^5.0.0",
+    "eslint": "latest",
+    "playwright": "1.62.1",
+    "png-to-ico": "3.0.2",
+    "sharp": "0.35.3",
+    "typescript": "latest",
+    "vite": "7.3.6",
+    "vitest": "3.2.7"
+  },
+  "build": {
+    "appId": "com.finpet.desktop",
+    "productName": "FinPet",
+    "asar": true,
+    "files": [
+      "out/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build/tray.png",
+        "to": "tray.png"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    }
+  }
+}
