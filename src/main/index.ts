@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { alertTriggered, formatAlert, isAllowedMarketDataUrl } from '../shared/domain'
 import type { AlertEvent, AppSettings, ProviderStatus, QuoteTick } from '../shared/types'
 import { MarketHub } from './market-hub'
+import { mateEngineStatus, startMateEngine, stopMateEngine } from './mate-engine'
 import { SettingsStore } from './settings-store'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
@@ -53,6 +54,7 @@ function createWindow(): BrowserWindow {
   })
 
   window.setMenu(null)
+  window.setAlwaysOnTop(settings.alwaysOnTop)
   window.setIgnoreMouseEvents(settings.clickThrough, { forward: true })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
@@ -96,8 +98,18 @@ function updateWindowMode(panelOpen: boolean): void {
 
 function buildTrayMenu(): Menu {
   const settings = store.get()
+  const mate = mateEngineStatus()
   return Menu.buildFromTemplate([
     { label: settings.panelOpen ? '收起面板' : '打开行情面板', click: () => void togglePanel() },
+    {
+      label: mate.running ? '关闭 Mate-Engine 3D' : mate.installed ? '启动 Mate-Engine 3D' : 'Mate-Engine 3D 未安装',
+      enabled: mate.installed,
+      click: () => {
+        if (mate.running) stopMateEngine()
+        else startMateEngine()
+        refreshTray()
+      }
+    },
     {
       label: '鼠标穿透', type: 'checkbox', checked: settings.clickThrough,
       click: (item) => void setClickThrough(item.checked)
@@ -192,6 +204,17 @@ function registerIpc(): void {
   })
   ipcMain.handle('window:toggle-panel', togglePanel)
   ipcMain.handle('window:set-click-through', (_event, enabled: boolean) => setClickThrough(Boolean(enabled)))
+  ipcMain.handle('mate-engine:status', () => mateEngineStatus())
+  ipcMain.handle('mate-engine:start', () => {
+    const status = startMateEngine()
+    refreshTray()
+    return status
+  })
+  ipcMain.handle('mate-engine:stop', () => {
+    const status = stopMateEngine()
+    refreshTray()
+    return status
+  })
 }
 
 if (hasSingleInstanceLock) app.whenReady().then(() => {
@@ -223,6 +246,7 @@ app.on('second-instance', () => {
 
 app.on('before-quit', () => {
   quitting = true
+  stopMateEngine()
   market?.stop()
 })
 

@@ -43,6 +43,12 @@ export interface AppSnapshot {
   providerStatus: ProviderStatus
 }
 
+export interface MateEngineStatus {
+  installed: boolean
+  running: boolean
+  executablePath: string
+}
+
 export interface AlertEvent {
   alert: PriceAlert
   quote: QuoteTick
@@ -54,6 +60,9 @@ export interface FinPetApi {
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   togglePanel: () => Promise<boolean>
   setClickThrough: (enabled: boolean) => Promise<boolean>
+  getMateEngineStatus: () => Promise<MateEngineStatus>
+  startMateEngine: () => Promise<MateEngineStatus>
+  stopMateEngine: () => Promise<MateEngineStatus>
   onQuotes: (listener: (quotes: QuoteTick[]) => void) => () => void
   onSettings: (listener: (settings: AppSettings) => void) => () => void
   onProviderStatus: (listener: (status: ProviderStatus) => void) => () => void

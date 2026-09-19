@@ -52,6 +52,11 @@ button { color: inherit; }
 .live2d-host.live2d-ready { opacity: 1; }
 .live2d-frame { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: fill; pointer-events: none; }
 .live2d-frame:not([src]) { visibility: hidden; }
+.three-pet-host { position: absolute; inset: 0; overflow: visible; cursor: pointer; opacity: 0; transition: opacity .35s ease; }
+.three-pet-host.three-pet-ready { opacity: 1; }
+.three-pet-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+.three-pet-loading { position: absolute; inset: 0; display: grid; place-items: center; color: #b45a70; font-size: 11px; font-weight: 800; }
+.three-pet-loading::before { content: ""; position: absolute; width: 70px; height: 70px; border: 3px solid rgba(226,126,148,.18); border-top-color: #e27e94; border-radius: 50%; animation: live2d-spin 1.1s linear infinite; }
 .live2d-loading, .live2d-error { position: absolute; inset: 0; display: grid; place-items: center; color: #b45a70; font-size: 11px; font-weight: 800; }
 .live2d-loading::before { content: ""; position: absolute; width: 70px; height: 70px; border: 3px solid rgba(226,126,148,.18); border-top-color: #e27e94; border-radius: 50%; animation: live2d-spin 1.1s linear infinite; }
 .live2d-error { align-content: center; gap: 5px; color: #b54455; border: 1px dashed rgba(181,68,85,.22); border-radius: 8px; background: rgba(255,244,246,.84); text-align: center; }
@@ -78,6 +83,7 @@ button { color: inherit; }
 .app-expanded .pet-tools { left: 112px; bottom: 13px; }
 .icon-button, .primary-orb, .square-action, .ghost-icon, .collapse-tab { display: grid; place-items: center; border: 0; cursor: pointer; }
 .icon-button { width: 34px; height: 34px; border-radius: 50%; background: #fff; box-shadow: 0 7px 22px rgba(33,39,33,.18); }
+.icon-button:disabled { cursor: not-allowed; opacity: .48; }
 .primary-orb { width: 40px; height: 40px; border-radius: 50%; color: #fff; background: #222822; box-shadow: 0 7px 22px rgba(33,39,33,.22); }
 .icon-button:hover, .primary-orb:hover, .square-action:hover { transform: translateY(-2px); }
 .alert-pulse { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: #ef5b5b; animation: alarm .8s infinite; }

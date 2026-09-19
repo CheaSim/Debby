@@ -13,6 +13,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "relay:demo": "node server/demo-relay.mjs",
+    "mate-engine:setup": "node scripts/setup-mate-engine.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && node tests/electron.e2e.mjs",
@@ -22,6 +23,7 @@
   },
   "dependencies": {
     "@pixi/unsafe-eval": "^6.5.10",
+    "@types/three": "^0.180.0",
     "@vitejs/plugin-react": "5.1.4",
     "lightweight-charts": "^5.2.0",
     "lucide-react": "latest",
@@ -29,6 +31,7 @@
     "pixi.js": "6.5.10",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "three": "^0.180.0",
     "ws": "latest",
     "zustand": "^5.0.14"
   },

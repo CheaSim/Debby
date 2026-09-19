@@ -8,6 +8,8 @@ FinPet 是一个 Windows 优先的本地桌面伴侣。它以透明、无边框�
 
 - 透明无边框桌宠窗口、置顶、拖动、托盘、鼠标穿透和位置记忆
 - Live2D Cubism 4 桌宠，支持视线跟随、点击动作和表情切换
+- Three.js 3D 金融桌宠，支持待机呼吸、眨眼、视线跟随、点击跳跃和行情状态材质反馈
+- 可选 Mate-Engine 旁车运行时：直接使用官方 Unity 3D/VRM 桌宠能力，不把大体积二进制提交到仓库
 - `idle / bullish / bearish / alert / offline` 五态行情表情
 - 展开式行情工作台、自选切换、实时曲线和涨跌状态
 - 突破/跌破提醒、五分钟冷却、系统通知和本地持久化
@@ -25,6 +27,17 @@ npm.cmd install
 npm.cmd run assets
 npm.cmd run dev
 ```
+
+### 使用 Mate-Engine 官方 3D 运行时
+
+Mate-Engine 是 Unity 运行时，不能作为 React 组件直接嵌进 Electron。FinPet 提供非商用本地旁车模式：安装脚本从 Mate-Engine GitHub Releases 下载公开 ZIP 到被 Git 忽略的 `work/mate-engine-runtime`，然后通过 FinPet 托盘启动或关闭 `MateEngineX.exe`。
+
+```powershell
+npm.cmd run mate-engine:setup
+npm.cmd run dev
+```
+
+安装包约 831 MB，首次下载需要一些时间。Mate-Engine 的源代码、许可证和默认资产仍受上游条款约束；请只在非商用环境使用，并保留上游许可证与署名。没有安装官方运行时或者启动失败时，FinPet 会继续使用内置 Three.js 3D 角色。
 
 验证：
 

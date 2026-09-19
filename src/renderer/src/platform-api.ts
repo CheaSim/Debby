@@ -48,6 +48,9 @@ const browserApi: FinPetApi = {
     settingsListeners.forEach((listener) => listener(browserSettings))
     return enabled
   },
+  getMateEngineStatus: async () => ({ installed: false, running: false, executablePath: '' }),
+  startMateEngine: async () => ({ installed: false, running: false, executablePath: '' }),
+  stopMateEngine: async () => ({ installed: false, running: false, executablePath: '' }),
   onQuotes: (listener) => { quoteListeners.add(listener); return () => quoteListeners.delete(listener) },
   onSettings: (listener) => { settingsListeners.add(listener); return () => settingsListeners.delete(listener) },
   onProviderStatus: (listener) => { statusListeners.add(listener); return () => statusListeners.delete(listener) },

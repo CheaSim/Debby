@@ -33,29 +33,29 @@ try {
     const body = await page.locator('body').innerText().catch(() => '')
     throw new Error(`Renderer did not reach mascot state. Body: ${body}. Errors: ${pageErrors.join(' | ')}`, { cause: error })
   }
-  await page.waitForSelector('[data-live2d-ready="true"]', { timeout: 30_000 })
+  await page.waitForSelector('[data-3d-ready="true"]', { timeout: 30_000 })
   await page.waitForFunction(() => {
-    const frame = document.querySelector('.live2d-frame')
-    return frame instanceof HTMLImageElement && frame.complete && frame.naturalWidth > 0
+    const canvas = document.querySelector('.three-pet-canvas')
+    return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0
   }, { timeout: 30_000 })
 
-  const live2dFrame = await page.evaluate(() => {
-    const frame = document.querySelector('.live2d-frame')
-    if (!(frame instanceof HTMLImageElement)) throw new Error('Live2D image frame was not created')
-    const canvas = document.createElement('canvas')
-    canvas.width = frame.naturalWidth
-    canvas.height = frame.naturalHeight
-    const context = canvas.getContext('2d')
+  const threeFrame = await page.evaluate(() => {
+    const canvas = document.querySelector('.three-pet-canvas')
+    if (!(canvas instanceof HTMLCanvasElement)) throw new Error('3D canvas was not created')
+    const probe = document.createElement('canvas')
+    probe.width = canvas.width
+    probe.height = canvas.height
+    const context = probe.getContext('2d')
     if (!context) throw new Error('Canvas 2D context is unavailable')
-    context.drawImage(frame, 0, 0)
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+    context.drawImage(canvas, 0, 0)
+    const pixels = context.getImageData(0, 0, probe.width, probe.height).data
     let visiblePixels = 0
     for (let index = 3; index < pixels.length; index += 4) {
       if (pixels[index] > 8) visiblePixels += 1
     }
-    return { width: frame.naturalWidth, height: frame.naturalHeight, visiblePixels }
+    return { width: canvas.width, height: canvas.height, visiblePixels }
   })
-  assert.ok(live2dFrame.visiblePixels > 1_000, `Live2D frame is blank: ${JSON.stringify(live2dFrame)}`)
+  assert.ok(threeFrame.visiblePixels > 1_000, `3D canvas is blank: ${JSON.stringify(threeFrame)}`)
 
   const preloadApi = await page.evaluate(() => typeof window.finpet?.getSnapshot)
   assert.equal(preloadApi, 'function', 'contextBridge API was not injected')
