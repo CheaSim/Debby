@@ -26,7 +26,8 @@ export function startMateEngine(): MateEngineStatus {
   const current = mateEngineStatus()
   if (!current.installed || current.running) return current
 
-  mateEngineProcess = spawn(current.executablePath, [], {
+  const profileDir = join(dirname(current.executablePath), 'profile')
+  mateEngineProcess = spawn(current.executablePath, ['--datadir', profileDir, '--savefile', 'settings.json'], {
     cwd: dirname(current.executablePath),
     windowsHide: false,
     stdio: 'ignore'

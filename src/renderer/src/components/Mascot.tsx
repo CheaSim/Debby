@@ -55,7 +55,7 @@ export function Mascot({ quote, alerting, panelOpen, onTogglePanel, onClickThrou
       </div>
       <div className="pet-tools no-drag">
         <button className="icon-button" onClick={onClickThrough} title="开启鼠标穿透"><MousePointer2 size={17} /></button>
-        <button className="icon-button" onClick={toggleMateEngine} disabled={!mateEngine.installed} title={mateEngine.installed ? (mateEngine.running ? '关闭 Mate-Engine 3D' : '启动 Mate-Engine 3D') : '先运行 npm.cmd run mate-engine:setup'}><Box size={16} /></button>
+        <button className="icon-button" onClick={toggleMateEngine} disabled={!mateEngine.installed} title={mateEngine.installed ? (mateEngine.running ? '关闭 Mate-Engine Zome 案例' : '启动 Mate-Engine Zome 案例') : '先运行 npm.cmd run mate-engine:setup'}><Box size={16} /></button>
         <button className="primary-orb" onClick={onTogglePanel} title={panelOpen ? '收起行情面板' : '打开行情面板'}>
           {panelOpen ? <PanelRightOpen size={18} /> : <ChevronRight size={20} />}
         </button>

@@ -102,7 +102,7 @@ function buildTrayMenu(): Menu {
   return Menu.buildFromTemplate([
     { label: settings.panelOpen ? '收起面板' : '打开行情面板', click: () => void togglePanel() },
     {
-      label: mate.running ? '关闭 Mate-Engine 3D' : mate.installed ? '启动 Mate-Engine 3D' : 'Mate-Engine 3D 未安装',
+      label: mate.running ? '关闭 Mate-Engine Zome 案例' : mate.installed ? '启动 Mate-Engine Zome 案例' : 'Mate-Engine Zome 案例未安装',
       enabled: mate.installed,
       click: () => {
         if (mate.running) stopMateEngine()

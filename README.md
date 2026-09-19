@@ -32,6 +32,8 @@ npm.cmd run dev
 
 Mate-Engine 是 Unity 运行时，不能作为 React 组件直接嵌进 Electron。FinPet 提供非商用本地旁车模式：安装脚本从 Mate-Engine GitHub Releases 下载公开 ZIP 到被 Git 忽略的 `work/mate-engine-runtime`，然后通过 FinPet 托盘启动或关闭 `MateEngineX.exe`。
 
+默认使用上游仓库里的 `Zome.vrm` 案例，安装后保存到 `work/mate-engine-runtime/cases/Zome.vrm`，并通过独立 profile 自动选中；它不会被提交到 Git。
+
 ```powershell
 npm.cmd run mate-engine:setup
 npm.cmd run dev

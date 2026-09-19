@@ -19,6 +19,7 @@ FinPet 不把 Mate-Engine Unity 工程硬塞进 Electron 渲染层。Mate-Engine
 - 紧凑桌宠和展开行情面板共用同一 3D 组件
 - 托盘启动/关闭 Mate-Engine 官方 Windows 构建
 - `npm.cmd run mate-engine:setup` 自动下载并解压最新公开构建到 Git 忽略目录
+- 安装脚本自动下载上游 `Zome.vrm` 案例，并写入独立 profile 作为默认角色
 
 ## 与 Mate-Engine 的能力映射
 
@@ -27,7 +28,7 @@ FinPet 不把 Mate-Engine Unity 工程硬塞进 Electron 渲染层。Mate-Engine
 | Idle animation | 呼吸、轻微悬浮和摆动 |
 | Touch regions / dragging feedback | 角色区域点击跳跃、鼠标移动视线跟随 |
 | Always on top / window sitting | 由 Electron 原生窗口和托盘控制 |
-| Custom avatar | 当前为代码生成角色；后续可把 `buildPet` 替换成 GLB/VRM loader |
+| Custom avatar | 旁车模式默认加载上游 `Zome.vrm`；未安装旁车时保留内置 Three.js 角色 |
 | Mood/event messages | 由行情状态和现有 speech bubble 驱动 |
 
 ## 旁车模式
