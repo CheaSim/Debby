@@ -3,6 +3,8 @@ out/
 dist/
 release/
 work/
+src/renderer/public/models/mate-engine/*.vrm
+src/renderer/public/models/mate-engine/*.download
 *.log
 .env
 .env.*

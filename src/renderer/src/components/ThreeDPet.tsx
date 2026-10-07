@@ -1,158 +1,47 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from '@pixiv/three-vrm'
+import { RefreshCw } from 'lucide-react'
 import type { PetMood } from '../../../shared/types'
 
 interface ThreeDPetProps {
   mood: PetMood
+  portrait: boolean
+  viewReset: number
 }
 
-type PetPalette = {
-  body: number
-  bodyLight: number
-  accent: number
-  accentLight: number
-  cheek: number
-  chart: number
-}
+const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
+const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
-const palettes: Record<PetMood, PetPalette> = {
-  idle: { body: 0xf3d7df, bodyLight: 0xfff5f6, accent: 0xd45e7d, accentLight: 0xffd2de, cheek: 0xf29bac, chart: 0xf0b84c },
-  bullish: { body: 0xd6eee1, bodyLight: 0xf5fff9, accent: 0x2f9b75, accentLight: 0xb9ead5, cheek: 0x7bc6a6, chart: 0xf0b84c },
-  bearish: { body: 0xd9e2ef, bodyLight: 0xf5f8ff, accent: 0x6684a7, accentLight: 0xc9d7ea, cheek: 0x9eb8d4, chart: 0x8ba2bd },
-  alert: { body: 0xffe0bf, bodyLight: 0xfff9ed, accent: 0xd36a45, accentLight: 0xffc2a4, cheek: 0xef9a79, chart: 0xe46d72 },
-  offline: { body: 0xdcd9e4, bodyLight: 0xf8f6fb, accent: 0x8f849e, accentLight: 0xd7cfdd, cheek: 0xb9aabf, chart: 0xa39aaa }
-}
-
-const material = (color: number, roughness = 0.72, metalness = 0.02): THREE.MeshStandardMaterial =>
-  new THREE.MeshStandardMaterial({ color, roughness, metalness })
-
-function addMesh(parent: THREE.Object3D, geometry: THREE.BufferGeometry, mat: THREE.Material, position: THREE.Vector3, scale?: THREE.Vector3): THREE.Mesh {
-  const mesh = new THREE.Mesh(geometry, mat)
-  mesh.position.copy(position)
-  if (scale) mesh.scale.copy(scale)
-  parent.add(mesh)
-  return mesh
-}
-
-function buildPet(palette: PetPalette): {
-  root: THREE.Group
-  eyes: THREE.Mesh[]
-  pupils: THREE.Mesh[]
-  materials: THREE.Material[]
-  colorMaterials: { body: THREE.MeshStandardMaterial; bodyLight: THREE.MeshStandardMaterial; accent: THREE.MeshStandardMaterial; accentLight: THREE.MeshStandardMaterial; cheek: THREE.MeshStandardMaterial; chart: THREE.MeshStandardMaterial }
-} {
-  const root = new THREE.Group()
-  const character = new THREE.Group()
-  root.add(character)
-  const materials: THREE.Material[] = []
-  const use = (mat: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-    materials.push(mat)
-    return mat
-  }
-
-  const bodyMat = use(material(palette.body))
-  const bodyLightMat = use(material(palette.bodyLight, 0.62))
-  const accentMat = use(material(palette.accent, 0.62))
-  const accentLightMat = use(material(palette.accentLight, 0.64))
-  const darkMat = use(material(0x302a32, 0.46))
-  const whiteMat = use(material(0xffffff, 0.4))
-  const chartMat = use(material(palette.chart, 0.58, 0.06))
-  const cheekMat = use(new THREE.MeshStandardMaterial({ color: palette.cheek, transparent: true, opacity: 0.72, roughness: 0.7 }))
-
-  const tail = addMesh(character, new THREE.SphereGeometry(0.34, 18, 12), bodyMat, new THREE.Vector3(-0.57, 0.48, -0.22), new THREE.Vector3(0.9, 0.9, 0.52))
-  tail.rotation.z = -0.55
-  const body = addMesh(character, new THREE.CapsuleGeometry(0.53, 0.62, 8, 16), bodyMat, new THREE.Vector3(0, 0.48, 0))
-  body.scale.set(0.9, 0.98, 0.72)
-  const bib = addMesh(character, new THREE.SphereGeometry(0.36, 18, 14), bodyLightMat, new THREE.Vector3(0, 0.49, 0.37), new THREE.Vector3(1.03, 1.15, 0.38))
-  bib.rotation.x = 0.15
-  addMesh(character, new THREE.SphereGeometry(0.15, 14, 10), accentLightMat, new THREE.Vector3(0, 0.63, 0.54), new THREE.Vector3(1, 0.82, 0.32))
-
-  const head = new THREE.Group()
-  head.position.set(0, 1.18, 0)
-  character.add(head)
-  addMesh(head, new THREE.SphereGeometry(0.78, 24, 18), bodyLightMat, new THREE.Vector3(0, 0, 0), new THREE.Vector3(1, 0.94, 0.88))
-  const hair = addMesh(head, new THREE.SphereGeometry(0.76, 24, 14), bodyMat, new THREE.Vector3(0, 0.12, -0.08), new THREE.Vector3(1.02, 0.78, 0.92))
-  hair.rotation.x = -0.12
-
-  const earGeo = new THREE.ConeGeometry(0.22, 0.48, 8)
-  const innerEarGeo = new THREE.ConeGeometry(0.12, 0.28, 8)
-  for (const side of [-1, 1]) {
-    const ear = addMesh(head, earGeo, bodyMat, new THREE.Vector3(side * 0.48, 0.57, -0.03), new THREE.Vector3(1, 1, 0.8))
-    ear.rotation.z = side * -0.32
-    const inner = addMesh(head, innerEarGeo, accentLightMat, new THREE.Vector3(side * 0.48, 0.58, 0.12), new THREE.Vector3(1, 1, 0.7))
-    inner.rotation.z = side * -0.32
-  }
-
-  const eyes: THREE.Mesh[] = []
-  const pupils: THREE.Mesh[] = []
-  for (const side of [-1, 1]) {
-    const eye = addMesh(head, new THREE.SphereGeometry(0.115, 16, 12), darkMat, new THREE.Vector3(side * 0.27, 0.03, 0.69), new THREE.Vector3(0.86, 1.2, 0.5))
-    const pupil = addMesh(head, new THREE.SphereGeometry(0.052, 12, 10), whiteMat, new THREE.Vector3(side * 0.235, 0.075, 0.756), new THREE.Vector3(0.7, 0.95, 0.35))
-    eyes.push(eye)
-    pupils.push(pupil)
-    addMesh(head, new THREE.SphereGeometry(0.13, 14, 10), cheekMat, new THREE.Vector3(side * 0.43, -0.16, 0.61), new THREE.Vector3(1.15, 0.48, 0.3))
-  }
-  const mouth = addMesh(head, new THREE.TorusGeometry(0.085, 0.018, 8, 16, Math.PI), darkMat, new THREE.Vector3(0, -0.2, 0.7))
-  mouth.rotation.x = Math.PI
-  mouth.rotation.z = Math.PI
-
-  const armGeo = new THREE.CapsuleGeometry(0.105, 0.3, 6, 10)
-  for (const side of [-1, 1]) {
-    const arm = addMesh(character, armGeo, accentMat, new THREE.Vector3(side * 0.52, 0.49, 0.02), new THREE.Vector3(1, 1, 0.82))
-    arm.rotation.z = side * -0.44
-  }
-  const footGeo = new THREE.SphereGeometry(0.22, 16, 10)
-  addMesh(character, footGeo, accentMat, new THREE.Vector3(-0.28, 0.04, 0.16), new THREE.Vector3(1.1, 0.5, 1.25))
-  addMesh(character, footGeo, accentMat, new THREE.Vector3(0.28, 0.04, 0.16), new THREE.Vector3(1.1, 0.5, 1.25))
-
-  const badge = new THREE.Group()
-  badge.position.set(0, 0.54, 0.62)
-  badge.rotation.x = -Math.PI / 2
-  character.add(badge)
-  addMesh(badge, new THREE.CylinderGeometry(0.19, 0.19, 0.045, 8), chartMat, new THREE.Vector3(0, 0, 0))
-  addMesh(badge, new THREE.RingGeometry(0.12, 0.145, 8), whiteMat, new THREE.Vector3(0, 0.026, 0))
-  const barGeo = new THREE.BoxGeometry(0.035, 0.13, 0.018)
-  addMesh(badge, barGeo, accentMat, new THREE.Vector3(-0.065, 0.05, 0.028), new THREE.Vector3(1, 0.55, 1))
-  addMesh(badge, barGeo, accentMat, new THREE.Vector3(0, 0.08, 0.028), new THREE.Vector3(1, 0.9, 1))
-  addMesh(badge, barGeo, accentMat, new THREE.Vector3(0.065, 0.12, 0.028), new THREE.Vector3(1, 1.35, 1))
-
-  const orbit = new THREE.Group()
-  orbit.position.set(0, 1.06, 0)
-  root.add(orbit)
-  const coinMat = use(material(palette.chart, 0.5, 0.12))
-  const coin = addMesh(orbit, new THREE.CylinderGeometry(0.105, 0.105, 0.035, 16), coinMat, new THREE.Vector3(0.92, 0.2, -0.08))
-  coin.rotation.x = Math.PI / 2
-  const sparkle = addMesh(orbit, new THREE.OctahedronGeometry(0.085, 0), accentLightMat, new THREE.Vector3(-0.84, 0.34, -0.05))
-  sparkle.rotation.z = 0.3
-
-  return {
-    root,
-    eyes,
-    pupils,
-    materials,
-    colorMaterials: { body: bodyMat, bodyLight: bodyLightMat, accent: accentMat, accentLight: accentLightMat, cheek: cheekMat, chart: chartMat }
-  }
-}
-
-export function ThreeDPet({ mood }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const petRef = useRef<ReturnType<typeof buildPet> | null>(null)
-  const moodRef = useRef<PetMood>(mood)
+  const moodRef = useRef(mood)
+  const portraitRef = useRef(portrait)
+  const resetViewRef = useRef<(() => void) | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [progress, setProgress] = useState(0)
+  const [attempt, setAttempt] = useState(0)
   moodRef.current = mood
+  portraitRef.current = portrait
 
   useEffect(() => {
     const host = hostRef.current
     const canvas = canvasRef.current
     if (!host || !canvas) return
+    setState('loading')
+    setProgress(0)
     let renderer: THREE.WebGLRenderer
+    const context = canvas.getContext('2d', { alpha: true })
     try {
-      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      if (!context) throw new Error('Transparent presentation canvas is unavailable')
+      // Blit WebGL frames to Canvas2D for reliable transparent Windows compositing.
+      renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true })
       renderer.outputColorSpace = THREE.SRGBColorSpace
-      renderer.toneMapping = THREE.ACESFilmicToneMapping
-      renderer.toneMappingExposure = 1.08
+      renderer.toneMapping = THREE.NoToneMapping
+      renderer.setClearColor(0x000000, 0)
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     } catch (error) {
       console.error('3D renderer is unavailable', error)
       setState('error')
@@ -160,138 +49,247 @@ export function ThreeDPet({ mood }: ThreeDPetProps): React.JSX.Element {
     }
 
     const scene = new THREE.Scene()
-    const camera = new THREE.PerspectiveCamera(22, 1, 0.1, 100)
-    camera.position.set(0, 1.05, 5.8)
-    camera.lookAt(0, 0.9, 0)
-    scene.add(new THREE.HemisphereLight(0xfff7fb, 0x9aabb8, 2.1))
-    const key = new THREE.DirectionalLight(0xffffff, 3.2)
-    key.position.set(2.5, 4.5, 5)
-    scene.add(key)
-    const rim = new THREE.DirectionalLight(0xf3b3c4, 1.7)
-    rim.position.set(-3, 2.4, -1)
-    scene.add(rim)
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 20)
+    camera.position.set(0, 0.84, 4)
+    camera.lookAt(0, 0.84, 0)
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xa7b6c4, 0.75))
+    const key = new THREE.DirectionalLight(0xfff4ee, 1.05)
+    key.position.set(-2, 3, 4)
+    const fill = new THREE.DirectionalLight(0xe6f4ff, 0.3)
+    fill.position.set(3, 2, 3)
+    const rim = new THREE.DirectionalLight(0xffdbe8, 0.4)
+    rim.position.set(0, 2, -3)
+    scene.add(key, fill, rim)
 
-    const pet = buildPet(palettes[moodRef.current])
-    petRef.current = pet
-    scene.add(pet.root)
-    const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(0.74, 32),
-      new THREE.MeshBasicMaterial({ color: 0x483c46, transparent: true, opacity: 0.16, depthWrite: false })
-    )
-    ground.rotation.x = -Math.PI / 2
-    ground.position.set(0, -0.03, 0.12)
-    ground.scale.set(1.1, 0.42, 1)
-    scene.add(ground)
-
-    let frame = 0
+    const root = new THREE.Group()
+    root.rotation.y = -0.12
+    scene.add(root)
+    const lookTarget = new THREE.Object3D()
+    lookTarget.position.set(0, 1.45, 3)
+    scene.add(lookTarget)
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let vrm: VRM | undefined
     let disposed = false
+    let frame = 0
+    let last = 0
+    let elapsed = 0
     let pointerX = 0
     let pointerY = 0
-    let targetPointerX = 0
-    let targetPointerY = 0
-    let last = performance.now()
-    let blinkAt = last + 2600
-    let blinkStart = 0
-    let jumpOffset = 0
-    let jumpVelocity = 0
+    let targetX = 0
+    let targetY = 0
+    let targetYaw = -0.12
+    let zoom = 1
+    let modelWidth = 1.1
+    let gestureStarted = -10
+    let blinkStarted = -10
+    let nextBlink = 2.5
+    let presented = false
+    let dragging = false
+    let moved = false
+    let downX = 0
+    let downYaw = 0
+    const expressionValues = { happy: 0, sad: 0, relaxed: 0, aa: 0 }
+    const pose = (name: VRMHumanBoneName, x: number, y: number, z: number): void => {
+      vrm?.humanoid.getNormalizedBoneNode(name)?.rotation.set(x, y, z)
+    }
+
     const resize = (): void => {
       const width = Math.max(host.clientWidth, 1)
       const height = Math.max(host.clientHeight, 1)
       renderer.setSize(width, height, false)
-      camera.aspect = width / height
+      canvas.width = renderer.domElement.width
+      canvas.height = renderer.domElement.height
+      const aspect = width / height
+      const viewHeight = (portraitRef.current ? 1.0 : Math.max(1.82, modelWidth / aspect * 1.12)) / zoom
+      const centerY = portraitRef.current ? 1.2 : 0.84
+      camera.position.y = centerY
+      camera.lookAt(0, centerY, 0)
+      camera.left = -viewHeight * aspect / 2
+      camera.right = viewHeight * aspect / 2
+      camera.top = viewHeight / 2
+      camera.bottom = -viewHeight / 2
       camera.updateProjectionMatrix()
     }
-    const resizeObserver = new ResizeObserver(resize)
-    resizeObserver.observe(host)
+    const observer = new ResizeObserver(resize)
+    observer.observe(host)
     resize()
-    setState('ready')
 
-    const handlePointerMove = (event: PointerEvent): void => {
-      const rect = host.getBoundingClientRect()
-      targetPointerX = THREE.MathUtils.clamp((event.clientX - rect.left) / rect.width * 2 - 1, -1, 1)
-      targetPointerY = THREE.MathUtils.clamp((event.clientY - rect.top) / rect.height * 2 - 1, -1, 1)
+    let assetFailed = false
+    const manager = new THREE.LoadingManager()
+    manager.onError = () => { assetFailed = true }
+    const loader = new GLTFLoader(manager)
+    loader.register((parser) => new VRMLoaderPlugin(parser))
+    loader.load(modelUrl, (gltf) => {
+      const loaded = gltf.userData.vrm as VRM | undefined
+      if (!loaded || assetFailed) {
+        VRMUtils.deepDispose(gltf.scene)
+        if (!disposed) setState('error')
+        return
+      }
+      if (disposed) { VRMUtils.deepDispose(loaded.scene); return }
+      vrm = loaded
+      VRMUtils.rotateVRM0(loaded)
+      pose('leftUpperArm', 0, 0, 1.18)
+      pose('rightUpperArm', 0, 0, -1.18)
+      pose('leftLowerArm', 0, -0.12, 0.08)
+      pose('rightLowerArm', 0, 0.12, -0.08)
+      loaded.scene.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return
+        object.frustumCulled = false
+        const materials = Array.isArray(object.material) ? object.material : [object.material]
+        materials.forEach((material) => {
+          if ('outlineWidthFactor' in material && typeof material.outlineWidthFactor === 'number') material.outlineWidthFactor *= 0.7
+          if ('map' in material && material.map instanceof THREE.Texture) {
+            material.map.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8)
+          }
+        })
+      })
+      loaded.update(0)
+      loaded.scene.updateMatrixWorld(true)
+      const bounds = new THREE.Box3().setFromObject(loaded.scene)
+      const size = bounds.getSize(new THREE.Vector3())
+      const center = bounds.getCenter(new THREE.Vector3())
+      const scale = 1.6 / size.y
+      loaded.scene.position.sub(new THREE.Vector3(center.x, bounds.min.y, center.z))
+      root.scale.setScalar(scale)
+      root.add(loaded.scene)
+      scene.updateMatrixWorld(true)
+      loaded.springBoneManager?.reset()
+      modelWidth = size.x * scale
+      if (loaded.lookAt) {
+        loaded.lookAt.target = lookTarget
+        loaded.lookAt.autoUpdate = true
+      }
+      host.dataset.avatar = 'zome'
+      resize()
+      setProgress(100)
+    }, (event) => {
+      if (!disposed && event.total > 0) setProgress(Math.min(99, Math.round(event.loaded / event.total * 100)))
+    }, (error) => {
+      if (!disposed) {
+        console.error('Zome avatar failed to load', error)
+        setState('error')
+      }
+    })
+
+    const pointerMove = (event: PointerEvent): void => {
+      const bounds = host.getBoundingClientRect()
+      targetX = THREE.MathUtils.clamp((event.clientX - bounds.left) / bounds.width * 2 - 1, -1, 1)
+      targetY = THREE.MathUtils.clamp((event.clientY - bounds.top) / bounds.height * 2 - 1, -1, 1)
+      if (dragging) {
+        const difference = event.clientX - downX
+        if (Math.abs(difference) > 5) moved = true
+        targetYaw = THREE.MathUtils.clamp(downYaw + difference * 0.009, -0.8, 0.8)
+      }
     }
-    const handlePointerLeave = (): void => { targetPointerX = 0; targetPointerY = 0 }
-    const handlePointerDown = (): void => { jumpVelocity = 0.115 }
-    host.addEventListener('pointermove', handlePointerMove)
-    host.addEventListener('pointerleave', handlePointerLeave)
-    host.addEventListener('pointerdown', handlePointerDown)
+    const pointerDown = (event: PointerEvent): void => {
+      if (event.button !== 0) return
+      dragging = true
+      moved = false
+      downX = event.clientX
+      downYaw = targetYaw
+      host.setPointerCapture(event.pointerId)
+      host.style.cursor = 'grabbing'
+    }
+    const pointerUp = (event: PointerEvent): void => {
+      if (!dragging) return
+      dragging = false
+      host.style.cursor = ''
+      if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId)
+      if (!moved) gestureStarted = elapsed
+    }
+    const pointerCancel = (): void => { dragging = false; host.style.cursor = '' }
+    const pointerLeave = (): void => { if (!dragging) { targetX = 0; targetY = 0 } }
+    const wheel = (event: WheelEvent): void => {
+      event.preventDefault()
+      zoom = THREE.MathUtils.clamp(zoom - event.deltaY * 0.0005, 0.85, 1.08)
+      resize()
+    }
+    const reset = (): void => { targetYaw = -0.12; zoom = 1; resize() }
+    resetViewRef.current = reset
+    host.addEventListener('pointermove', pointerMove)
+    host.addEventListener('pointerdown', pointerDown)
+    host.addEventListener('pointerup', pointerUp)
+    host.addEventListener('pointercancel', pointerCancel)
+    host.addEventListener('pointerleave', pointerLeave)
+    host.addEventListener('wheel', wheel, { passive: false })
+    host.addEventListener('dblclick', reset)
 
     const animate = (now: number): void => {
       if (disposed) return
-      frame = window.requestAnimationFrame(animate)
-      const elapsed = Math.min((now - last) / 1000, 0.05)
+      frame = requestAnimationFrame(animate)
+      if (last && now - last < 1000 / 30) return
+      const delta = last ? Math.min((now - last) / 1000, 0.05) : 1 / 30
       last = now
-      const t = now / 1000
-      pointerX = THREE.MathUtils.lerp(pointerX, targetPointerX, 0.07)
-      pointerY = THREE.MathUtils.lerp(pointerY, targetPointerY, 0.07)
-      jumpVelocity -= elapsed * 0.32
-      jumpOffset += jumpVelocity
-      if (jumpOffset < 0) { jumpOffset = 0; jumpVelocity = 0 }
-      const moodScale = moodRef.current === 'alert' ? 1 + Math.sin(t * 8) * 0.015 : 1
-      pet.root.position.y = Math.sin(t * 2.05) * 0.035 + jumpOffset
-      pet.root.rotation.y = THREE.MathUtils.lerp(pet.root.rotation.y, pointerX * 0.13 + Math.sin(t * 0.52) * 0.05, 0.055)
-      pet.root.rotation.x = THREE.MathUtils.lerp(pet.root.rotation.x, pointerY * 0.045, 0.055)
-      pet.root.scale.setScalar(moodScale)
-      pet.root.children[0].rotation.z = Math.sin(t * 1.2) * 0.018
-      pet.pupils.forEach((pupil, index) => { pupil.position.x = (index ? 1 : -1) * 0.235 + pointerX * 0.025; pupil.position.y = 0.075 - pointerY * 0.012 })
-      if (!blinkStart && now > blinkAt) blinkStart = now
-      if (blinkStart) {
-        const progress = (now - blinkStart) / 150
-        const blink = progress < 0.5 ? progress * 2 : 2 - progress * 2
-        pet.eyes.forEach((eye) => { eye.scale.y = Math.max(0.08, 1.2 * (1 - blink)) })
-        if (progress >= 1) { blinkStart = 0; blinkAt = now + 1800 + Math.random() * 3600; pet.eyes.forEach((eye) => { eye.scale.y = 1.2 }) }
+      elapsed += delta
+      if (!vrm || !context) return
+      const smoothing = 1 - Math.exp(-delta * 7)
+      pointerX = THREE.MathUtils.lerp(pointerX, targetX, smoothing)
+      pointerY = THREE.MathUtils.lerp(pointerY, targetY, smoothing)
+      root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, smoothing)
+      lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
+      const gestureTime = elapsed - gestureStarted
+      const greeting = !reducedMotion && gestureTime >= 0 && gestureTime < 2.2
+        ? Math.sin(Math.PI * gestureTime / 2.2) ** 2 : 0
+      const breath = reducedMotion ? 0 : Math.sin(elapsed * 1.8)
+      const sway = reducedMotion ? 0 : Math.sin(elapsed * 0.75)
+      const worried = expressionValues.sad
+      const cheerful = expressionValues.happy
+      pose('spine', breath * 0.012 + worried * 0.055, 0, sway * 0.014)
+      pose('chest', 0, 0, -sway * 0.009)
+      pose('neck', -pointerY * 0.035, pointerX * 0.075, -sway * 0.018)
+      pose('head', -pointerY * 0.03 + worried * 0.12, pointerX * 0.05, greeting * 0.05 - worried * 0.09)
+      pose('leftUpperArm', 0.02 * breath, 0, 1.18 + breath * 0.018 - cheerful * 0.13)
+      pose('rightUpperArm', 0, greeting * -0.2, -1.18 + greeting * 1.8 + cheerful * 0.13)
+      pose('rightLowerArm', 0, 0.12, -0.08 - greeting * (1.65 + Math.sin(gestureTime * 15) * 0.16))
+      pose('rightHand', 0, 0, greeting * Math.sin(gestureTime * 15) * -0.2)
+      if (elapsed > nextBlink) { blinkStarted = elapsed; nextBlink = elapsed + 3 + Math.random() * 3 }
+      const blinkTime = (elapsed - blinkStarted) / 0.18
+      const blink = blinkTime >= 0 && blinkTime <= 1 ? Math.sin(blinkTime * Math.PI) ** 2 : 0
+      const targets = {
+        happy: Math.min(1, greeting * 0.6 + (moodRef.current === 'bullish' ? 0.65 : moodRef.current === 'bearish' ? 0 : 0.06)),
+        sad: moodRef.current === 'bearish' ? 0.65 : moodRef.current === 'offline' ? 0.22 : 0,
+        relaxed: moodRef.current === 'idle' ? 0.08 : moodRef.current === 'offline' ? 0.18 : 0,
+        aa: moodRef.current === 'alert' ? 0.2 : 0
       }
+      for (const name of expressionNames) {
+        expressionValues[name] = THREE.MathUtils.lerp(expressionValues[name], targets[name], smoothing)
+        vrm.expressionManager?.setValue(name, expressionValues[name])
+      }
+      vrm.expressionManager?.setValue('blink', blink)
+      vrm.update(delta)
       renderer.render(scene, camera)
+      context.clearRect(0, 0, canvas.width, canvas.height)
+      context.drawImage(renderer.domElement, 0, 0)
+      if (!presented) { presented = true; setState('ready') }
     }
-    frame = window.requestAnimationFrame(animate)
+    frame = requestAnimationFrame(animate)
 
     return () => {
       disposed = true
-      window.cancelAnimationFrame(frame)
-      resizeObserver.disconnect()
-      host.removeEventListener('pointermove', handlePointerMove)
-      host.removeEventListener('pointerleave', handlePointerLeave)
-      host.removeEventListener('pointerdown', handlePointerDown)
-      scene.traverse((object) => {
-        if (!(object instanceof THREE.Mesh)) return
-        object.geometry.dispose()
-        if (Array.isArray(object.material)) object.material.forEach((item) => item.dispose())
-        else object.material.dispose()
-      })
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      host.removeEventListener('pointermove', pointerMove)
+      host.removeEventListener('pointerdown', pointerDown)
+      host.removeEventListener('pointerup', pointerUp)
+      host.removeEventListener('pointercancel', pointerCancel)
+      host.removeEventListener('pointerleave', pointerLeave)
+      host.removeEventListener('wheel', wheel)
+      host.removeEventListener('dblclick', reset)
+      VRMUtils.deepDispose(scene)
       renderer.dispose()
-      if (petRef.current === pet) petRef.current = null
+      renderer.forceContextLoss()
+      resetViewRef.current = null
     }
-  }, [])
+  }, [attempt])
 
-  useEffect(() => {
-    const palette = palettes[mood]
-    const host = hostRef.current
-    if (!host) return
-    const pet = petRef.current
-    if (pet) {
-      const body = new THREE.Color(palette.body)
-      const bodyLight = new THREE.Color(palette.bodyLight)
-      const accent = new THREE.Color(palette.accent)
-      const accentLight = new THREE.Color(palette.accentLight)
-      const cheek = new THREE.Color(palette.cheek)
-      const chart = new THREE.Color(palette.chart)
-      pet.colorMaterials.body.color.copy(body)
-      pet.colorMaterials.bodyLight.color.copy(bodyLight)
-      pet.colorMaterials.accent.color.copy(accent)
-      pet.colorMaterials.accentLight.color.copy(accentLight)
-      pet.colorMaterials.cheek.color.copy(cheek)
-      pet.colorMaterials.chart.color.copy(chart)
-    }
-    host.dataset.mood = mood
-    host.style.setProperty('--pet-accent', `#${palette.accent.toString(16).padStart(6, '0')}`)
-  }, [mood])
+  useEffect(() => { resetViewRef.current?.() }, [portrait, viewReset])
 
   return (
-    <div ref={hostRef} className={`three-pet-host three-pet-${state}`} data-3d-ready={state === 'ready'}>
-      <canvas ref={canvasRef} className="three-pet-canvas" aria-label="财仔 3D 桌宠" />
-      {state === 'loading' && <div className="three-pet-loading">财仔正在进入立体模式...</div>}
-      {state === 'error' && <div className="live2d-error"><strong>3D 模式暂时睡着了</strong><span>请检查显卡加速后再叫醒她</span></div>}
+    <div ref={hostRef} className={'three-pet-host three-pet-' + state} data-3d-ready={state === 'ready'} data-mood={mood} data-view={portrait ? 'portrait' : 'full'}>
+      <canvas ref={canvasRef} className="three-pet-canvas" aria-label="Zome 3D 桌宠" />
+      {state === 'loading' && <div className="three-pet-loading" role="status"><span className="avatar-spinner" /><span>{progress}%</span></div>}
+      {state === 'error' && <div className="avatar-error" role="alert"><span>角色加载失败</span><button className="icon-button" title="重新加载角色" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={16} /></button></div>}
     </div>
   )
 }

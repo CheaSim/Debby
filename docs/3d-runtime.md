@@ -1,40 +1,64 @@
 # FinPet 3D 桌宠运行时
 
-## 结论
+## 默认角色
 
-FinPet 不把 Mate-Engine Unity 工程硬塞进 Electron 渲染层。Mate-Engine 是 Unity 工程，且仓库的 MateProv2/AGPL 混合许可限制了衍生版本的分发方式；仓库也明确提示默认头像不能随自有构建再分发。FinPet 现在有两层运行时：默认使用独立的 Three.js WebGL 角色，另提供旁车启动器直接运行本地 MateEngineX.exe，让非商用用户可以使用上游完整 3D/VRM 能力。
+主窗口直接显示 Mate-Engine 仓库的 Zome VRM 案例，使用 Three.js 和
+@pixiv/three-vrm 的 GLTFLoader 插件。完整服装、贴图、MToon 材质、骨骼、
+表情与 Spring Bone 头发物理都来自模型。无需安装 Unity 或下载官方完整运行包。
 
-研究来源：
+npm.cmd run dev 和 npm.cmd run build 会自动运行模型准备脚本。第一次下载
+约 26 MB，后续校验并使用本地缓存。脚本固定上游版本，使用 Git blob SHA-1
+校验完整内容，并支持断点续传。来源和作者署名见：
 
+- src/renderer/public/models/mate-engine/SOURCE.md
 - https://github.com/shinyflvre/Mate-Engine
-- https://github.com/shinyflvre/Mate-Engine/blob/main/LICENSE.md
+- https://github.com/pixiv/three-vrm
 
-## 当前能力
+## 显示与交互
 
-- 透明 Electron 窗口中的 Three.js 3D 角色
-- 低面数金融主题角色：耳朵、尾巴、胸前行情徽章、上升柱状图装饰
-- Hemisphere/Key/Rim 三点灯光、ACES 色调映射、抗锯齿和 DPI 自适应
-- 待机呼吸、左右摆动、跟随鼠标视线、眨眼、点击跳跃
-- `idle`、`bullish`、`bearish`、`alert`、`offline` 五种行情状态材质反馈
-- 紧凑桌宠和展开行情面板共用同一 3D 组件
-- 托盘启动/关闭 Mate-Engine 官方 Windows 构建
-- `npm.cmd run mate-engine:setup` 自动下载并解压最新公开构建到 Git 忽略目录
-- 安装脚本自动下载上游 `Zome.vrm` 案例，并写入独立 profile 作为默认角色
+- 默认透明桌宠窗口为 380 x 540，恢复旧位置时限制在屏幕工作区内
+- 柔和主光、补光与轮廓光，Toon 材质保留原模型贴图
+- 全身/近景视图、鼠标拖动旋转、滚轮缩放和视角复位
+- 自动眨眼、视线跟随、呼吸和细微身体摆动
+- 点击角色会微笑并招呼，支持减少动态效果的系统偏好
+- 主窗口和行情面板共用角色，不因行情更新重复加载模型
+- WebGL 渲染后复制至透明 Canvas2D，兼容 Windows 透明窗口合成
+- CSP 允许本地 Blob 贴图加载；缺失模型/贴图会显示错误与重试按钮
+- Windows 使用 pop-up-menu 置顶层级，规避 Electron 43 默认 floating 层级的任务栏摆放问题；窗口仍限制在工作区内
 
-## 与 Mate-Engine 的能力映射
+## 指数心情
 
-| Mate-Engine 思路 | FinPet 当前实现 |
-| --- | --- |
-| Idle animation | 呼吸、轻微悬浮和摆动 |
-| Touch regions / dragging feedback | 角色区域点击跳跃、鼠标移动视线跟随 |
-| Always on top / window sitting | 由 Electron 原生窗口和托盘控制 |
-| Custom avatar | 旁车模式默认加载上游 `Zome.vrm`；未安装旁车时保留内置 Three.js 角色 |
-| Mood/event messages | 由行情状态和现有 speech bubble 驱动 |
+心情固定以上证指数 000001.SH 的涨跌幅为依据，不受个股选择影响：
 
-## 旁车模式
+| 指数/事件状态 | 心情 | 角色反馈 |
+| --- | --- | --- |
+| 涨幅 >= +0.15% | 开心 | Joy 微笑、轻微舒展手臂 |
+| 跌幅 <= -0.15% | 担忧 | Sorrow 表情、低头和身体略前倾 |
+| -0.15% < 涨跌幅 < +0.15% | 平静 | Relaxed 表情、自然呼吸 |
+| 价格提醒命中 | 提醒 | 张嘴、提醒标记，优先于其他情绪 |
+| 指数缺失、连接中/断线、交易时行情超过 60 秒未更新 | 等待 | 等待表情，避免显示过期的乐观情绪 |
 
-旁车模式不复制或修改 Unity 二进制。FinPet 只负责启动和回收用户本地的 `MateEngineX.exe`，因此不需要在每台机器上安装 Node 原生窗口嵌入模块，也不会把 831 MB 的构建提交进 Git。Mate-Engine 自己的窗口、透明度、置顶、VRM 导入和拖拽行为由它的 Unity 运行时负责。
+表情和姿势逐帧平滑过渡。每秒检查行情新鲜度；收盘状态保留最后指数的心情，
+不因休市时间超过 60 秒变成断线。默认接入腾讯/新浪公开 A 股行情，
+自定义 WebSocket 中继与演示源也进入同一心情规则。离线缓存不会触发价格提醒。
 
-## 后续接入 VRM
+## 可选官方运行器
 
-如果要使用自有 VRM 模型，下一步只需要在 `ThreeDPet.tsx` 中增加 GLTF/VRM loader，把模型挂到同一个 `root`，并沿用当前的相机、灯光、ResizeObserver、输入事件和行情状态适配。模型文件必须由项目方确认可再分发，不能直接拿 Mate-Engine 默认头像打包。
+npm.cmd run mate-engine:setup 仍可安装 Mate-Engine 的官方 Windows Unity
+运行器。FinPet 可以通过托盘或立方体按钮启动/关闭独立 MateEngineX.exe。
+这个约 831 MB 的可选运行包不影响主窗口直接显示 3D 角色；本机完整运行包
+尚未下载完成，不将其作为已验证的默认运行方式。
+
+## 资产边界
+
+Zome 模型作者为 Yorshka，上游资产署名为 Shiny。模型元数据声明禁止再分发；
+本项目只下载到每位用户本机用于非商用预览，不向 Git 提交模型或贴图。
+包含该模型的本地构建也不要单独再分发。Mate-Engine 的代码和其他资产遵循：
+
+https://github.com/shinyflvre/Mate-Engine/blob/main/LICENSE.md
+
+## 验证
+
+领域测试覆盖心情阈值、断线、过期数据、收盘状态与提醒优先级。Electron E2E
+检查真实模型身份、非透明/彩色像素、全身/近景切换、实际 WebSocket 指数推送、
+个股与指数方向相反时的情绪、断线状态、窗口尺寸和行情面板。

@@ -1,4 +1,7 @@
-import type { MarketStatus, PetMood, PriceAlert, QuoteTick } from './types'
+import type { MarketStatus, PetMood, PriceAlert, ProviderStatus, QuoteTick } from './types'
+
+export const moodIndexSymbol = '000001.SH'
+export const marketFreshnessMs = 60_000
 
 export function normalizeQuoteTick(value: unknown, previous?: QuoteTick, now = Date.now()): QuoteTick | null {
   if (!value || typeof value !== 'object') return null
@@ -49,6 +52,17 @@ export function moodForQuote(quote: QuoteTick | undefined, alerting = false): Pe
   if (!quote || quote.status === 'offline' || Date.now() - quote.timestamp > 15_000) return 'offline'
   if (quote.changePct >= 1) return 'bullish'
   if (quote.changePct <= -1) return 'bearish'
+  return 'idle'
+}
+
+export function moodForIndex(index: QuoteTick | undefined, alerting = false, providerStatus: ProviderStatus = 'demo', now = Date.now()): PetMood {
+  if (alerting) return 'alert'
+  if (!index || providerStatus === 'offline' || providerStatus === 'connecting' || index.status === 'offline') return 'offline'
+  if (!Number.isFinite(index.changePct) || !Number.isFinite(index.timestamp)) return 'offline'
+  if (index.timestamp > now + marketFreshnessMs) return 'offline'
+  if (index.status !== 'closed' && now - index.timestamp > marketFreshnessMs) return 'offline'
+  if (index.changePct >= 0.15) return 'bullish'
+  if (index.changePct <= -0.15) return 'bearish'
   return 'idle'
 }
 

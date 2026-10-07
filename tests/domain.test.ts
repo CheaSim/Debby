@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alertTriggered, formatAlert, isAllowedMarketDataUrl, moodForQuote, normalizeQuoteTick } from '../src/shared/domain'
+import { alertTriggered, formatAlert, isAllowedMarketDataUrl, moodForIndex, moodForQuote, normalizeQuoteTick } from '../src/shared/domain'
 import type { PriceAlert, QuoteTick } from '../src/shared/types'
 
 const quote: QuoteTick = {
@@ -17,6 +17,33 @@ describe('moodForQuote', () => {
   it('prioritizes alerts and detects stale quotes', () => {
     expect(moodForQuote(quote, true)).toBe('alert')
     expect(moodForQuote({ ...quote, timestamp: Date.now() - 16_000 })).toBe('offline')
+  })
+})
+
+describe('index-driven mood', () => {
+  const now = 100_000
+  const index = { ...quote, symbol: '000001.SH', name: '上证指数', timestamp: now }
+
+  it('uses index-sized moves with a neutral band around unchanged prices', () => {
+    expect(moodForIndex({ ...index, changePct: 0.15 }, false, 'live', now)).toBe('bullish')
+    expect(moodForIndex({ ...index, changePct: -0.15 }, false, 'live', now)).toBe('bearish')
+    expect(moodForIndex({ ...index, changePct: 0.149 }, false, 'live', now)).toBe('idle')
+    expect(moodForIndex({ ...index, changePct: -0.149 }, false, 'live', now)).toBe('idle')
+  })
+
+  it('detects a silent feed and provider disconnects while alerts take priority', () => {
+    expect(moodForIndex(index, false, 'live', now + 59_999)).toBe('bullish')
+    expect(moodForIndex(index, false, 'live', now + 60_001)).toBe('offline')
+    expect(moodForIndex({ ...index, timestamp: now + 60_001 }, false, 'live', now)).toBe('offline')
+    expect(moodForIndex(index, false, 'offline', now)).toBe('offline')
+    expect(moodForIndex(index, false, 'connecting', now)).toBe('offline')
+    expect(moodForIndex(undefined, false, 'live', now)).toBe('offline')
+    expect(moodForIndex(undefined, true, 'offline', now)).toBe('alert')
+  })
+
+  it('preserves the last close mood between sessions and rejects invalid values', () => {
+    expect(moodForIndex({ ...index, status: 'closed', changePct: 0.4 }, false, 'live', now + 86400_000)).toBe('bullish')
+    expect(moodForIndex({ ...index, changePct: NaN }, false, 'live', now)).toBe('offline')
   })
 })
 

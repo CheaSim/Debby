@@ -1,14 +1,14 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, Notification, screen, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, screen, session, Tray } from 'electron'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { alertTriggered, formatAlert, isAllowedMarketDataUrl } from '../shared/domain'
+import { alertTriggered, formatAlert, isAllowedMarketDataUrl, marketFreshnessMs } from '../shared/domain'
 import type { AlertEvent, AppSettings, ProviderStatus, QuoteTick } from '../shared/types'
-import { MarketHub } from './market-hub'
+import { MarketHub, type MarketHubOptions } from './market-hub'
 import { mateEngineStatus, startMateEngine, stopMateEngine } from './mate-engine'
 import { SettingsStore } from './settings-store'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
-const collapsedSize = { width: 360, height: 440 }
+const collapsedSize = { width: 380, height: 540 }
 const expandedSize = { width: 960, height: 680 }
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
@@ -26,7 +26,12 @@ function createWindow(): BrowserWindow {
   const area = screen.getPrimaryDisplay().workArea
   const size = settings.panelOpen ? expandedSize : collapsedSize
   const fallback = { x: area.x + area.width - size.width - 24, y: area.y + area.height - size.height - 24 }
-  const position = settings.windowPosition ?? fallback
+  const requestedPosition = settings.windowPosition ?? fallback
+  const displayArea = screen.getDisplayMatching({ ...requestedPosition, ...size }).workArea
+  const position = {
+    x: Math.max(displayArea.x, Math.min(requestedPosition.x, displayArea.x + displayArea.width - size.width)),
+    y: Math.max(displayArea.y, Math.min(requestedPosition.y, displayArea.y + displayArea.height - size.height))
+  }
   const iconPath = app.isPackaged ? join(process.resourcesPath, 'tray.png') : join(app.getAppPath(), 'build', 'icon.png')
 
   const window = new BrowserWindow({
@@ -54,7 +59,8 @@ function createWindow(): BrowserWindow {
   })
 
   window.setMenu(null)
-  window.setAlwaysOnTop(settings.alwaysOnTop)
+  // Electron 43's Windows taskbar placement can drop the default floating level.
+  window.setAlwaysOnTop(settings.alwaysOnTop, 'pop-up-menu')
   window.setIgnoreMouseEvents(settings.clickThrough, { forward: true })
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
@@ -118,7 +124,7 @@ function buildTrayMenu(): Menu {
       label: '总在最前', type: 'checkbox', checked: settings.alwaysOnTop,
       click: (item) => {
         const next = store.update({ alwaysOnTop: item.checked })
-        mainWindow?.setAlwaysOnTop(next.alwaysOnTop)
+        mainWindow?.setAlwaysOnTop(next.alwaysOnTop, 'pop-up-menu')
         emitSettings(next)
       }
     },
@@ -165,7 +171,7 @@ function processAlerts(quotes: QuoteTick[]): void {
   let changed = false
   for (const alert of settings.alerts) {
     const quote = quotes.find((item) => item.symbol === alert.symbol)
-    if (!quote || !alertTriggered(alert, quote)) continue
+    if (!quote || quote.status !== 'open' || Math.abs(Date.now() - quote.timestamp) > marketFreshnessMs || !alertTriggered(alert, quote)) continue
     alert.lastTriggeredAt = Date.now()
     changed = true
     const event: AlertEvent = { alert, quote, message: formatAlert(alert, quote) }
@@ -180,25 +186,43 @@ function applyLaunchAtLogin(enabled: boolean): void {
   app.setLoginItemSettings({ openAtLogin: enabled, path: process.execPath, args: ['--hidden'] })
 }
 
+function marketOptions(settings: AppSettings): MarketHubOptions {
+  const testSource = process.env.FINPET_MARKET_SOURCE
+  return {
+    source: testSource === 'demo' && process.env.FINPET_E2E_USER_DATA ? 'demo' : settings.marketSource,
+    remoteUrl: settings.marketDataUrl || process.env.FINPET_MARKET_WS,
+    symbols: settings.watchlist,
+    cachePath: join(app.getPath('userData'), 'market-cache.json'),
+    request: (url, init) => net.fetch(url, init)
+  }
+}
+
 function registerIpc(): void {
   ipcMain.handle('app:snapshot', () => ({
     settings: store.get(),
     quotes: market.getQuotes(),
     provider: market.getProvider(),
+    providerName: market.getProviderName(),
     providerStatus: market.getStatus()
   }))
   ipcMain.handle('settings:update', (_event, patch: Partial<AppSettings>) => {
     if (patch.marketDataUrl !== undefined && !isAllowedMarketDataUrl(patch.marketDataUrl)) {
       throw new Error('Market data URL must use wss://, or ws:// on localhost')
     }
+    if (patch.marketSource !== undefined && !['public', 'demo', 'remote'].includes(patch.marketSource)) throw new Error('Invalid market source')
+    if (patch.watchlist !== undefined && (!Array.isArray(patch.watchlist) || patch.watchlist.length > 60 || patch.watchlist.some((symbol) => typeof symbol !== 'string' || symbol.length > 24))) throw new Error('Invalid watchlist')
     const allowed: Partial<AppSettings> = {}
-    for (const key of ['selectedSymbol', 'watchlist', 'alwaysOnTop', 'launchAtLogin', 'marketDataUrl', 'soundEnabled', 'alerts'] as const) {
+    for (const key of ['selectedSymbol', 'watchlist', 'alwaysOnTop', 'launchAtLogin', 'marketSource', 'marketDataUrl', 'soundEnabled', 'alerts'] as const) {
       if (patch[key] !== undefined) Object.assign(allowed, { [key]: patch[key] })
     }
     const next = store.update(allowed)
-    mainWindow?.setAlwaysOnTop(next.alwaysOnTop)
+    mainWindow?.setAlwaysOnTop(next.alwaysOnTop, 'pop-up-menu')
     if (patch.launchAtLogin !== undefined) applyLaunchAtLogin(next.launchAtLogin)
-    if (patch.marketDataUrl !== undefined) market.restart(next.marketDataUrl)
+    if (patch.marketDataUrl !== undefined || patch.marketSource !== undefined || patch.watchlist !== undefined) {
+      const options = marketOptions(next)
+      options.source = next.marketSource
+      market.restart(options)
+    }
     emitSettings(next)
     return next
   })
@@ -217,10 +241,17 @@ function registerIpc(): void {
   })
 }
 
-if (hasSingleInstanceLock) app.whenReady().then(() => {
+if (hasSingleInstanceLock) app.whenReady().then(async () => {
   app.setAppUserModelId('com.finpet.desktop')
   store = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
-  market = new MarketHub(store.get().marketDataUrl || process.env.FINPET_MARKET_WS)
+  const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
+  if (proxy) await session.defaultSession.setProxy({ proxyRules: proxy, proxyBypassRules: '<local>' })
+  const settings = store.get()
+  if (process.env.FINPET_MARKET_WS && !settings.marketDataUrl) {
+    settings.marketSource = 'remote'
+    store.update({ marketSource: 'remote' })
+  }
+  market = new MarketHub(marketOptions(settings))
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()

@@ -32,10 +32,15 @@ export function MarketChart({ quote }: { quote?: QuoteTick }): React.JSX.Element
 
   useEffect(() => {
     if (!quote || !seriesRef.current) return
-    const base = Math.floor(Date.now() / 1000) - quote.sparkline.length * 60
-    seriesRef.current.setData(quote.sparkline.map((value, index) => ({ time: (base + index * 60) as UTCTimestamp, value })))
+    const base = Math.floor(quote.timestamp / 1000) - quote.sparkline.length
+    seriesRef.current.setData(quote.sparkline.map((value, index) => ({ time: (base + index) as UTCTimestamp, value })))
+    const color = quote.changePct >= 0 ? '#ef5b5b' : '#1d9b69'
+    seriesRef.current.applyOptions({ lineColor: color, topColor: `${color}35`, bottomColor: `${color}02` })
     chartRef.current?.timeScale().fitContent()
   }, [quote])
 
-  return <div className="market-chart" ref={containerRef} aria-label={`${quote?.name ?? ''}分时走势`} />
+  return <div className="chart-region"><div className="market-chart" ref={containerRef} aria-label={`${quote?.name ?? ''}采样价格`} />
+    {(!quote || quote.sparkline.length < 2) && <span className="chart-state">{!quote ? '等待行情' : quote.status === 'closed' ? '休市 · 最新收盘价' : '采样中'}</span>}
+    <span className="chart-caption">采样价格</span>
+  </div>
 }

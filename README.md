@@ -2,18 +2,21 @@
 
 FinPet 是一个 Windows 优先的本地桌面伴侣。它以透明、无边框、置顶窗口常驻桌面，用桌宠状态表达自选行情，并提供可展开的行情与价格提醒工作台。
 
-> 当前行情默认是离线演示数据，仅用于开发和产品验证，不构成投资建议。发布商业版本前必须接入具备展示及再分发授权的行情服务。
+> 默认本机获取腾讯公开 A 股行情，新浪自动备用。公开接口可能延迟、变更或限流，不构成投资建议，也不代表获得行情再分发授权。
 
 ## 已实现
 
 - 透明无边框桌宠窗口、置顶、拖动、托盘、鼠标穿透和位置记忆
-- Live2D Cubism 4 桌宠，支持视线跟随、点击动作和表情切换
-- Three.js 3D 金融桌宠，支持待机呼吸、眨眼、视线跟随、点击跳跃和行情状态材质反馈
+- 保留 Live2D Cubism 4 渲染组件，默认使用以下 3D 桌宠
+- 默认加载 Mate-Engine 的 Zome VRM 3D 角色，保留完整服装、贴图、Toon 材质与头发物理
+- 眨眼、视线跟随、待机呼吸、点击招呼、拖动旋转、滚轮缩放、全身/近景视图和视角复位
 - 可选 Mate-Engine 旁车运行时：直接使用官方 Unity 3D/VRM 桌宠能力，不把大体积二进制提交到仓库
 - `idle / bullish / bearish / alert / offline` 五态行情表情
-- 展开式行情工作台、自选切换、实时曲线和涨跌状态
+- 心情跟随上证指数：+0.15% 及以上开心、-0.15% 及以下担忧，个股选择不改变指数情绪
+- 展开式行情工作台、自选切换、实际采样价格和涨跌状态
 - 突破/跌破提醒、五分钟冷却、系统通知和本地持久化
-- 本地演示行情、可配置 WebSocket 行情中继和断线离线态
+- 默认公开 A 股行情、腾讯/新浪自动切换、休市状态、真实行情时间和本地离线缓存
+- 可切换演示行情、自定义 WebSocket 中继；不把模拟数据混入真实行情
 - 单实例、后台开机启动、正式应用/托盘图标
 - `contextIsolation + sandbox + CSP + 白名单 IPC` 安全边界
 - Windows NSIS 打包配置、领域测试和浏览器预览模式
@@ -28,7 +31,13 @@ npm.cmd run assets
 npm.cmd run dev
 ```
 
-### 使用 Mate-Engine 官方 3D 运行时
+### 默认 3D 角色
+
+`npm.cmd run dev` 首次启动会下载约 26 MB 的 Zome 模型，之后使用经过校验的本地缓存。主窗口直接用 Three.js + `@pixiv/three-vrm` 显示角色，无需安装 Unity 或下载完整的 Mate-Engine 运行包。构建前也会自动检查模型。
+
+模型来源、固定版本、内容校验值和作者署名见 [模型来源](src/renderer/public/models/mate-engine/SOURCE.md)。模型仅用于本机非商用预览，被 Git 忽略；含该模型的本地构建也不要单独再分发。
+
+### 可选 Mate-Engine 官方独立运行时
 
 Mate-Engine 是 Unity 运行时，不能作为 React 组件直接嵌进 Electron。FinPet 提供非商用本地旁车模式：安装脚本从 Mate-Engine GitHub Releases 下载公开 ZIP 到被 Git 忽略的 `work/mate-engine-runtime`，然后通过 FinPet 托盘启动或关闭 `MateEngineX.exe`。
 
@@ -39,7 +48,7 @@ npm.cmd run mate-engine:setup
 npm.cmd run dev
 ```
 
-安装包约 831 MB，首次下载需要一些时间。Mate-Engine 的源代码、许可证和默认资产仍受上游条款约束；请只在非商用环境使用，并保留上游许可证与署名。没有安装官方运行时或者启动失败时，FinPet 会继续使用内置 Three.js 3D 角色。
+安装包约 831 MB，首次下载需要一些时间。Mate-Engine 的源代码、许可证和默认资产仍受上游条款约束；请只在非商用环境使用，并保留上游许可证与署名。这个独立窗口是可选功能，不影响主窗口直接显示 Zome 角色。
 
 验证：
 
@@ -47,6 +56,7 @@ npm.cmd run dev
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run test:e2e
+npm.cmd run test:live
 npm.cmd run build
 ```
 
@@ -58,7 +68,11 @@ npm.cmd run package:win
 
 ## 接入真实行情
 
-设置环境变量后启动，主进程会连接远程 WSS；未设置时使用本地演示源。
+无需账号和 Token，默认主进程直接批量获取自选沪深行情，并始终包含上证指数作为心情依据。交易时段约 10 秒一次，休市约 60 秒一次；失败退避到最长 120 秒。缓存保留原行情时间，断线明确标记离线。默认包含上证指数、深证成指、创业板指与贵州茅台，不提供美股行情。
+
+面板右侧“行情源”可以选择公开行情、演示行情或自定义中继。价格曲线仅展示实际采样，不伪造历史分时线；首次休市启动只显示最新收盘价。
+
+若使用行情中继，可以在面板中保存 WSS 地址，或者启动前设置环境变量：
 
 ```powershell
 $env:FINPET_MARKET_WS="wss://your-licensed-relay.example/ws"
@@ -89,7 +103,7 @@ npm.cmd run dev
 npm.cmd run relay:demo
 ```
 
-然后在行情面板右侧填写 `ws://127.0.0.1:8787`。完整契约见 [行情中继协议](docs/market-relay-protocol.md)。免费 A 股数据源的开发期选型见 [A 股数据源调研](docs/a-share-data-sources.md)。
+然后选择“自定义 WebSocket 中继”并填写 `ws://127.0.0.1:8787`。完整契约见 [行情中继协议](docs/market-relay-protocol.md)。免费 A 股数据源、集合库及当前实测记录见 [A 股数据源调研](docs/a-share-data-sources.md)。
 
 ## 目录
 
@@ -104,7 +118,7 @@ tests          领域测试
 
 ## 开源参考
 
-本项目是原创实现，参考了以下开源项目的工程边界和公开接口：
+工程代码独立实现，使用和参考以下开源项目的资产、工程边界与公开接口：
 
 - [OpenPets](https://openpets.dev/docs)：透明 Electron 窗口、默认穿透、窄 preload API 和位置记忆思路，MIT License。
 - [TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts)：金融曲线渲染，Apache-2.0 License。
@@ -113,6 +127,10 @@ tests          领域测试
 - [Zustand](https://github.com/pmndrs/zustand)：客户端状态，MIT License。
 - [Lucide](https://github.com/lucide-icons/lucide)：界面图标，ISC License。
 - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)：Live2D Web 渲染集成，MIT License。
+- [Mate-Engine](https://github.com/shinyflvre/Mate-Engine)：Zome VRM 案例及可选官方运行器；上游代码和资产使用独立条款。
+- [three-vrm](https://github.com/pixiv/three-vrm)：VRM 骨骼、材质、表情与物理加载，MIT License。
+- [easyquotation](https://github.com/shidenggui/easyquotation)：腾讯/新浪行情字段协议参考，MIT License；本项目适配器用 TypeScript 独立实现。
+- [AKShare](https://github.com/akfamily/akshare)：财经数据集合库调研，不在桌宠运行时安装 Python 依赖。
 
 Haru 样例模型与 Cubism Core 使用独立的 Live2D 条款，不属于本项目 MIT 许可证，详见 [Live2D 第三方声明](NOTICE-LIVE2D.md)。商业发布前应替换为拥有明确发行权的原创模型。
 

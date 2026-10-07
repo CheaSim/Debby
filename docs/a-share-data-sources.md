@@ -1,56 +1,66 @@
-# A 股免费数据源调研
+# A 股免费数据与集合库
 
-调研日期：2026-08-12。
+核查日期：2026-10-07。用途：本机、非商用的金融桌宠。
 
-## 结论
+## 集合项目
 
-开发期采用“每台电脑本地适配器”可行，但不要让客户端轮询全市场，也不要把不同电脑等同于不同公网 IP。公司、校园和家庭网络都可能通过 NAT 共用出口 IP；上游仍可按 IP、UA、Cookie 或行为模式限流。
+用户所说的“集合站”可以使用 AKShare 的文档和接口目录：
 
-推荐组合：
+- [AKShare 仓库](https://github.com/akfamily/akshare)：覆盖股票、指数、基金、宏观等公开财经数据的 Python 接口集合。
+- [AKShare 文档](https://akshare.akfamily.xyz/)：按数据类别查找接口和示例。
+- [easyquotation](https://github.com/shidenggui/easyquotation)：更轻量的腾讯/新浪等行情适配器。
+- [efinance](https://github.com/Micro-sheep/efinance)：另一种股票、基金等数据接口集合；当前没有在 FinPet 中安装或验证。
 
-1. 自选股实时快照：`easyquotation`，默认腾讯/新浪接口，每 3-5 秒批量拉取一次当前自选股。
-2. 分钟线与第一备份：`mootdx`，连接通达信公开行情节点，维护节点探活与自动切换。
-3. 历史日线：`BaoStock`，只做首次下载与每日收盘后的增量更新。
-4. 研究型扩展：`AKShare`，用于基本面、宏观、ETF 等低频数据，不放进桌宠实时关键路径。
+AKShare 是接口集合库，不是拥有全部行情授权和 SLA 的免费托管 API。
+桌宠当前只需要少量自选股快照，因此参考 easyquotation 的字段协议，
+在 Electron 主进程独立实现 TypeScript 适配器，避免每位用户再安装 Python。
+后续需要基本面、历史 K 线、ETF 或宏观数据时，再通过现有本地 WebSocket
+中继接 AKShare 的低频接口。
 
-## 对比
+## 当前实际接入
 
-| 项目 | 适合数据 | Token | 优点 | 主要风险 | 建议 |
-| --- | --- | --- | --- | --- | --- |
-| easyquotation | A 股实时快照、五档 | 无 | MIT、接口小、批量自选股简单 | 依赖新浪/腾讯非正式网页接口，字段和可用性可能变化 | 实时首选，必须有降级 |
-| mootdx | 快照、分钟、K 线、财务 | 无 | MIT、直接连接通达信行情节点 | 项目声明仅供学习交流且不得商用；节点可能失效 | 开发期备选，不直接承诺商用 |
-| AKShare | 实时、历史、基本面、宏观 | 无 | MIT、覆盖最广、维护活跃 | 项目明确主要用于学术研究；底层网站会改接口或封 IP | 低频研究和补充数据 |
-| BaoStock | 日/周/月/分钟历史数据 | 无需付费账号 | 无需注册，历史数据结构稳定 | 当日数据通常盘后更新，不是实时桌宠源 | 历史日线与回补 |
-| efinance | 东财实时与历史 | 无 | MIT、API 友好 | README 声明不得商用；东财自 2025 年强化 IP 限频 | 暂不作为主链 |
+| 场景 | 数据源与行为 |
+| --- | --- |
+| 主源 | 腾讯 `https://qt.gtimg.cn/q=...`，批量沪深自选快照 |
+| 备用 | 新浪 `https://hq.sinajs.cn/list=...`，主源网络、HTTP、解析或指数缺失时切换 |
+| 编码 | GB18030/GBK；不使用 eval 执行上游返回代码 |
+| 交易时段 | 每次成功后约 10 秒再请求，加入最多 1 秒随机抖动 |
+| 休市 | 每次成功后约 60 秒再请求，保留真实收盘时间 |
+| 两源失败 | 30、60、120 秒退避；保留最近有效数据并标记离线 |
+| 缓存 | 用户数据目录 `market-cache.json`，原始行情时间不变，不混入演示数据 |
+| 请求范围 | 最多 60 个沪深代码，始终包含上证指数；不抓取全市场 |
+| 价格曲线 | 仅累计本次运行/缓存中的实际采样，新的交易日期重置；不伪造历史分时数据 |
 
-开源许可证只覆盖客户端库代码，不自动授予上游行情数据的展示、缓存、再分发或商业使用权。正式发布前必须单独确认各数据提供方条款，或者切换到已签约行情供应商。
+UI 提供公开行情、演示行情、自定义 WebSocket 中继三种模式。
+默认是公开行情，不支持 AAPL 等美股代码；自定义中继可以扩展其他市场。
+价格提醒仅在交易中且行情新鲜时触发，休市和离线缓存不触发提醒。
 
-## 本地架构
+## 本机实测
 
-```text
-Electron renderer
-      | normalized QuoteTick
-Electron main process
-      | child process / localhost WebSocket
-Local market adapter
-      |-- easyquotation (snapshot)
-      |-- mootdx (fallback/minute)
-      `-- BaoStock + SQLite (history/cache)
-```
+腾讯和新浪均成功返回上证指数、深证成指、创业板指和贵州茅台。
+截至本次核查，两源返回的最新交易日期均为 2026-09-30：
 
-本地适配器应负责：
+- 腾讯上证指数：3842.19，涨跌幅 +0.31%，行情时间 16:15:00（上海时间）。
+- 新浪上证指数：3842.1946，按昨收计算涨跌幅 +0.31%，行情时间 16:19:58。
 
-- 只请求自选股，禁止周期性抓取全市场。
-- 单批请求合并，交易时段 3-5 秒一次，非交易时段降到 60 秒或停止。
-- 指数退避并加入随机抖动；连续失败后熔断 1-5 分钟。
-- SQLite 缓存历史数据和上一笔有效快照；展示数据时间和离线状态。
-- easyquotation 失败后切 mootdx，两个实时源都失败则展示旧数据并标记离线。
-- 不绕过验证码、访问控制或明确的服务限制。
+不同供应商的小数位和时间可能不同。本程序展示供应商原始行情时间，
+当前返回属于休市快照，不把成功连接等同于正在交易或保证无延迟。
 
-## 参考
+复验命令：`npm.cmd run test:live`。该检查需要网络，会启动隔离的 Electron
+窗口并读取真实行情；常规单元/E2E 测试不依赖公共行情接口。
 
-- AKShare: https://github.com/akfamily/akshare
-- easyquotation: https://github.com/shidenggui/easyquotation
-- mootdx: https://github.com/mootdx/mootdx
-- efinance: https://github.com/Micro-sheep/efinance
-- BaoStock: https://www.baostock.com/
+## 使用边界
+
+每台电脑本地取数可行，但不同电脑不一定拥有不同公网 IP；家庭、公司、
+校园网络常共用 NAT 出口。公开接口仍可能限流、封禁或调整协议。
+不使用代理池绕过限制，不抓取全市场，不绕过验证码和访问控制。
+
+代码库的开源许可证不自动授予上游数据展示、缓存、再分发或商业使用权。
+“免费可访问”也不等于“可以任意再分发”。本机研究/预览之外的正式发布，
+应单独确认供应商条款，必要时换成有明确授权的行情中继。
+
+## 协议参考
+
+- [easyquotation 腾讯适配器](https://github.com/shidenggui/easyquotation/blob/master/easyquotation/tencent.py)
+- [easyquotation 新浪适配器](https://github.com/shidenggui/easyquotation/blob/master/easyquotation/sina.py)
+- [AKShare 腾讯 A 股适配器](https://github.com/akfamily/akshare/blob/main/akshare/stock/stock_zh_a_tx.py)

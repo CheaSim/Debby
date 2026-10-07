@@ -1,12 +1,13 @@
 import { Bell, Pin, Power, Radio, Volume2 } from 'lucide-react'
-import type { AppSettings, ProviderStatus, QuoteTick } from '../../../shared/types'
+import type { AppSettings, MarketProvider, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { AlertPanel } from './AlertPanel'
 import { MarketChart } from './MarketChart'
 
 interface DashboardProps {
   settings: AppSettings
   quotes: QuoteTick[]
-  provider: 'demo' | 'remote'
+  provider: MarketProvider
+  providerName: string
   providerStatus: ProviderStatus
   onSelect: (symbol: string) => void
   onSettings: (patch: Partial<AppSettings>) => void
@@ -15,7 +16,7 @@ interface DashboardProps {
   onProviderUrl: (url: string) => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
   return (
@@ -24,12 +25,13 @@ export function Dashboard({ settings, quotes, provider, providerStatus, onSelect
         <header className="brand-block"><span className="brand-mark">F</span><div><strong>FinPet</strong><span>MARKET DESK</span></div></header>
         <div className="watchlist-heading"><span>自选市场</span><small>{quotes.length}</small></div>
         <nav className="watchlist">
+          {quotes.length === 0 && <p className="empty-state">{providerStatus === 'offline' ? '暂无可用行情' : '正在获取行情'}</p>}
           {quotes.map((quote) => <button key={quote.symbol} data-symbol={quote.symbol} className={quote.symbol === selected?.symbol ? 'active' : ''} onClick={() => onSelect(quote.symbol)}>
             <div><strong>{quote.name}</strong><span>{quote.symbol}</span></div>
             <div className={quote.changePct >= 0 ? 'price-up' : 'price-down'}><strong>{quote.price.toFixed(quote.price > 1000 ? 2 : 3)}</strong><span>{quote.changePct >= 0 ? '+' : ''}{quote.changePct.toFixed(2)}%</span></div>
           </button>)}
         </nav>
-        <div className="connection-status"><i className={providerStatus} /><div><strong>{provider === 'remote' ? '实时行情' : '演示行情'}</strong><span>{providerStatus === 'live' ? '已连接数据服务' : providerStatus === 'connecting' ? '正在连接行情' : providerStatus === 'offline' ? '连接中断，正在重试' : '本地模拟数据'}</span></div><Radio size={16} /></div>
+        <div className="connection-status"><i className={providerStatus} /><div><strong>{providerName}</strong><span>{providerStatus === 'live' ? '已获取行情' : providerStatus === 'connecting' ? '正在连接行情' : providerStatus === 'offline' ? '离线 · 保留最近行情' : '本地模拟数据'}</span></div><Radio size={16} /></div>
       </aside>
 
       <section className="market-workspace">
@@ -44,13 +46,13 @@ export function Dashboard({ settings, quotes, provider, providerStatus, onSelect
 
         <div className="quote-strip">
           <div className={positive ? 'quote-main price-up' : 'quote-main price-down'}><strong>{selected?.price.toFixed((selected?.price ?? 0) > 1000 ? 2 : 3) ?? '--'}</strong><span>{positive ? '+' : ''}{selected?.change.toFixed(2)} / {positive ? '+' : ''}{selected?.changePct.toFixed(2)}%</span></div>
-          <div className="quote-meta"><span>昨收<strong>{selected?.previousClose.toFixed(2)}</strong></span><span>状态<strong>交易中</strong></span><span>更新时间<strong>{selected ? new Date(selected.timestamp).toLocaleTimeString('zh-CN', { hour12: false }) : '--'}</strong></span></div>
+          <div className="quote-meta"><span>昨收<strong>{selected?.previousClose.toFixed(2) ?? '--'}</strong></span><span>状态<strong>{provider === 'demo' ? '模拟' : !selected ? '等待行情' : selected.status === 'offline' ? '离线缓存' : selected.status === 'closed' ? '休市' : '交易中'}</strong></span><span>行情时间<strong>{selected ? new Date(selected.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</strong></span></div>
         </div>
         <MarketChart quote={selected} />
-        <div className="insight-band"><Bell size={17} /><div><strong>财仔观察</strong><span>{positive ? '当前价格高于昨收，保持计划内观察。' : '当前价格低于昨收，注意风险敞口。'} 数据为演示用途，不构成投资建议。</span></div></div>
+        <div className="insight-band"><Bell size={17} /><div><strong>财仔观察</strong><span>{selected ? positive ? '当前价格高于昨收，保持计划内观察。' : '当前价格低于昨收，注意风险敞口。' : '等待行情更新。'} {provider === 'demo' ? '模拟数据。' : '公开行情可能延迟。'}不构成投资建议。</span></div></div>
       </section>
 
-      <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} onProviderUrl={onProviderUrl} />
+      <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} onProviderUrl={onProviderUrl} onSettings={onSettings} />
     </main>
   )
 }

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { ensureAvatar } from './setup-avatar.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const workDir = join(root, 'work')
@@ -13,8 +14,6 @@ const modelPath = join(modelDir, 'Zome.vrm')
 const profileDir = join(runtimeDir, 'profile')
 const apiUrl = 'https://api.github.com/repos/shinyflvre/Mate-Engine/releases/latest'
 const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY || 'http://127.0.0.1:7897'
-const zomeUrl = 'https://raw.githubusercontent.com/shinyflvre/Mate-Engine/main/Assets/MATE%20ENGINE%20-%20Avatar/Zome.vrm'
-const zomeSize = 27407996
 
 function curl(args) {
   const result = spawnSync('curl.exe', ['--proxy', proxy, '--fail', '--location', '--retry', '3', ...args], {
@@ -92,20 +91,7 @@ try {
 }
 
 await mkdir(modelDir, { recursive: true })
-try {
-  const cachedModel = await stat(modelPath)
-  if (cachedModel.size !== zomeSize) {
-    console.log('Refreshing incomplete Zome.vrm case...')
-    curl(['--continue-at', '-', '--output', modelPath, zomeUrl])
-  } else {
-    console.log(`Using cached Zome.vrm case: ${modelPath}`)
-  }
-} catch {
-  console.log('Downloading Mate-Engine Zome.vrm case (about 26 MB)...')
-  curl(['--output', modelPath, zomeUrl])
-}
-const finalModel = await stat(modelPath)
-if (finalModel.size !== zomeSize) throw new Error(`Zome.vrm size mismatch: ${finalModel.size}`)
+await cp(await ensureAvatar(), modelPath)
 
 await mkdir(profileDir, { recursive: true })
 await writeFile(join(profileDir, 'settings.json'), JSON.stringify({

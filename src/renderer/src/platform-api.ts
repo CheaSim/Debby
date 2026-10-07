@@ -10,6 +10,7 @@ const names = [
 let browserSettings: AppSettings = {
   selectedSymbol: '000001.SH',
   watchlist: names.map(([symbol]) => symbol),
+  marketSource: 'demo',
   alwaysOnTop: true,
   launchAtLogin: false,
   clickThrough: false,
@@ -32,7 +33,7 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
-  getSnapshot: async () => ({ settings: browserSettings, quotes: browserQuotes, provider: 'demo', providerStatus: 'demo' }),
+  getSnapshot: async () => ({ settings: browserSettings, quotes: browserQuotes, provider: 'demo', providerName: '浏览器演示', providerStatus: 'demo' }),
   updateSettings: async (patch) => {
     browserSettings = { ...browserSettings, ...patch }
     settingsListeners.forEach((listener) => listener(browserSettings))

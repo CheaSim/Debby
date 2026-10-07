@@ -1,6 +1,7 @@
 export type MarketStatus = 'open' | 'closed' | 'offline'
 export type PetMood = 'idle' | 'bullish' | 'bearish' | 'alert' | 'offline'
 export type ProviderStatus = 'demo' | 'connecting' | 'live' | 'offline'
+export type MarketProvider = 'public' | 'demo' | 'remote'
 
 export interface QuoteTick {
   symbol: string
@@ -29,6 +30,7 @@ export interface AppSettings {
   alwaysOnTop: boolean
   launchAtLogin: boolean
   marketDataUrl?: string
+  marketSource: MarketProvider
   clickThrough: boolean
   soundEnabled: boolean
   panelOpen: boolean
@@ -39,7 +41,8 @@ export interface AppSettings {
 export interface AppSnapshot {
   settings: AppSettings
   quotes: QuoteTick[]
-  provider: 'demo' | 'remote'
+  provider: MarketProvider
+  providerName: string
   providerStatus: ProviderStatus
 }
 

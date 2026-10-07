@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
+import { once } from 'node:events'
+import { WebSocketServer } from 'ws'
 import { _electron as electron } from 'playwright'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -12,13 +14,14 @@ const packagedExecutable = process.env.FINPET_E2E_EXECUTABLE
 const executablePath = packagedExecutable || require('electron')
 const userData = await mkdtemp(resolve(tmpdir(), 'finpet-e2e-'))
 let electronApp
+let relay
 
 try {
   electronApp = await electron.launch({
     executablePath,
     args: packagedExecutable ? [] : ['.'],
     cwd: root,
-    env: { ...process.env, FINPET_E2E_USER_DATA: userData }
+    env: { ...process.env, FINPET_E2E_USER_DATA: userData, FINPET_MARKET_SOURCE: 'demo' }
   })
   const page = await electronApp.firstWindow()
   const pageErrors = []
@@ -57,6 +60,31 @@ try {
   })
   assert.ok(threeFrame.visiblePixels > 1_000, `3D canvas is blank: ${JSON.stringify(threeFrame)}`)
 
+  const avatarFrame = await page.evaluate(() => {
+    const canvas = document.querySelector('.three-pet-canvas')
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let coloredPixels = 0
+    let transparentPixels = 0
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] < 8) transparentPixels += 1
+      else if (Math.max(pixels[index], pixels[index + 1], pixels[index + 2]) - Math.min(pixels[index], pixels[index + 1], pixels[index + 2]) > 12) coloredPixels += 1
+    }
+    return { avatar: document.querySelector('.three-pet-host').dataset.avatar, coloredPixels, transparentPixels }
+  })
+  assert.equal(avatarFrame.avatar, 'zome', 'Expected the real Mate-Engine VRM case')
+  assert.ok(avatarFrame.coloredPixels > 1_000, `Avatar textures are missing: ${JSON.stringify(avatarFrame)}`)
+  assert.ok(avatarFrame.transparentPixels > 1_000, 'Avatar background is not transparent')
+  assert.deepEqual(pageErrors, [], 'Renderer reported errors, including missing textures')
+
+  const beforeView = await page.locator('.three-pet-canvas').screenshot()
+  await page.locator('[title="近景视图"]').click()
+  await page.waitForSelector('[data-view="portrait"]')
+  const portraitView = await page.locator('.three-pet-canvas').screenshot()
+  assert.notDeepEqual(portraitView, beforeView, 'Portrait switch did not change the rendered character')
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-portrait.png') })
+  await page.locator('[title="全身视图"]').click()
+  await page.waitForSelector('[data-view="full"]')
+
   const preloadApi = await page.evaluate(() => typeof window.finpet?.getSnapshot)
   assert.equal(preloadApi, 'function', 'contextBridge API was not injected')
 
@@ -65,15 +93,19 @@ try {
   assert.equal(snapshot.providerStatus, 'demo')
   assert.equal(snapshot.quotes.length, 4)
 
-  const windowState = await electronApp.evaluate(({ BrowserWindow }) => {
+  const windowState = await electronApp.evaluate(async ({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]
+    if (!window.isVisible()) await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Pet window did not become visible')), 5_000)
+      window.once('show', () => { clearTimeout(timer); resolve() })
+    })
     return {
       bounds: window.getBounds(),
       visible: window.isVisible(),
       alwaysOnTop: window.isAlwaysOnTop()
     }
   })
-  assert.deepEqual([windowState.bounds.width, windowState.bounds.height], [360, 440])
+  assert.deepEqual([windowState.bounds.width, windowState.bounds.height], [380, 540])
   assert.equal(windowState.alwaysOnTop, true)
   assert.equal(windowState.visible, true)
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-compact.png') })
@@ -98,7 +130,32 @@ try {
   }))
   assert.deepEqual([layout.scrollWidth, layout.scrollHeight], [layout.width, layout.height])
   assert.ok(layout.canvasCount > 0, 'financial chart canvas was not created')
+  const sourceLayout = await page.evaluate(() => ({
+    statusBottom: document.querySelector('.connection-status').getBoundingClientRect().bottom,
+    speechTop: document.querySelector('.speech').getBoundingClientRect().top
+  }))
+  assert.ok(sourceLayout.statusBottom < sourceLayout.speechTop, 'Data-source status overlaps the character speech')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-expanded.png') })
+
+  relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
+  await once(relay, 'listening')
+  const connection = once(relay, 'connection')
+  await page.evaluate((url) => window.finpet.updateSettings({ marketDataUrl: url, marketSource: 'remote', alerts: [] }), `ws://127.0.0.1:${relay.address().port}`)
+  const [client] = await connection
+  const benchmark = snapshot.quotes.find((quote) => quote.symbol === '000001.SH')
+  const stock = snapshot.quotes.find((quote) => quote.symbol === 'AAPL')
+  for (const [changePct, expected] of [[0.8, 'bullish'], [-0.8, 'bearish'], [0.02, 'idle']]) {
+    client.send(JSON.stringify([
+      { ...benchmark, changePct, price: benchmark.previousClose * (1 + changePct / 100), timestamp: Date.now() },
+      { ...stock, changePct: -changePct * 10, timestamp: Date.now() }
+    ]))
+    await page.waitForSelector(`.mascot-stage.mood-${expected}`)
+    assert.match(await page.locator('.speech strong').innerText(), /上证指数/, 'Selected stock replaced the mood benchmark')
+    assert.equal(await page.locator('.three-pet-host').getAttribute('data-mood'), expected)
+  }
+  client.close()
+  await page.waitForSelector('.mascot-stage.mood-offline')
+  assert.deepEqual(pageErrors, [], 'Renderer failed during view and mood changes')
 
   await electronApp.evaluate(({ app }) => app.quit())
   await electronApp.close()
@@ -107,8 +164,12 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: preload, native window, IPC, chart, and persistence.')
+  console.log('Electron E2E passed: real Zome avatar, textures, transparency, camera views, index moods, disconnect, window, chart, and persistence.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
+  if (relay) {
+    for (const client of relay.clients) client.terminate()
+    await new Promise((resolve) => relay.close(resolve))
+  }
   await rm(userData, { recursive: true, force: true })
 }

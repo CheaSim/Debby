@@ -1,7 +1,7 @@
 import { BellPlus, Save, ServerCog, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { isAllowedMarketDataUrl } from '../../../shared/domain'
-import type { AppSettings, QuoteTick } from '../../../shared/types'
+import type { AppSettings, MarketProvider, QuoteTick } from '../../../shared/types'
 
 interface AlertPanelProps {
   settings: AppSettings
@@ -9,9 +9,10 @@ interface AlertPanelProps {
   onAdd: (symbol: string, direction: 'above' | 'below', target: number) => void
   onRemove: (id: string) => void
   onProviderUrl: (url: string) => void
+  onSettings: (patch: Partial<AppSettings>) => void
 }
 
-export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl }: AlertPanelProps): React.JSX.Element {
+export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl, onSettings }: AlertPanelProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const [target, setTarget] = useState(() => selected?.price.toFixed(2) ?? '')
   const [direction, setDirection] = useState<'above' | 'below'>('above')
@@ -52,8 +53,13 @@ export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl }:
         })}
       </div>
       <div className="provider-settings">
-        <div className="provider-title"><ServerCog size={16} /><strong>行情中继</strong></div>
-        <form onSubmit={(event) => {
+        <div className="provider-title"><ServerCog size={16} /><strong>行情源</strong></div>
+        <select aria-label="行情源" value={settings.marketSource} disabled={!window.finpet} onChange={(event) => onSettings({ marketSource: event.target.value as MarketProvider })}>
+          <option value="public">公开行情 · 腾讯 / 新浪</option>
+          <option value="remote">自定义 WebSocket 中继</option>
+          <option value="demo">演示行情</option>
+        </select>
+        {settings.marketSource === 'remote' && <form onSubmit={(event) => {
           event.preventDefault()
           if (!isAllowedMarketDataUrl(providerUrl)) {
             setProviderError('请使用 wss://；明文 ws:// 仅限本机')
@@ -62,9 +68,9 @@ export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl }:
           setProviderError('')
           onProviderUrl(providerUrl.trim())
         }}>
-          <input value={providerUrl} onChange={(event) => setProviderUrl(event.target.value)} placeholder="wss://...（留空使用演示源）" aria-label="行情中继地址" />
+          <input value={providerUrl} onChange={(event) => setProviderUrl(event.target.value)} placeholder="wss://..." aria-label="行情中继地址" />
           <button className="square-action" type="submit" title="保存行情源"><Save size={16} /></button>
-        </form>
+        </form>}
         {providerError && <span className="provider-error">{providerError}</span>}
       </div>
     </section>

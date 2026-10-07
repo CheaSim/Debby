@@ -1,12 +1,13 @@
 import { create } from 'zustand'
-import type { AlertEvent, AppSettings, PriceAlert, ProviderStatus, QuoteTick } from '../../../shared/types'
+import type { AlertEvent, AppSettings, MarketProvider, PriceAlert, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { platformApi } from '../platform-api'
 
 interface FinPetState {
   ready: boolean
   settings?: AppSettings
   quotes: QuoteTick[]
-  provider: 'demo' | 'remote'
+  provider: MarketProvider
+  providerName: string
   providerStatus: ProviderStatus
   latestAlert?: AlertEvent
   initialize: () => Promise<() => void>
@@ -22,16 +23,17 @@ export const useFinPetStore = create<FinPetState>((set, get) => ({
   ready: false,
   quotes: [],
   provider: 'demo',
+  providerName: '正在连接',
   providerStatus: 'demo',
   initialize: async () => {
     const snapshot = await platformApi.getSnapshot()
     set({ ...snapshot, ready: true })
     const disposeQuotes = platformApi.onQuotes((quotes) => set({ quotes }))
     const disposeSettings = platformApi.onSettings((settings) => set({ settings }))
-    const disposeStatus = platformApi.onProviderStatus((providerStatus) => set({
-      providerStatus,
-      provider: providerStatus === 'demo' ? 'demo' : 'remote'
-    }))
+    const disposeStatus = platformApi.onProviderStatus((providerStatus) => {
+      set({ providerStatus })
+      void platformApi.getSnapshot().then(({ provider, providerName, providerStatus, quotes }) => set({ provider, providerName, providerStatus, quotes }))
+    })
     const disposeAlert = platformApi.onAlert((latestAlert) => {
       set({ latestAlert })
       window.setTimeout(() => set((state) => state.latestAlert === latestAlert ? { latestAlert: undefined } : {}), 8_000)

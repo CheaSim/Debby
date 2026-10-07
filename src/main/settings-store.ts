@@ -3,15 +3,14 @@ import type { AppSettings } from '../shared/types'
 
 export const defaultSettings: AppSettings = {
   selectedSymbol: '000001.SH',
-  watchlist: ['000001.SH', '399001.SZ', '600519.SH', 'AAPL'],
+  watchlist: ['000001.SH', '399001.SZ', '399006.SZ', '600519.SH'],
+  marketSource: 'public',
   alwaysOnTop: true,
   launchAtLogin: false,
   clickThrough: false,
   soundEnabled: true,
   panelOpen: false,
-  alerts: [
-    { id: 'demo-alert', symbol: '600519.SH', direction: 'above', target: 1720, enabled: true }
-  ]
+  alerts: []
 }
 
 export class SettingsStore {
@@ -34,7 +33,7 @@ export class SettingsStore {
   private load(): AppSettings {
     try {
       const parsed = JSON.parse(readFileSync(this.filePath, 'utf8')) as Partial<AppSettings>
-      return { ...defaultSettings, ...parsed }
+      return { ...defaultSettings, ...parsed, marketSource: parsed.marketSource ?? (parsed.marketDataUrl ? 'remote' : 'public') }
     } catch {
       return structuredClone(defaultSettings)
     }
