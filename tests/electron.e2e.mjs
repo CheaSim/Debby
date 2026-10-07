@@ -7,6 +7,7 @@ import { createRequire } from 'node:module'
 import { once } from 'node:events'
 import { WebSocketServer } from 'ws'
 import { _electron as electron } from 'playwright'
+import sharp from 'sharp'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
@@ -76,6 +77,13 @@ try {
   assert.ok(avatarFrame.transparentPixels > 1_000, 'Avatar background is not transparent')
   assert.deepEqual(pageErrors, [], 'Renderer reported errors, including missing textures')
 
+  await page.waitForSelector('[data-behavior="idle"]')
+  const fullPet = await page.locator('.three-pet-host').boundingBox()
+  await page.mouse.click(fullPet.x + fullPet.width / 2, fullPet.y + fullPet.height * 0.19)
+  await page.waitForSelector('[data-behavior="pat"]')
+  assert.match(await page.locator('.speech p').innerText(), /鼓励/, 'Head pat did not change the companion response')
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-pat.png') })
+
   const beforeView = await page.locator('.three-pet-canvas').screenshot()
   await page.locator('[title="近景视图"]').click()
   await page.waitForSelector('[data-view="portrait"]')
@@ -118,7 +126,9 @@ try {
   await page.mouse.move(dragX, dragY)
   await page.mouse.down()
   await page.mouse.move(dragX - 40, dragY - 30)
+  await page.waitForSelector('[data-behavior="lifted"]')
   await page.mouse.up()
+  await page.waitForSelector('[data-behavior="land"]')
   await page.waitForFunction(() => window.screenX === 260 && window.screenY === 150)
   const afterDrag = await getBounds()
   assert.deepEqual([afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y], [-40, -30], 'Dragging the pet did not move the window')
@@ -154,10 +164,14 @@ try {
   const soundSetting = (await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled
   await page.locator('[title="声音提醒"]').click()
   assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled, !soundSetting)
-  const headerRegion = await page.locator('.header-actions').evaluate((element) => getComputedStyle(element).webkitAppRegion)
-  assert.equal(headerRegion, 'no-drag', 'Header controls are inside a native draggable region')
+  const headerRegions = await page.locator('.header-actions').evaluateAll((elements) => elements.map((element) => getComputedStyle(element).webkitAppRegion))
+  assert.ok(headerRegions.every((region) => region === 'no-drag'), 'Header controls are inside a native draggable region')
   const expandedTools = await page.locator('.pet-tools').boundingBox()
   assert.ok(expandedTools.x >= 0 && expandedTools.x + expandedTools.width <= 228, 'Expanded toolbar overlaps the chart')
+  await page.locator('.collapse-tab').click()
+  await page.waitForSelector('.dashboard-shell', { state: 'detached' })
+  await page.locator('[title="打开行情面板"]').click()
+  await page.waitForSelector('.dashboard-shell')
   await page.locator('[data-symbol="AAPL"]').click()
   await page.waitForFunction(() => document.querySelector('h1')?.textContent === 'Apple')
 
@@ -182,6 +196,68 @@ try {
   }))
   assert.ok(sourceLayout.statusBottom < sourceLayout.speechTop, 'Data-source status overlaps the character speech')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-expanded.png') })
+
+  const beforeShowcase = await page.evaluate(() => window.finpet.getSnapshot())
+  await page.locator('[title="打开演示"]').click()
+  await page.waitForSelector('[data-showcase-scene="bullish"]')
+  assert.match(await page.locator('.speech-kicker').innerText(), /演示数据/)
+  await page.locator('[data-symbol="600519.SH"]').click()
+  assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.selectedSymbol, beforeShowcase.settings.selectedSymbol, 'Showcase selection changed the real watchlist selection')
+  await page.locator('[title="暂停演示"]').click()
+  await page.locator('.collapse-tab').click()
+  await page.waitForSelector('.compact-showcase')
+  const compactShowcase = await page.locator('.compact-showcase').boundingBox()
+  assert.ok(compactShowcase.x >= 0 && compactShowcase.x + compactShowcase.width <= 380, 'Compact showcase controls are clipped')
+  await page.locator('[title="近景视图"]').click()
+  await page.waitForSelector('[data-view="portrait"]')
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-showcase-compact.png') })
+  await page.locator('[title="全身视图"]').click()
+  await page.locator('[title="开启鼠标穿透"]').click()
+  await page.locator('[aria-label="演示场景"]').selectOption('offline')
+  await page.waitForSelector('.mascot-stage.mood-offline')
+  await page.locator('[title="关闭鼠标穿透"]').click()
+  await page.locator('[title="打开行情面板"]').click()
+  await page.waitForSelector('.dashboard-shell')
+  for (const [scene, expected] of [['bearish', 'bearish'], ['alert', 'alert'], ['offline', 'offline'], ['close', 'bullish']]) {
+    await page.locator('[aria-label="演示场景"]').selectOption(scene)
+    await page.waitForSelector(`.mascot-stage.mood-${expected}`)
+  }
+  await page.locator('[title="行情复盘"]').click()
+  await page.waitForSelector('.recap-dialog[open]')
+  assert.equal(await page.locator('#recap-title').innerText(), '收盘快照')
+  assert.match(await page.locator('.recap-dialog').innerText(), /演示数据 · 非实盘/)
+  assert.match(await page.locator('.recap-dialog footer').innerText(), /场景演示/)
+  const recapImagePath = resolve(root, 'work', 'finpet-recap-export.png')
+  await electronApp.evaluate(({ BrowserWindow }, path) => {
+    globalThis.recapDownload = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Recap export timed out')), 10_000)
+      BrowserWindow.getAllWindows()[0].webContents.session.once('will-download', (_event, item) => {
+        item.setSavePath(path)
+        item.once('done', (_event, state) => { clearTimeout(timer); state === 'completed' ? resolve(item.getSavePath()) : reject(new Error(`Download ${state}`)) })
+      })
+    })
+  }, recapImagePath)
+  await page.locator('[title="导出复盘图片"]').click()
+  assert.equal(await electronApp.evaluate(() => globalThis.recapDownload), recapImagePath)
+  const exportedImage = await sharp(recapImagePath).metadata()
+  assert.deepEqual([exportedImage.format, exportedImage.width, exportedImage.height], ['png', 1000, 728])
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.recapCopiedText = text } } })
+  })
+  await page.locator('[title="复制复盘文字"]').click()
+  await page.waitForSelector('[title="复盘已复制"]')
+  assert.match(await page.evaluate(() => window.recapCopiedText), /演示数据[\s\S]*场景演示[\s\S]*不构成投资建议/)
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-recap.png') })
+  await page.keyboard.press('Escape')
+  await page.waitForSelector('.recap-dialog', { state: 'detached' })
+  await page.locator('.showcase-controls [title="退出演示"]').click()
+  await page.waitForSelector('.showcase-controls', { state: 'detached' })
+  const afterShowcase = await page.evaluate(() => window.finpet.getSnapshot())
+  assert.equal(afterShowcase.provider, beforeShowcase.provider, 'Showcase changed the real provider')
+  for (const key of ['marketSource', 'marketDataUrl', 'selectedSymbol', 'watchlist', 'alerts']) {
+    assert.deepEqual(afterShowcase.settings[key], beforeShowcase.settings[key], `Showcase changed real ${key}`)
+  }
+  assert.equal(afterShowcase.quotes[0].previousClose, beforeShowcase.quotes[0].previousClose, 'Showcase contaminated backend quotes')
 
   relay = new WebSocketServer({ host: '127.0.0.1', port: 0 })
   await once(relay, 'listening')
@@ -210,7 +286,7 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: avatar, textures, transparency, views, drag/persistence, rotation/reset, buttons, click-through, IPC validation, index moods, disconnect, window and chart.')
+  console.log('Electron E2E passed: avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, buttons, click-through, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
   if (relay) {

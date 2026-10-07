@@ -5,6 +5,8 @@ import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from '@pix
 import { RefreshCw } from 'lucide-react'
 import type { PetMood } from '../../../shared/types'
 import { platformApi } from '../platform-api'
+import { PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
+import { PetAnimator } from './pet-animation'
 
 interface ThreeDPetProps {
   mood: PetMood
@@ -12,24 +14,27 @@ interface ThreeDPetProps {
   viewReset: number
   rotating: boolean
   draggable: boolean
+  onBehavior: (behavior: PetBehavior) => void
 }
 
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
-export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
   const portraitRef = useRef(portrait)
   const interactionRef = useRef({ rotating, draggable })
   const resetViewRef = useRef<(() => void) | null>(null)
+  const behaviorListener = useRef(onBehavior)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [progress, setProgress] = useState(0)
   const [attempt, setAttempt] = useState(0)
   moodRef.current = mood
   portraitRef.current = portrait
   interactionRef.current = { rotating, draggable }
+  behaviorListener.current = onBehavior
 
   useEffect(() => {
     const host = hostRef.current
@@ -74,6 +79,9 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
     scene.add(lookTarget)
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let vrm: VRM | undefined
+    let animator: PetAnimator | undefined
+    const behavior = new PetBehaviorController()
+    let lastBehavior: PetBehavior = 'idle'
     let disposed = false
     let frame = 0
     let last = 0
@@ -85,7 +93,6 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
     let targetYaw = -0.12
     let zoom = 1
     let modelWidth = 1.1
-    let gestureStarted = -10
     let blinkStarted = -10
     let nextBlink = 2.5
     let presented = false
@@ -95,6 +102,11 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
     let downY = 0
     let downYaw = 0
     let rotatingDrag = false
+    let touchRegion: 'head' | 'body' | undefined
+    const raycaster = new THREE.Raycaster()
+    const touchPoint = new THREE.Vector2()
+    const gazeRotation = new THREE.Quaternion()
+    const inverseGaze = new THREE.Quaternion()
     const expressionValues = { happy: 0, sad: 0, relaxed: 0, aa: 0 }
     const pose = (name: VRMHumanBoneName, x: number, y: number, z: number): void => {
       vrm?.humanoid.getNormalizedBoneNode(name)?.rotation.set(x, y, z)
@@ -107,7 +119,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       canvas.width = renderer.domElement.width
       canvas.height = renderer.domElement.height
       const aspect = width / height
-      const viewHeight = (portraitRef.current ? 1.0 : Math.max(1.82, modelWidth / aspect * 1.12)) / zoom
+      const viewHeight = (portraitRef.current ? 1.0 : Math.max(1.9, modelWidth / aspect * 1.12)) / zoom
       const centerY = portraitRef.current ? 1.2 : 0.84
       camera.position.y = centerY
       camera.lookAt(0, centerY, 0)
@@ -168,6 +180,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
         loaded.lookAt.autoUpdate = true
       }
       host.dataset.avatar = 'zome'
+      animator = new PetAnimator(loaded)
+      behavior.interact('greet', elapsed)
       resize()
       setProgress(100)
     }, (event) => {
@@ -185,7 +199,10 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       targetY = THREE.MathUtils.clamp((event.clientY - bounds.top) / bounds.height * 2 - 1, -1, 1)
       if (dragging) {
         const difference = event.screenX - downX
-        if (Math.hypot(difference, event.screenY - downY) > 5) moved = true
+        if (!moved && Math.hypot(difference, event.screenY - downY) > 5) {
+          moved = true
+          if (!rotatingDrag) behavior.interact('lifted', elapsed)
+        }
         if (rotatingDrag) targetYaw = THREE.MathUtils.clamp(downYaw + difference * 0.009, -0.8, 0.8)
         else if (moved) void platformApi.moveWindowDrag(event.screenX, event.screenY)
       }
@@ -198,6 +215,15 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       downY = event.screenY
       downYaw = targetYaw
       rotatingDrag = interactionRef.current.rotating
+      touchRegion = undefined
+      if (vrm) {
+        const bounds = host.getBoundingClientRect()
+        touchPoint.set((event.clientX - bounds.left) / bounds.width * 2 - 1, 1 - (event.clientY - bounds.top) / bounds.height * 2)
+        raycaster.setFromCamera(touchPoint, camera)
+        const hit = raycaster.intersectObject(vrm.scene, true)[0]
+        const head = vrm.humanoid.getNormalizedBoneNode('head')?.getWorldPosition(new THREE.Vector3())
+        if (hit) touchRegion = head && hit.point.y >= head.y - 0.08 ? 'head' : 'body'
+      }
       if (!rotatingDrag) void platformApi.startWindowDrag(event.screenX, event.screenY)
       host.setPointerCapture(event.pointerId)
       host.style.cursor = 'grabbing'
@@ -208,9 +234,17 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       if (!rotatingDrag) void platformApi.endWindowDrag()
       host.style.cursor = ''
       if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId)
-      if (!moved) gestureStarted = elapsed
+      if (!rotatingDrag) {
+        if (moved) behavior.interact('land', elapsed)
+        else if (touchRegion) behavior.interact(touchRegion === 'head' ? 'pat' : 'greet', elapsed)
+      }
     }
-    const pointerCancel = (): void => { dragging = false; host.style.cursor = ''; void platformApi.endWindowDrag() }
+    const pointerCancel = (): void => {
+      if (dragging && moved && !rotatingDrag) behavior.interact('land', elapsed)
+      dragging = false
+      host.style.cursor = ''
+      void platformApi.endWindowDrag()
+    }
     const pointerLeave = (): void => { if (!dragging) { targetX = 0; targetY = 0 } }
     const wheel = (event: WheelEvent): void => {
       event.preventDefault()
@@ -243,29 +277,27 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, smoothing)
       host.dataset.yaw = root.rotation.y.toFixed(3)
       lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
-      const gestureTime = elapsed - gestureStarted
-      const greeting = !reducedMotion && gestureTime >= 0 && gestureTime < 2.2
-        ? Math.sin(Math.PI * gestureTime / 2.2) ** 2 : 0
-      const breath = reducedMotion ? 0 : Math.sin(elapsed * 1.8)
-      const sway = reducedMotion ? 0 : Math.sin(elapsed * 0.75)
-      const worried = expressionValues.sad
-      const cheerful = expressionValues.happy
-      pose('spine', breath * 0.012 + worried * 0.055, 0, sway * 0.014)
-      pose('chest', 0, 0, -sway * 0.009)
-      pose('neck', -pointerY * 0.035, pointerX * 0.075, -sway * 0.018)
-      pose('head', -pointerY * 0.03 + worried * 0.12, pointerX * 0.05, greeting * 0.05 - worried * 0.09)
-      pose('leftUpperArm', 0.02 * breath, 0, 1.18 + breath * 0.018 - cheerful * 0.13)
-      pose('rightUpperArm', 0, greeting * -0.2, -1.18 + greeting * 1.8 + cheerful * 0.13)
-      pose('rightLowerArm', 0, 0.12, -0.08 - greeting * (1.65 + Math.sin(gestureTime * 15) * 0.16))
-      pose('rightHand', 0, 0, greeting * Math.sin(gestureTime * 15) * -0.2)
+      const currentBehavior = behavior.update(moodRef.current, elapsed)
+      host.dataset.behavior = currentBehavior
+      if (currentBehavior !== lastBehavior) {
+        lastBehavior = currentBehavior
+        behaviorListener.current(currentBehavior)
+      }
+      const head = vrm.humanoid.getNormalizedBoneNode('head')
+      // Remove the previous additive gaze before the mixer reapplies its cached pose.
+      if (head) head.quaternion.multiply(inverseGaze.copy(gazeRotation).invert())
+      animator?.update(currentBehavior, delta, reducedMotion)
+      gazeRotation.setFromEuler(new THREE.Euler(-pointerY * 0.04, pointerX * 0.07, 0))
+      if (head) head.quaternion.multiply(gazeRotation)
+      root.position.y = THREE.MathUtils.lerp(root.position.y, !reducedMotion && currentBehavior === 'lifted' ? 0.035 : 0, smoothing)
       if (elapsed > nextBlink) { blinkStarted = elapsed; nextBlink = elapsed + 3 + Math.random() * 3 }
       const blinkTime = (elapsed - blinkStarted) / 0.18
       const blink = blinkTime >= 0 && blinkTime <= 1 ? Math.sin(blinkTime * Math.PI) ** 2 : 0
       const targets = {
-        happy: Math.min(1, greeting * 0.6 + (moodRef.current === 'bullish' ? 0.65 : moodRef.current === 'bearish' ? 0 : 0.06)),
-        sad: moodRef.current === 'bearish' ? 0.65 : moodRef.current === 'offline' ? 0.22 : 0,
-        relaxed: moodRef.current === 'idle' ? 0.08 : moodRef.current === 'offline' ? 0.18 : 0,
-        aa: moodRef.current === 'alert' ? 0.2 : 0
+        happy: currentBehavior === 'pat' || currentBehavior === 'greet' ? 0.55 : moodRef.current === 'bullish' ? 0.65 : 0.06,
+        sad: currentBehavior === 'pat' ? 0 : moodRef.current === 'bearish' ? 0.55 : moodRef.current === 'offline' ? 0.18 : 0,
+        relaxed: currentBehavior === 'pat' ? 0.45 : moodRef.current === 'idle' ? 0.08 : moodRef.current === 'offline' ? 0.18 : 0,
+        aa: currentBehavior === 'lifted' ? 0.16 : moodRef.current === 'alert' ? 0.2 : 0
       }
       for (const name of expressionNames) {
         expressionValues[name] = THREE.MathUtils.lerp(expressionValues[name], targets[name], smoothing)
@@ -293,6 +325,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: Th
       host.removeEventListener('pointerleave', pointerLeave)
       host.removeEventListener('wheel', wheel)
       host.removeEventListener('dblclick', reset)
+      animator?.dispose()
       VRMUtils.deepDispose(scene)
       renderer.dispose()
       renderer.forceContextLoss()

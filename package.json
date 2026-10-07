@@ -23,7 +23,7 @@
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "package:win": "npm run assets && npm run build && electron-builder --win nsis"
+    "package:win": "npm run assets && npm run build && node scripts/check-release-assets.mjs && electron-builder --win nsis"
   },
   "dependencies": {
     "@pixi/unsafe-eval": "^6.5.10",

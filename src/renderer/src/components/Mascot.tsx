@@ -1,7 +1,9 @@
 import { BellRing, Box, ChevronLeft, ChevronRight, Move, MousePointer2, PanelRightOpen, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { moodForIndex, moodIndexSymbol } from '../../../shared/domain'
+import { useEffect, useRef, useState } from 'react'
+import { stableIndexMood, moodIndexSymbol } from '../../../shared/domain'
 import type { ProviderStatus, QuoteTick } from '../../../shared/types'
+import type { PetBehavior } from '../../../shared/pet-behavior'
+import type { PetMood } from '../../../shared/types'
 import { platformApi } from '../platform-api'
 import { ThreeDPet } from './ThreeDPet'
 
@@ -13,6 +15,7 @@ interface MascotProps {
   clickThrough: boolean
   onTogglePanel: () => void
   onClickThrough: () => void
+  demo: boolean
 }
 
 const moodText = {
@@ -24,10 +27,17 @@ const moodText = {
 }
 
 const moodLabel = { idle: '平静', bullish: '开心', bearish: '担忧', alert: '提醒', offline: '等待' }
+const behaviorText: Partial<Record<PetBehavior, string>> = {
+  pat: '嗯，收到你的鼓励啦。', lifted: '轻一点，我还在陪你呢。',
+  land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
+}
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
-  const mood = moodForIndex(indexQuote, alerting, providerStatus, now)
+  const previousMood = useRef<PetMood>('idle')
+  const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
+  useEffect(() => { previousMood.current = mood }, [mood])
+  const [behavior, setBehavior] = useState<PetBehavior>('idle')
   const direction = (indexQuote?.changePct ?? 0) >= 0 ? 'up' : 'down'
   const [portrait, setPortrait] = useState(false)
   const [viewReset, setViewReset] = useState(0)
@@ -50,12 +60,12 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   return (
     <section className={`mascot-stage mood-${mood}`} data-index-symbol={moodIndexSymbol} aria-label={`财仔状态：${moodLabel[mood]}`}>
       <div className="speech">
-        <span className="speech-kicker"><span>财仔</span><span className="mood-badge"><i />{moodLabel[mood]}</span></span>
+        <span className="speech-kicker"><span>{demo ? '财仔 · 演示数据' : '财仔'}</span><span className="mood-badge"><i />{moodLabel[mood]}</span></span>
         <strong>{indexQuote ? `${indexQuote.name} ${direction === 'up' ? '+' : ''}${indexQuote.changePct.toFixed(2)}%` : '等待指数行情'}</strong>
-        <p>{moodText[mood]}</p>
+        <p>{behaviorText[behavior] ?? moodText[mood]}</p>
       </div>
       <div className="pet-wrap no-drag">
-        <ThreeDPet mood={mood} portrait={portrait} viewReset={viewReset} rotating={rotating} draggable={!clickThrough} />
+        <ThreeDPet mood={mood} portrait={portrait} viewReset={viewReset} rotating={rotating} draggable={!clickThrough} onBehavior={setBehavior} />
         <div className="pet-nameplate" aria-hidden="true"><strong>财仔</strong><span>FINPET</span></div>
       </div>
       <div className="pet-tools no-drag">

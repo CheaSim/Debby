@@ -72,6 +72,14 @@ export function alertTriggered(alert: PriceAlert, quote: QuoteTick, now = Date.n
   return alert.direction === 'above' ? quote.price >= alert.target : quote.price <= alert.target
 }
 
+export function stableIndexMood(index: QuoteTick | undefined, previous: PetMood, alerting: boolean, status: ProviderStatus, now: number): PetMood {
+  const candidate = moodForIndex(index, alerting, status, now)
+  if (candidate === 'offline' || candidate === 'alert' || !index) return candidate
+  if (previous === 'bullish' && index.changePct >= 0.08) return 'bullish'
+  if (previous === 'bearish' && index.changePct <= -0.08) return 'bearish'
+  return candidate
+}
+
 export function formatAlert(alert: PriceAlert, quote: QuoteTick): string {
   const verb = alert.direction === 'above' ? '突破' : '跌破'
   return `${quote.name} ${verb} ${alert.target.toFixed(2)}，现价 ${quote.price.toFixed(2)}`

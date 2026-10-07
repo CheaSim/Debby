@@ -1,4 +1,5 @@
-import { Bell, Pin, Power, Radio, Volume2 } from 'lucide-react'
+import { Bell, Clapperboard, NotebookPen, Pin, Power, Radio, Volume2 } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { AppSettings, MarketProvider, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { AlertPanel } from './AlertPanel'
 import { MarketChart } from './MarketChart'
@@ -14,9 +15,14 @@ interface DashboardProps {
   onAddAlert: (symbol: string, direction: 'above' | 'below', target: number) => void
   onRemoveAlert: (id: string) => void
   onProviderUrl: (url: string) => void
+  showcasing: boolean
+  onShowcase: () => void
+  onRecap: () => void
+  recapAvailable: boolean
+  showcaseControls?: ReactNode
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
   return (
@@ -38,11 +44,18 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
         <header className="workspace-header">
           <div><span className="eyebrow">MARKET OVERVIEW</span><h1>{selected?.name ?? '行情面板'}</h1><span className="symbol-label">{selected?.symbol}</span></div>
           <div className="header-actions">
+            <button className="ghost-icon" title="行情复盘" onClick={onRecap} disabled={!recapAvailable}><NotebookPen size={17} /></button>
+            <button className="ghost-icon" title={showcasing ? '退出演示' : '打开演示'} onClick={onShowcase} aria-pressed={showcasing}><Clapperboard size={17} /></button>
+          </div>
+        </header>
+        <div className="workspace-tools">
+          {showcaseControls ?? <span className="workspace-source">{provider === 'demo' ? '演示数据 · 非实盘' : providerName}</span>}
+          <div className="header-actions">
             <label title="声音提醒"><Volume2 size={16} /><input type="checkbox" checked={settings.soundEnabled} onChange={(event) => onSettings({ soundEnabled: event.target.checked })} /><i /></label>
             <label title="总在最前"><Pin size={16} /><input type="checkbox" checked={settings.alwaysOnTop} onChange={(event) => onSettings({ alwaysOnTop: event.target.checked })} /><i /></label>
             <label title="开机启动"><Power size={16} /><input type="checkbox" checked={settings.launchAtLogin} onChange={(event) => onSettings({ launchAtLogin: event.target.checked })} /><i /></label>
           </div>
-        </header>
+        </div>
 
         <div className="quote-strip">
           <div className={positive ? 'quote-main price-up' : 'quote-main price-down'}><strong>{selected?.price.toFixed((selected?.price ?? 0) > 1000 ? 2 : 3) ?? '--'}</strong><span>{positive ? '+' : ''}{selected?.change.toFixed(2)} / {positive ? '+' : ''}{selected?.changePct.toFixed(2)}%</span></div>
@@ -52,7 +65,10 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
         <div className="insight-band"><Bell size={17} /><div><strong>财仔观察</strong><span>{selected ? positive ? '当前价格高于昨收，保持计划内观察。' : '当前价格低于昨收，注意风险敞口。' : '等待行情更新。'} {provider === 'demo' ? '模拟数据。' : '公开行情可能延迟。'}不构成投资建议。</span></div></div>
       </section>
 
-      <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} onProviderUrl={onProviderUrl} onSettings={onSettings} />
+      {showcasing ? <aside className="alert-panel showcase-status">
+        <div className="section-heading"><div><span className="eyebrow">非实盘</span><h2>演示状态</h2></div><Clapperboard size={20} /></div>
+        <dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl>
+      </aside> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} onProviderUrl={onProviderUrl} onSettings={onSettings} />}
     </main>
   )
 }
