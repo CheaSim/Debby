@@ -9,9 +9,13 @@ import { buildMarketRecap, type MarketRecap } from '../../shared/recap'
 import { ShowcaseControls } from './components/ShowcaseControls'
 import { RecapDialog } from './components/RecapDialog'
 import { brand } from '../../shared/brand'
+import { useDebbyChat } from './hooks/use-debby-chat'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
+  const chat = useDebbyChat()
+  const [dialogue, setDialogue] = useState(false)
+  useEffect(() => { if (!state.settings?.panelOpen) setDialogue(false) }, [state.settings?.panelOpen])
   const [scene, setScene] = useState<ShowcaseScene>()
   const [playing, setPlaying] = useState(false)
   const [replay, setReplay] = useState(0)
@@ -80,7 +84,7 @@ export function App(): React.JSX.Element {
   const indexQuote = quotes.find((quote) => quote.symbol === moodIndexSymbol)
   const currentRecap = buildMarketRecap(quotes, provider, providerName, providerStatus, now)
   return (
-    <div className={state.settings.panelOpen ? 'app app-expanded' : 'app app-compact'}>
+    <div className={(state.settings.panelOpen ? 'app app-expanded' : 'app app-compact') + (state.settings.panelOpen && dialogue ? ' app-dialogue' : '')}>
       {state.settings.panelOpen && <Dashboard
         settings={scene ? { ...state.settings, selectedSymbol: showcaseSymbol } : state.settings} quotes={quotes} provider={provider} providerName={providerName} providerStatus={providerStatus}
         onSelect={(symbol) => { if (scene) setShowcaseSymbol(symbol); else void state.selectSymbol(symbol) }}
@@ -91,9 +95,10 @@ export function App(): React.JSX.Element {
         showcasing={Boolean(scene)} onShowcase={() => { if (scene) exitShowcase(); else { chooseScene('bullish'); setPlaying(true) } }}
         onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
+        chat={chat} onDialogueChange={setDialogue}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
-      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'}
+      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue}
         onTogglePanel={() => void state.togglePanel()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} />
       {scene && !state.settings.panelOpen && <div className="compact-showcase no-drag"><ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /></div>}
       {demo?.alerting && <div className="toast-alert demo-alert no-drag"><strong>演示提醒 · 非实盘</strong><span>模拟上证指数突破目标价，不触发系统通知。</span></div>}

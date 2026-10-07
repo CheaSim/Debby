@@ -253,6 +253,55 @@ try {
   await page.mouse.click(250, 90)
   await page.waitForSelector('#panel-options:popover-open', { state: 'hidden' })
 
+  const checkDialogueLayout = async () => {
+    await page.getByRole('tab', { name: '对话', exact: true }).click()
+    await page.waitForSelector('.app-dialogue [data-view="portrait"]')
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('.three-pet-canvas')
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+      let visible = 0
+      for (let index = 3; index < pixels.length; index += 4) if (pixels[index] > 8) visible++
+      return visible > 1000
+    })
+    const boxes = await page.evaluate(() => {
+      const rect = (selector) => { const box = document.querySelector(selector).getBoundingClientRect(); return { left: box.left, right: box.right, top: box.top, bottom: box.bottom } }
+      return { avatar: rect('.pet-wrap'), dialogue: rect('.dialogue-box'), tools: rect('.pet-tools'), width: innerWidth, height: innerHeight }
+    })
+    assert.ok(boxes.avatar.bottom < boxes.dialogue.top, `Avatar overlaps dialogue: ${JSON.stringify(boxes)}`)
+    assert.ok(boxes.tools.right < boxes.dialogue.left, 'Dock overlaps dialogue')
+    assert.ok(boxes.dialogue.left >= 0 && boxes.dialogue.right <= boxes.width && boxes.dialogue.bottom <= boxes.height)
+    assert.equal(await page.locator('.three-pet-canvas').count(), 1, 'Conversation created a duplicate WebGL scene')
+  }
+  await checkDialogueLayout()
+  assert.match(await page.locator('.dialogue-text').innerText(), /Debby/)
+  await page.locator('.byok-command').click()
+  await page.waitForSelector('.chat-config[open]')
+  assert.equal(await page.locator('.cloud-consent input').isChecked(), false)
+  assert.equal(await page.locator('[title="保存 BYOK"]').isDisabled(), true)
+  await page.keyboard.press('Escape')
+  await page.waitForSelector('.chat-config', { state: 'hidden' })
+  const mockKey = 'debby-e2e-synthetic-key-not-real-1234'
+  const publicChatState = await page.evaluate((apiKey) => window.finpet.configureChat({ apiKey, modelId: 'openrouter/free', cloudConsent: false }), mockKey)
+  assert.equal(publicChatState.config.storage, 'encrypted')
+  assert.equal(JSON.stringify(publicChatState).includes(mockKey), false)
+  assert.equal((await readFile(resolve(userData, 'agent-credentials.json'), 'utf8')).includes(mockKey), false)
+  const consentError = await page.evaluate(async () => { try { await window.finpet.sendChat('不得发送'); return '' } catch (error) { return error.message } })
+  assert.match(consentError, /同意/, 'A chat request bypassed cloud consent')
+  await page.evaluate(() => window.finpet.configureChat({ removeKey: true, modelId: 'openrouter/free', cloudConsent: false }))
+  await page.locator('[title="会话回看"]').click()
+  assert.equal(await page.locator('.dialogue-history').isVisible(), true)
+  await page.locator('[title="关闭会话回看"]').click()
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'debby-dialogue-desktop.png') })
+  await page.evaluate(() => window.finpet.togglePanel())
+  await page.waitForSelector('.app-compact')
+  await page.evaluate(() => window.finpet.togglePanel())
+  await page.waitForSelector('.app-expanded:not(.app-dialogue)')
+  assert.equal(await page.locator('#tab-market').getAttribute('aria-selected'), 'true', 'Reopening the panel kept the dialogue avatar over the finance view')
+  await page.getByRole('tab', { name: '对话', exact: true }).click()
+  await page.locator('#tab-chat').focus()
+  await page.keyboard.press('ArrowRight')
+  assert.equal(await page.locator('#tab-market').getAttribute('aria-selected'), 'true')
+
   await electronApp.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]
     window.setResizable(true)
@@ -275,6 +324,9 @@ try {
     return visible > 1_000
   })
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-narrow.png') })
+  await checkDialogueLayout()
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'debby-dialogue-narrow.png') })
+  await page.getByRole('tab', { name: '行情', exact: true }).click()
   await electronApp.evaluate(({ BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]
     window.setBounds({ width: 880, height: 620 })
@@ -377,7 +429,7 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, two-button dock, popover dismissal, click-through, preferences persistence, keyboard tabs, alerts, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
+  console.log('Electron E2E passed: Galgame desktop/narrow layout, single avatar, BYOK encryption, consent gate, history, keyboard tabs, avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, two-button dock, popover dismissal, click-through, preferences persistence, alerts, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
   if (relay) {

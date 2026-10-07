@@ -1,7 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../shared/types'
+import type { ChatState } from '../shared/chat'
 
 const api: FinPetApi = {
+  getChatState: () => ipcRenderer.invoke('chat:state'),
+  configureChat: (input) => ipcRenderer.invoke('chat:configure', input),
+  listChatModels: () => ipcRenderer.invoke('chat:models'),
+  checkChatConnection: () => ipcRenderer.invoke('chat:check'),
+  openChatKeyPage: () => ipcRenderer.invoke('chat:key-page'),
+  sendChat: (text) => ipcRenderer.invoke('chat:send', text),
+  cancelChat: () => ipcRenderer.invoke('chat:cancel'),
+  clearChat: () => ipcRenderer.invoke('chat:clear'),
+  onChatState: (listener) => subscribe<ChatState>('chat:changed', listener),
   getSnapshot: () => ipcRenderer.invoke('app:snapshot'),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   togglePanel: () => ipcRenderer.invoke('window:toggle-panel'),

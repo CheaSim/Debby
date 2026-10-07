@@ -1,3 +1,5 @@
+import type { ChatApi } from './chat'
+
 export type MarketStatus = 'open' | 'closed' | 'offline'
 export type PetMood = 'idle' | 'bullish' | 'bearish' | 'alert' | 'offline'
 export type ProviderStatus = 'demo' | 'connecting' | 'live' | 'offline'
@@ -58,7 +60,7 @@ export interface AlertEvent {
   message: string
 }
 
-export interface FinPetApi {
+export interface FinPetApi extends ChatApi {
   getSnapshot: () => Promise<AppSnapshot>
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   togglePanel: () => Promise<boolean>

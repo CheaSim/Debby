@@ -20,12 +20,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && node tests/electron.e2e.mjs",
+    "test:chat-ui": "npm run build && node tests/chat-ui.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "package:win": "npm run assets && npm run build && node scripts/check-release-assets.mjs && electron-builder --win nsis"
   },
   "dependencies": {
+    "@earendil-works/pi-agent-core": "1.0.4",
+    "@earendil-works/pi-ai": "1.0.4",
     "@pixi/unsafe-eval": "^6.5.10",
     "@pixiv/three-vrm": "^3.5.5",
     "@types/three": "^0.180.0",
@@ -37,6 +40,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "three": "^0.180.0",
+    "typebox": "1.3.27",
     "ws": "latest",
     "zustand": "^5.0.14"
   },

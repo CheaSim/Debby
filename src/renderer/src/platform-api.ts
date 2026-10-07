@@ -1,4 +1,5 @@
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../../shared/types'
+import { emptyChatState } from '../../shared/chat'
 
 const names = [
   ['000001.SH', '上证指数', 3576.4, 3568.21],
@@ -33,6 +34,15 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  getChatState: async () => emptyChatState(),
+  configureChat: async () => { throw new Error('请在 Debby 桌面版配置 BYOK。浏览器仅供界面预览。') },
+  listChatModels: async () => [{ id: 'openrouter/free', name: 'Free Models Router', contextLength: 200000 }],
+  checkChatConnection: async () => { throw new Error('请在桌面版连接模型。') },
+  openChatKeyPage: async () => { window.open('https://openrouter.ai/settings/keys', '_blank', 'noopener,noreferrer') },
+  sendChat: async () => { throw new Error('请在 Debby 桌面版配置 BYOK 后对话。') },
+  cancelChat: async () => {},
+  clearChat: async () => {},
+  onChatState: () => () => {},
   getSnapshot: async () => ({ settings: browserSettings, quotes: browserQuotes, provider: 'demo', providerName: '浏览器演示', providerStatus: 'demo' }),
   updateSettings: async (patch) => {
     browserSettings = { ...browserSettings, ...patch }

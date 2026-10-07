@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, screen, session, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, safeStorage, screen, session, shell, Tray } from 'electron'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { alertTriggered, formatAlert, isAllowedMarketDataUrl, marketFreshnessMs } from '../shared/domain'
@@ -8,6 +8,10 @@ import { mateEngineStatus, startMateEngine, stopMateEngine } from './mate-engine
 import { SettingsStore } from './settings-store'
 import { clampWindowPosition, containsPoint, parseInteractiveRegions, validPoint, type InteractiveRegion } from './window-interaction'
 import { brand } from '../shared/brand'
+import { ChatKeyStore } from './agent/key-store'
+import { OpenRouterGateway } from './agent/openrouter'
+import { marketToolsPlugin, registerTools } from './agent/plugins'
+import { DebbyAgentRuntime } from './agent/runtime'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -16,6 +20,7 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let store: SettingsStore
 let market: MarketHub
+let chat: DebbyAgentRuntime
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
@@ -229,6 +234,20 @@ function marketOptions(settings: AppSettings): MarketHubOptions {
 }
 
 function registerIpc(): void {
+  const handleChat = (channel: string, handler: (...args: any[]) => unknown): void => {
+    ipcMain.handle(channel, (event, ...args) => {
+      if (event.sender !== mainWindow?.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error('Untrusted chat IPC sender')
+      return handler(...args)
+    })
+  }
+  handleChat('chat:state', () => chat.getState())
+  handleChat('chat:configure', (input) => chat.configure(input))
+  handleChat('chat:models', () => chat.listModels())
+  handleChat('chat:check', () => chat.checkConnection())
+  handleChat('chat:key-page', () => shell.openExternal('https://openrouter.ai/settings/keys'))
+  handleChat('chat:send', (text) => chat.send(text))
+  handleChat('chat:cancel', () => chat.cancel())
+  handleChat('chat:clear', () => chat.clear())
   ipcMain.handle('app:snapshot', () => ({
     settings: store.get(),
     quotes: market.getQuotes(),
@@ -301,6 +320,19 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
     store.update({ marketSource: 'remote' })
   }
   market = new MarketHub(marketOptions(settings))
+  const request: typeof fetch = (url, init) => net.fetch(url instanceof URL ? url.toString() : url, { ...init, redirect: 'error' })
+  chat = new DebbyAgentRuntime({
+    credentials: new ChatKeyStore(join(app.getPath('userData'), 'agent-credentials.json'), {
+      available: () => safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text'),
+      encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
+    }),
+    transport: new OpenRouterGateway(request),
+    tools: registerTools([marketToolsPlugin], {
+      getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
+      requestQuotes: (url, init) => net.fetch(url, init)
+    }),
+    onState: (state) => mainWindow?.webContents.send('chat:changed', state)
+  })
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
@@ -329,6 +361,7 @@ app.on('before-quit', () => {
   quitting = true
   stopMateEngine()
   market?.stop()
+  chat?.cancel()
   if (pointerTimer) clearInterval(pointerTimer)
   if (moveTimer) clearTimeout(moveTimer)
 })

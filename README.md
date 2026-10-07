@@ -26,16 +26,27 @@ Debby 是一个 Windows 优先的可爱风本地桌面伴侣。它以透明、�
 - 单实例、后台开机启动、正式应用/托盘图标
 - `contextIsolation + sandbox + CSP + 白名单 IPC` 安全边界
 - Windows NSIS 打包配置、领域测试和浏览器预览模式
+- Galgame 对话：角色近景、姓名牌与流式台词、会话回看、停止回复与新会话
+- pi Agent、只读行情工具、OpenRouter 免费模型路由、BYOK 与云端传输确认
+- 可独立集成的 Agent、工具插件、React Hook 和 [扩展接入文档](docs/agent-integration.md)
 
 ## 开发
 
-需要 Node.js 22 或更高版本。Windows PowerShell 若禁止执行 `npm.ps1`，使用 `npm.cmd`。
+需要 Node.js 22.19 或更高版本。Windows PowerShell 若禁止执行 `npm.ps1`，使用 `npm.cmd`。
 
 ```powershell
 npm.cmd install
 npm.cmd run assets
 npm.cmd run dev
 ```
+
+### 对话与 BYOK
+
+进入面板“对话”，在 BYOK 中填自己的 OpenRouter Key 并同意云端传输。默认 `openrouter/free` 只选免费模型，也可刷新并选择零费用且支持工具的模型；不会自动切收费模型。免费仍有账户额度、限流与可用性约束，不内置共享 Key。连接验证仅查询 Key 状态。
+
+Key 经系统加密保存，不返回渲染层；会话只留内存。供应商可能记录输入或训练模型，避免敏感信息。浏览器预览不连接模型，在桌面版配置。对话设置也能从标题栏“更多 > BYOK”进入。
+
+Galgame 台词支持流式、停止、会话回看和新会话。Agent 可以读指数/自选、查询沪深证券、解释数据来源，不下单或执行脚本。第三方集成见 [插件与 Hook](docs/agent-integration.md)。
 
 ### 默认 3D 角色
 
