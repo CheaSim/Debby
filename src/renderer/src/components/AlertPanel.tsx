@@ -1,35 +1,29 @@
-import { BellPlus, Save, ServerCog, Trash2 } from 'lucide-react'
+import { BellOff, BellPlus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { isAllowedMarketDataUrl } from '../../../shared/domain'
-import type { AppSettings, MarketProvider, QuoteTick } from '../../../shared/types'
+import type { AppSettings, QuoteTick } from '../../../shared/types'
 
 interface AlertPanelProps {
   settings: AppSettings
   quotes: QuoteTick[]
   onAdd: (symbol: string, direction: 'above' | 'below', target: number) => void
   onRemove: (id: string) => void
-  onProviderUrl: (url: string) => void
-  onSettings: (patch: Partial<AppSettings>) => void
 }
 
-export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl, onSettings }: AlertPanelProps): React.JSX.Element {
+export function AlertPanel({ settings, quotes, onAdd, onRemove }: AlertPanelProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const [target, setTarget] = useState(() => selected?.price.toFixed(2) ?? '')
   const [direction, setDirection] = useState<'above' | 'below'>('above')
-  const [providerUrl, setProviderUrl] = useState(settings.marketDataUrl ?? '')
-  const [providerError, setProviderError] = useState('')
 
   useEffect(() => {
     setTarget(selected?.price.toFixed(2) ?? '')
   }, [selected?.symbol])
 
-  useEffect(() => setProviderUrl(settings.marketDataUrl ?? ''), [settings.marketDataUrl])
 
   return (
     <section className="alert-panel">
       <div className="section-heading">
-        <div><span className="eyebrow">ALERTS</span><h2>价格提醒</h2></div>
-        <span className="count-label">{settings.alerts.length}</span>
+        <div><h2>价格提醒</h2><p>{selected?.name ?? '等待行情'}<span className="symbol-label">{selected?.symbol}</span></p></div>
+        <span className="count-label">{settings.alerts.length} 项</span>
       </div>
       <form className="alert-form" onSubmit={(event) => {
         event.preventDefault()
@@ -39,11 +33,11 @@ export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl, o
         <select value={direction} onChange={(event) => setDirection(event.target.value as 'above' | 'below')} aria-label="提醒方向">
           <option value="above">突破</option><option value="below">跌破</option>
         </select>
-        <input value={target} onChange={(event) => setTarget(event.target.value)} inputMode="decimal" aria-label="目标价格" placeholder="目标价" />
-        <button className="square-action" type="submit" title="添加提醒"><BellPlus size={17} /></button>
+        <input value={target} onChange={(event) => setTarget(event.target.value)} type="number" min="0.001" step="any" required inputMode="decimal" aria-label="目标价格" placeholder="目标价" />
+        <button className="square-action" type="submit" title="添加提醒" disabled={!selected}><BellPlus size={17} /></button>
       </form>
       <div className="alert-list">
-        {settings.alerts.length === 0 && <p className="empty-state">暂无提醒</p>}
+        {settings.alerts.length === 0 && <div className="empty-state"><BellOff size={28} /><p>暂无价格提醒</p></div>}
         {settings.alerts.map((alert) => {
           const quote = quotes.find((item) => item.symbol === alert.symbol)
           return <div className="alert-row" key={alert.id}>
@@ -51,27 +45,6 @@ export function AlertPanel({ settings, quotes, onAdd, onRemove, onProviderUrl, o
             <button className="ghost-icon" onClick={() => onRemove(alert.id)} title="删除提醒"><Trash2 size={15} /></button>
           </div>
         })}
-      </div>
-      <div className="provider-settings">
-        <div className="provider-title"><ServerCog size={16} /><strong>行情源</strong></div>
-        <select aria-label="行情源" value={settings.marketSource} disabled={!window.finpet} onChange={(event) => onSettings({ marketSource: event.target.value as MarketProvider })}>
-          <option value="public">公开行情 · 腾讯 / 新浪</option>
-          <option value="remote">自定义 WebSocket 中继</option>
-          <option value="demo">演示行情</option>
-        </select>
-        {settings.marketSource === 'remote' && <form onSubmit={(event) => {
-          event.preventDefault()
-          if (!isAllowedMarketDataUrl(providerUrl)) {
-            setProviderError('请使用 wss://；明文 ws:// 仅限本机')
-            return
-          }
-          setProviderError('')
-          onProviderUrl(providerUrl.trim())
-        }}>
-          <input value={providerUrl} onChange={(event) => setProviderUrl(event.target.value)} placeholder="wss://..." aria-label="行情中继地址" />
-          <button className="square-action" type="submit" title="保存行情源"><Save size={16} /></button>
-        </form>}
-        {providerError && <span className="provider-error">{providerError}</span>}
       </div>
     </section>
   )

@@ -3,6 +3,7 @@ import { install } from '@pixi/unsafe-eval'
 import * as PIXI from 'pixi.js'
 import { Live2DModel } from 'pixi-live2d-display/cubism4'
 import type { PetMood } from '../../../shared/types'
+import { brand } from '../../../shared/brand'
 
 install({ ShaderSystem: PIXI.ShaderSystem })
 
@@ -176,8 +177,8 @@ export function Live2DPet({ mood }: Live2DPetProps): React.JSX.Element {
   return (
     <div ref={hostRef} className={`live2d-host live2d-${state}`} data-live2d-ready={state === 'ready'}>
       <img ref={frameRef} className="live2d-frame" draggable={false} alt="" />
-      {state === 'loading' && <div className="live2d-loading">财仔正在梳头发...</div>}
-      {state === 'error' && <div className="live2d-error"><strong>财仔暂时睡着了</strong><span>请检查显卡加速后再叫醒她</span></div>}
+      {state === 'loading' && <div className="live2d-loading">{brand.name} 正在梳头发...</div>}
+      {state === 'error' && <div className="live2d-error"><strong>{brand.name} 暂时睡着了</strong><span>请检查显卡加速后再叫醒她</span></div>}
     </div>
   )
 }

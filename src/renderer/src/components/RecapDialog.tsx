@@ -1,6 +1,7 @@
 import { Copy, Download, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { recapText, type MarketRecap } from '../../../shared/recap'
+import { brand } from '../../../shared/brand'
 
 function exportRecap(recap: MarketRecap): void {
   const canvas = document.createElement('canvas')
@@ -24,7 +25,7 @@ function exportRecap(recap: MarketRecap): void {
     }
     text(value, x, y, fitted, color)
   }
-  text('FinPet', 56, 74, 30, '#263b32', 700)
+  text(brand.name, 56, 74, 30, '#30333a', 700)
   if (recap.demo) text('演示数据 · 非实盘', 720, 72, 22, '#a26716', 700)
   text(recap.title, 56, 140, 36, '#20231f', 700)
   text(`${recap.date} ${recap.time} · 上海时间`, 56, 181, 20, '#777d75')
@@ -40,7 +41,7 @@ function exportRecap(recap: MarketRecap): void {
   fitText(`来源：${recap.source}${recap.cached ? ' · 离线或延迟缓存' : ''}`, 56, canvas.height - 88, 18, '#777d75', 888)
   text('仅含已获取的关注标的。公开行情可能延迟，不构成投资建议。', 56, canvas.height - 48, 18, '#777d75')
   const link = document.createElement('a')
-  link.download = `FinPet-${recap.demo ? 'demo-' : ''}${recap.date}.png`
+  link.download = `${brand.name}-${recap.demo ? 'demo-' : ''}${recap.date}.png`
   link.href = canvas.toDataURL('image/png')
   link.click()
 }
@@ -58,7 +59,7 @@ export function RecapDialog({ recap, onClose }: { recap: MarketRecap; onClose: (
   return (
     <dialog ref={ref} className="recap-dialog no-drag" aria-labelledby="recap-title" onCancel={(event) => { event.preventDefault(); onClose() }}>
       <header className="recap-header">
-        <div><span className="eyebrow">{recap.demo ? '演示数据 · 非实盘' : 'FINPET'}{recap.cached ? ' · 缓存' : ''}</span><h2 id="recap-title">{recap.title}</h2><p>{recap.date} · {recap.time} 上海时间</p></div>
+        <div><span className="eyebrow">{recap.demo ? '演示数据 · 非实盘' : brand.name}{recap.cached ? ' · 缓存' : ''}</span><h2 id="recap-title">{recap.title}</h2><p>{recap.date} · {recap.time} 上海时间</p></div>
         <div className="recap-actions">
           <button className="icon-button" title={copied ? '复盘已复制' : '复制复盘文字'} onClick={() => { void navigator.clipboard.writeText(recapText(recap)).then(() => { setCopied(true); setError(false) }, () => setError(true)) }}><Copy size={17} /></button>
           <button className="icon-button" title="导出复盘图片" onClick={() => { try { exportRecap(recap); setError(false) } catch { setError(true) } }}><Download size={17} /></button>

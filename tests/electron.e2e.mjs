@@ -25,6 +25,20 @@ try {
     env: { ...process.env, FINPET_E2E_USER_DATA: userData, FINPET_MARKET_SOURCE: 'demo' }
   })
   const page = await electronApp.firstWindow()
+  const openPetOptions = async () => {
+    if (!await page.locator('#pet-options').evaluate((element) => element.matches(':popover-open'))) {
+      await page.locator('[title="桌宠选项"]').click()
+      await page.waitForSelector('#pet-options:popover-open')
+    }
+  }
+  const closePetOptions = async () => {
+    await page.keyboard.press('Escape')
+    await page.waitForSelector('#pet-options:popover-open', { state: 'hidden' })
+  }
+  const openPanelOptions = async () => {
+    await page.locator('[title="面板选项"]').click()
+    await page.waitForSelector('#panel-options:popover-open')
+  }
   const pageErrors = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
   page.on('console', (message) => {
@@ -38,6 +52,8 @@ try {
     throw new Error(`Renderer did not reach mascot state. Body: ${body}. Errors: ${pageErrors.join(' | ')}`, { cause: error })
   }
   await page.waitForSelector('[data-3d-ready="true"]', { timeout: 30_000 })
+  assert.equal(await page.title(), 'Debby')
+  assert.equal(await page.locator('.dock-name strong').innerText(), 'Debby')
   await page.waitForFunction(() => {
     const canvas = document.querySelector('.three-pet-canvas')
     return canvas instanceof HTMLCanvasElement && canvas.width > 0 && canvas.height > 0
@@ -85,6 +101,7 @@ try {
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-pat.png') })
 
   const beforeView = await page.locator('.three-pet-canvas').screenshot()
+  await openPetOptions()
   await page.locator('[title="近景视图"]').click()
   await page.waitForSelector('[data-view="portrait"]')
   const portraitView = await page.locator('.three-pet-canvas').screenshot()
@@ -92,6 +109,7 @@ try {
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-portrait.png') })
   await page.locator('[title="全身视图"]').click()
   await page.waitForSelector('[data-view="full"]')
+  await closePetOptions()
 
   const preloadApi = await page.evaluate(() => typeof window.finpet?.getSnapshot)
   assert.equal(preloadApi, 'function', 'contextBridge API was not injected')
@@ -136,39 +154,57 @@ try {
   const savedPosition = (await page.evaluate(() => window.finpet.getSnapshot())).settings.windowPosition
   assert.deepEqual(savedPosition, { x: afterDrag.x, y: afterDrag.y }, 'Dragged window position was not saved')
 
+  await openPetOptions()
   await page.locator('[title="旋转角色模式"]').click()
+  await closePetOptions()
   await page.mouse.move(dragX, dragY)
   await page.mouse.down()
   await page.mouse.move(dragX + 50, dragY)
   await page.mouse.up()
   await page.waitForFunction(() => Number(document.querySelector('.three-pet-host').dataset.yaw) > 0.15)
   assert.deepEqual(await getBounds(), afterDrag, 'Rotating the character moved the desktop window')
+  await openPetOptions()
   await page.locator('[title="复位角色视角"]').click()
   await page.waitForFunction(() => Math.abs(Number(document.querySelector('.three-pet-host').dataset.yaw) + 0.12) < 0.02)
   await page.locator('[title="旋转角色模式"]').click()
+  await closePetOptions()
 
   await assert.rejects(page.evaluate(() => window.finpet.startWindowDrag(NaN, 0)), /Invalid drag coordinates/)
   await assert.rejects(page.evaluate(() => window.finpet.setInteractiveRegions([{ x: 0, y: 0, width: Infinity, height: 10 }])), /Invalid interactive region/)
+  await openPetOptions()
   await page.locator('[title="开启鼠标穿透"]').click()
-  await page.waitForSelector('[title="关闭鼠标穿透"][aria-pressed="true"]')
+  assert.equal(await page.locator('[title="关闭鼠标穿透"] input').isChecked(), true)
   assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.clickThrough, true)
+  await closePetOptions()
+  await openPetOptions()
   await page.locator('[title="关闭鼠标穿透"]').click()
-  await page.waitForSelector('[title="开启鼠标穿透"][aria-pressed="false"]')
+  assert.equal(await page.locator('[title="开启鼠标穿透"] input').isChecked(), false)
+  await closePetOptions()
 
   const compactTools = await page.locator('.pet-tools').boundingBox()
   assert.ok(compactTools.x >= 0 && compactTools.x + compactTools.width <= 380, 'Compact toolbar is clipped')
+  assert.equal(await page.locator('.pet-tools button').count(), 2, 'Compact pet has too many permanent buttons')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-compact.png') })
 
   await page.locator('[title="打开行情面板"]').click()
   await page.waitForSelector('.dashboard-shell')
   const soundSetting = (await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled
+  await openPanelOptions()
+  await page.locator('[title="偏好设置"]').click()
+  await page.waitForSelector('.preferences-dialog[open]')
+  assert.equal(await page.locator('.preferences-brand span').innerText(), 'Daily Equity & Balance Buddy for You')
   await page.locator('[title="声音提醒"]').click()
   assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled, !soundSetting)
+  await page.locator('[title="声音提醒"]').click()
+  assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled, soundSetting)
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-preferences.png') })
+  await page.keyboard.press('Escape')
+  await page.waitForSelector('.preferences-dialog', { state: 'detached' })
   const headerRegions = await page.locator('.header-actions').evaluateAll((elements) => elements.map((element) => getComputedStyle(element).webkitAppRegion))
   assert.ok(headerRegions.every((region) => region === 'no-drag'), 'Header controls are inside a native draggable region')
   const expandedTools = await page.locator('.pet-tools').boundingBox()
-  assert.ok(expandedTools.x >= 0 && expandedTools.x + expandedTools.width <= 228, 'Expanded toolbar overlaps the chart')
-  await page.locator('.collapse-tab').click()
+  assert.ok(expandedTools.x >= 0 && expandedTools.x + expandedTools.width <= 208, 'Expanded toolbar overlaps the chart')
+  await page.locator('.header-actions [title="收起行情面板"]').click()
   await page.waitForSelector('.dashboard-shell', { state: 'detached' })
   await page.locator('[title="打开行情面板"]').click()
   await page.waitForSelector('.dashboard-shell')
@@ -179,7 +215,7 @@ try {
     const window = BrowserWindow.getAllWindows()[0]
     return { bounds: window.getBounds() }
   })
-  assert.deepEqual([expanded.bounds.width, expanded.bounds.height], [960, 680])
+  assert.deepEqual([expanded.bounds.width, expanded.bounds.height], [880, 620])
 
   const layout = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -197,25 +233,79 @@ try {
   assert.ok(sourceLayout.statusBottom < sourceLayout.speechTop, 'Data-source status overlaps the character speech')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-expanded.png') })
 
+  await page.getByRole('tab', { name: '提醒', exact: true }).click()
+  await page.waitForSelector('#alerts-view:not([hidden])')
+  assert.equal(await page.locator('#market-view').isVisible(), false)
+  const originalAlerts = (await page.evaluate(() => window.finpet.getSnapshot())).settings.alerts
+  await page.locator('[aria-label="目标价格"]').fill('999999')
+  await page.locator('[title="添加提醒"]').click()
+  await page.waitForFunction((count) => document.querySelectorAll('.alert-row').length === count + 1, originalAlerts.length)
+  const addedAlert = page.locator('.alert-row').filter({ hasText: '999999.00' })
+  assert.equal(await addedAlert.count(), 1)
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-alerts.png') })
+  await addedAlert.locator('[title="删除提醒"]').click()
+  await page.waitForFunction((count) => document.querySelectorAll('.alert-row').length === count, originalAlerts.length)
+  await page.locator('#tab-alerts').focus()
+  await page.keyboard.press('ArrowLeft')
+  assert.equal(await page.locator('#tab-market').getAttribute('aria-selected'), 'true')
+  assert.equal(await page.locator('#tab-market').evaluate((element) => element === document.activeElement), true)
+  await openPanelOptions()
+  await page.mouse.click(250, 90)
+  await page.waitForSelector('#panel-options:popover-open', { state: 'hidden' })
+
+  await electronApp.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setResizable(true)
+    window.setBounds({ width: 390, height: 740 })
+  })
+  await page.waitForFunction(() => window.innerWidth <= 400)
+  const narrowLayout = await page.evaluate(() => {
+    const targets = ['.panel-navigation', '.panel-tabs', '.header-actions', '.quote-main', '.quote-meta', '.pet-tools']
+    return targets.map((selector) => {
+      const rect = document.querySelector(selector).getBoundingClientRect()
+      return { selector, left: rect.left, right: rect.right }
+    })
+  })
+  assert.ok(narrowLayout.every(({ left, right }) => left >= 0 && right <= 390), `Narrow-screen controls overflow: ${JSON.stringify(narrowLayout)}`)
+  await page.waitForFunction(() => {
+    const canvas = document.querySelector('.three-pet-canvas')
+    const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    let visible = 0
+    for (let index = 3; index < pixels.length; index += 4) if (pixels[index] > 8) visible++
+    return visible > 1_000
+  })
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-narrow.png') })
+  await electronApp.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    window.setBounds({ width: 880, height: 620 })
+    window.setResizable(false)
+  })
+  await page.waitForFunction(() => window.innerWidth === 880)
+
   const beforeShowcase = await page.evaluate(() => window.finpet.getSnapshot())
+  await openPanelOptions()
   await page.locator('[title="打开演示"]').click()
   await page.waitForSelector('[data-showcase-scene="bullish"]')
   assert.match(await page.locator('.speech-kicker').innerText(), /演示数据/)
   await page.locator('[data-symbol="600519.SH"]').click()
   assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.selectedSymbol, beforeShowcase.settings.selectedSymbol, 'Showcase selection changed the real watchlist selection')
   await page.locator('[title="暂停演示"]').click()
-  await page.locator('.collapse-tab').click()
+  await page.locator('.header-actions [title="收起行情面板"]').click()
   await page.waitForSelector('.compact-showcase')
   const compactShowcase = await page.locator('.compact-showcase').boundingBox()
   assert.ok(compactShowcase.x >= 0 && compactShowcase.x + compactShowcase.width <= 380, 'Compact showcase controls are clipped')
+  await openPetOptions()
   await page.locator('[title="近景视图"]').click()
   await page.waitForSelector('[data-view="portrait"]')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-showcase-compact.png') })
   await page.locator('[title="全身视图"]').click()
   await page.locator('[title="开启鼠标穿透"]').click()
+  await closePetOptions()
   await page.locator('[aria-label="演示场景"]').selectOption('offline')
   await page.waitForSelector('.mascot-stage.mood-offline')
+  await openPetOptions()
   await page.locator('[title="关闭鼠标穿透"]').click()
+  await closePetOptions()
   await page.locator('[title="打开行情面板"]').click()
   await page.waitForSelector('.dashboard-shell')
   for (const [scene, expected] of [['bearish', 'bearish'], ['alert', 'alert'], ['offline', 'offline'], ['close', 'bullish']]) {
@@ -247,6 +337,7 @@ try {
   await page.locator('[title="复制复盘文字"]').click()
   await page.waitForSelector('[title="复盘已复制"]')
   assert.match(await page.evaluate(() => window.recapCopiedText), /演示数据[\s\S]*场景演示[\s\S]*不构成投资建议/)
+  assert.match(await page.evaluate(() => window.recapCopiedText), /^Debby /)
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-recap.png') })
   await page.keyboard.press('Escape')
   await page.waitForSelector('.recap-dialog', { state: 'detached' })
@@ -286,7 +377,7 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, buttons, click-through, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
+  console.log('Electron E2E passed: avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, two-button dock, popover dismissal, click-through, preferences persistence, keyboard tabs, alerts, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
   if (relay) {

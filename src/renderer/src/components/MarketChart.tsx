@@ -10,19 +10,19 @@ export function MarketChart({ quote }: { quote?: QuoteTick }): React.JSX.Element
   useEffect(() => {
     if (!containerRef.current) return
     const positive = (quote?.changePct ?? 0) >= 0
-    const color = positive ? '#ef5b5b' : '#1d9b69'
+    const color = positive ? '#d75b6b' : '#218968'
     const chart = createChart(containerRef.current, {
       autoSize: true,
       height: 242,
-      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#767a72', fontFamily: 'Inter, Segoe UI, sans-serif', fontSize: 11 },
-      grid: { vertLines: { color: '#f0f1ec' }, horzLines: { color: '#f0f1ec' } },
+      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#9a9da6', fontFamily: 'Segoe UI, sans-serif', fontSize: 10 },
+      grid: { vertLines: { visible: false }, horzLines: { color: '#f1f2f5' } },
       rightPriceScale: { borderVisible: false },
       timeScale: { borderVisible: false, visible: false },
       handleScale: false,
       handleScroll: false
     })
     const series = chart.addSeries(AreaSeries, {
-      lineColor: color, topColor: `${color}35`, bottomColor: `${color}02`, lineWidth: 3,
+      lineColor: color, topColor: `${color}20`, bottomColor: `${color}00`, lineWidth: 2,
       priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false
     })
     chartRef.current = chart
@@ -34,8 +34,8 @@ export function MarketChart({ quote }: { quote?: QuoteTick }): React.JSX.Element
     if (!quote || !seriesRef.current) return
     const base = Math.floor(quote.timestamp / 1000) - quote.sparkline.length
     seriesRef.current.setData(quote.sparkline.map((value, index) => ({ time: (base + index) as UTCTimestamp, value })))
-    const color = quote.changePct >= 0 ? '#ef5b5b' : '#1d9b69'
-    seriesRef.current.applyOptions({ lineColor: color, topColor: `${color}35`, bottomColor: `${color}02` })
+    const color = quote.changePct >= 0 ? '#d75b6b' : '#218968'
+    seriesRef.current.applyOptions({ lineColor: color, topColor: `${color}20`, bottomColor: `${color}00` })
     chartRef.current?.timeScale().fitContent()
   }, [quote])
 

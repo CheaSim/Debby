@@ -1,5 +1,6 @@
 import { marketFreshnessMs, moodIndexSymbol } from './domain'
 import type { MarketProvider, ProviderStatus, QuoteTick } from './types'
+import { brand } from './brand'
 
 export interface MarketRecap {
   title: string
@@ -36,7 +37,7 @@ export function buildMarketRecap(quotes: QuoteTick[], provider: MarketProvider, 
 
 export function recapText(recap: MarketRecap): string {
   return [
-    `FinPet ${recap.demo ? '演示数据 | ' : ''}${recap.title} | ${recap.date} ${recap.time} (Asia/Shanghai)`,
+    `${brand.name} ${recap.demo ? '演示数据 | ' : ''}${recap.title} | ${recap.date} ${recap.time} (Asia/Shanghai)`,
     `来源：${recap.source}${recap.cached ? ' | 离线或延迟缓存' : ''}`,
     ...recap.quotes.map((quote) => `${quote.name} (${quote.symbol}) ${quote.price.toFixed(2)} ${quote.changePct >= 0 ? '+' : ''}${quote.changePct.toFixed(2)}%`),
     '仅包含已获取的关注标的快照，不代表全市场涨跌分布。公开行情可能延迟，不构成投资建议。'

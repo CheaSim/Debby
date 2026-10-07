@@ -7,10 +7,11 @@ import { MarketHub, type MarketHubOptions } from './market-hub'
 import { mateEngineStatus, startMateEngine, stopMateEngine } from './mate-engine'
 import { SettingsStore } from './settings-store'
 import { clampWindowPosition, containsPoint, parseInteractiveRegions, validPoint, type InteractiveRegion } from './window-interaction'
+import { brand } from '../shared/brand'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
-const expandedSize = { width: 960, height: 680 }
+const expandedSize = { width: 880, height: 620 }
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let store: SettingsStore
@@ -166,7 +167,7 @@ function buildTrayMenu(): Menu {
       }
     },
     { type: 'separator' },
-    { label: '退出 FinPet', click: () => { quitting = true; app.quit() } }
+    { label: `退出 ${brand.name}`, click: () => { quitting = true; app.quit() } }
   ])
 }
 
@@ -206,7 +207,7 @@ function processAlerts(quotes: QuoteTick[]): void {
     changed = true
     const event: AlertEvent = { alert, quote, message: formatAlert(alert, quote) }
     mainWindow?.webContents.send('alert:triggered', event)
-    if (Notification.isSupported()) new Notification({ title: 'FinPet 价格提醒', body: event.message, silent: !settings.soundEnabled }).show()
+    if (Notification.isSupported()) new Notification({ title: `${brand.name} 价格提醒`, body: event.message, silent: !settings.soundEnabled }).show()
   }
   if (changed) emitSettings(store.update({ alerts: settings.alerts }))
 }
@@ -307,7 +308,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   const trayPath = app.isPackaged ? join(process.resourcesPath, 'tray.png') : join(app.getAppPath(), 'build', 'tray.png')
   const trayImage = nativeImage.createFromPath(trayPath)
   tray = new Tray(trayImage)
-  tray.setToolTip('FinPet 金融桌宠')
+  tray.setToolTip(`${brand.name} 金融桌宠`)
   tray.setContextMenu(buildTrayMenu())
   tray.on('double-click', () => void togglePanel())
   market.on('quotes', (quotes: QuoteTick[]) => {

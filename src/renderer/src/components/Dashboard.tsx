@@ -1,8 +1,10 @@
-import { Bell, Clapperboard, NotebookPen, Pin, Power, Radio, Volume2 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { Bell, ChartNoAxesCombined, Clapperboard, Ellipsis, NotebookPen, PiggyBank, Settings2, X } from 'lucide-react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { AppSettings, MarketProvider, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { AlertPanel } from './AlertPanel'
 import { MarketChart } from './MarketChart'
+import { PreferencesDialog } from './PreferencesDialog'
+import { brand } from '../../../shared/brand'
 
 interface DashboardProps {
   settings: AppSettings
@@ -20,55 +22,69 @@ interface DashboardProps {
   onRecap: () => void
   recapAvailable: boolean
   showcaseControls?: ReactNode
+  onClose: () => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
+  const [tab, setTab] = useState<'market' | 'alerts'>('market')
+  const [preferences, setPreferences] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
+  const optionsRef = useRef<HTMLDivElement>(null)
   return (
     <main className="dashboard-shell no-drag">
+      <header className="panel-titlebar">
+        <div className="brand-block" title={brand.fullName}><PiggyBank size={22} /><strong>{brand.name}</strong></div>
+        <div className="panel-navigation">
+          <div className="panel-tabs" role="tablist" aria-label="面板视图" onKeyDown={(event) => {
+            if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+            event.preventDefault()
+            const next = tab === 'market' ? 'alerts' : 'market'
+            setTab(next)
+            document.getElementById(`tab-${next}`)?.focus()
+          }}>
+            <button id="tab-market" role="tab" tabIndex={tab === 'market' ? 0 : -1} aria-selected={tab === 'market'} aria-controls="market-view" onClick={() => setTab('market')}><ChartNoAxesCombined size={14} />行情</button>
+            <button id="tab-alerts" role="tab" tabIndex={tab === 'alerts' ? 0 : -1} aria-selected={tab === 'alerts'} aria-controls="alerts-view" onClick={() => setTab('alerts')}><Bell size={14} />提醒{settings.alerts.length > 0 && <small>{settings.alerts.length}</small>}</button>
+          </div>
+          <div className="header-actions">
+            <button className="ghost-icon" title="行情复盘" onClick={onRecap} disabled={!recapAvailable}><NotebookPen size={17} /></button>
+            <button className="ghost-icon" popoverTarget="panel-options" title="面板选项" aria-expanded={optionsOpen}><Ellipsis size={18} /></button>
+            <button className="ghost-icon" title="收起行情面板" onClick={onClose}><X size={17} /></button>
+          </div>
+        </div>
+      </header>
+      <div ref={optionsRef} id="panel-options" popover="auto" className="panel-options no-drag" role="dialog" aria-label="面板选项" onToggle={(event) => setOptionsOpen((event.nativeEvent as ToggleEvent).newState === 'open')}>
+        <button className="menu-command" title={showcasing ? '退出演示' : '打开演示'} onClick={() => { optionsRef.current?.hidePopover(); onShowcase() }}><Clapperboard size={16} /><span>{showcasing ? '退出演示' : '场景演示'}</span></button>
+        <button className="menu-command" title="偏好设置" onClick={() => { optionsRef.current?.hidePopover(); setPreferences(true) }}><Settings2 size={16} /><span>偏好设置</span></button>
+      </div>
       <aside className="watchlist-pane">
-        <header className="brand-block"><span className="brand-mark">F</span><div><strong>FinPet</strong><span>MARKET DESK</span></div></header>
-        <div className="watchlist-heading"><span>自选市场</span><small>{quotes.length}</small></div>
-        <nav className="watchlist">
+        <div className="watchlist-heading"><span>自选</span><small>{quotes.length}</small></div>
+        <nav className="watchlist" aria-label="自选行情">
           {quotes.length === 0 && <p className="empty-state">{providerStatus === 'offline' ? '暂无可用行情' : '正在获取行情'}</p>}
-          {quotes.map((quote) => <button key={quote.symbol} data-symbol={quote.symbol} className={quote.symbol === selected?.symbol ? 'active' : ''} onClick={() => onSelect(quote.symbol)}>
+          {quotes.map((quote) => <button key={quote.symbol} data-symbol={quote.symbol} aria-current={quote.symbol === selected?.symbol ? 'true' : undefined} className={quote.symbol === selected?.symbol ? 'active' : ''} onClick={() => onSelect(quote.symbol)}>
             <div><strong>{quote.name}</strong><span>{quote.symbol}</span></div>
             <div className={quote.changePct >= 0 ? 'price-up' : 'price-down'}><strong>{quote.price.toFixed(quote.price > 1000 ? 2 : 3)}</strong><span>{quote.changePct >= 0 ? '+' : ''}{quote.changePct.toFixed(2)}%</span></div>
           </button>)}
         </nav>
-        <div className="connection-status"><i className={providerStatus} /><div><strong>{providerName}</strong><span>{providerStatus === 'live' ? '已获取行情' : providerStatus === 'connecting' ? '正在连接行情' : providerStatus === 'offline' ? '离线 · 保留最近行情' : '本地模拟数据'}</span></div><Radio size={16} /></div>
+        <div className="connection-status"><i className={providerStatus} /><div><strong>{providerName}</strong><span>{providerStatus === 'live' ? '已连接' : providerStatus === 'connecting' ? '正在连接' : providerStatus === 'offline' ? '离线 · 最近行情' : '演示数据 · 非实盘'}</span></div></div>
       </aside>
 
       <section className="market-workspace">
-        <header className="workspace-header">
-          <div><span className="eyebrow">MARKET OVERVIEW</span><h1>{selected?.name ?? '行情面板'}</h1><span className="symbol-label">{selected?.symbol}</span></div>
-          <div className="header-actions">
-            <button className="ghost-icon" title="行情复盘" onClick={onRecap} disabled={!recapAvailable}><NotebookPen size={17} /></button>
-            <button className="ghost-icon" title={showcasing ? '退出演示' : '打开演示'} onClick={onShowcase} aria-pressed={showcasing}><Clapperboard size={17} /></button>
-          </div>
-        </header>
-        <div className="workspace-tools">
-          {showcaseControls ?? <span className="workspace-source">{provider === 'demo' ? '演示数据 · 非实盘' : providerName}</span>}
-          <div className="header-actions">
-            <label title="声音提醒"><Volume2 size={16} /><input type="checkbox" checked={settings.soundEnabled} onChange={(event) => onSettings({ soundEnabled: event.target.checked })} /><i /></label>
-            <label title="总在最前"><Pin size={16} /><input type="checkbox" checked={settings.alwaysOnTop} onChange={(event) => onSettings({ alwaysOnTop: event.target.checked })} /><i /></label>
-            <label title="开机启动"><Power size={16} /><input type="checkbox" checked={settings.launchAtLogin} onChange={(event) => onSettings({ launchAtLogin: event.target.checked })} /><i /></label>
-          </div>
+        {showcaseControls && <div className="workspace-tools">{showcaseControls}</div>}
+        <div id="market-view" role="tabpanel" aria-labelledby="tab-market" hidden={tab !== 'market'} className="market-view">
+          <header className="workspace-header"><div><h1>{selected?.name ?? '行情'}</h1><span className="symbol-label">{selected?.symbol}</span></div><span className={'market-status' + (provider === 'demo' ? ' is-demo' : '')}>{provider === 'demo' ? '演示数据' : !selected ? '等待行情' : selected.status === 'offline' ? '离线缓存' : selected.status === 'closed' ? '已休市' : '交易中'}</span></header>
+          <div className="quote-strip"><div className="quote-main"><strong>{selected?.price.toFixed((selected?.price ?? 0) > 1000 ? 2 : 3) ?? '--'}</strong><span className={positive ? 'price-up' : 'price-down'}>{positive ? '+' : ''}{selected?.change.toFixed(2) ?? '--'} <span>/</span> {positive ? '+' : ''}{selected?.changePct.toFixed(2) ?? '--'}%</span></div></div>
+          <div className="quote-meta"><span>昨收<strong>{selected?.previousClose.toFixed(2) ?? '--'}</strong></span><span>涨跌幅<strong className={positive ? 'price-up' : 'price-down'}>{selected ? `${positive ? '+' : ''}${selected.changePct.toFixed(2)}%` : '--'}</strong></span><span>行情时间<strong>{selected ? new Date(selected.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</strong></span></div>
+          <MarketChart quote={selected} />
+          <footer className="market-footnote"><span>{provider === 'demo' ? '演示数据 · 非实盘' : providerName}</span><span>公开行情可能延迟，不构成投资建议。</span></footer>
         </div>
-
-        <div className="quote-strip">
-          <div className={positive ? 'quote-main price-up' : 'quote-main price-down'}><strong>{selected?.price.toFixed((selected?.price ?? 0) > 1000 ? 2 : 3) ?? '--'}</strong><span>{positive ? '+' : ''}{selected?.change.toFixed(2)} / {positive ? '+' : ''}{selected?.changePct.toFixed(2)}%</span></div>
-          <div className="quote-meta"><span>昨收<strong>{selected?.previousClose.toFixed(2) ?? '--'}</strong></span><span>状态<strong>{provider === 'demo' ? '模拟' : !selected ? '等待行情' : selected.status === 'offline' ? '离线缓存' : selected.status === 'closed' ? '休市' : '交易中'}</strong></span><span>行情时间<strong>{selected ? new Date(selected.timestamp).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }) : '--'}</strong></span></div>
+        <div id="alerts-view" role="tabpanel" aria-labelledby="tab-alerts" hidden={tab !== 'alerts'}>
+          {showcasing ? <section className="showcase-status"><header className="section-heading"><div><h2>演示提醒</h2><p>非实盘</p></div><Clapperboard size={20} /></header><dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl></section> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} />}
         </div>
-        <MarketChart quote={selected} />
-        <div className="insight-band"><Bell size={17} /><div><strong>财仔观察</strong><span>{selected ? positive ? '当前价格高于昨收，保持计划内观察。' : '当前价格低于昨收，注意风险敞口。' : '等待行情更新。'} {provider === 'demo' ? '模拟数据。' : '公开行情可能延迟。'}不构成投资建议。</span></div></div>
       </section>
 
-      {showcasing ? <aside className="alert-panel showcase-status">
-        <div className="section-heading"><div><span className="eyebrow">非实盘</span><h2>演示状态</h2></div><Clapperboard size={20} /></div>
-        <dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl>
-      </aside> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} onProviderUrl={onProviderUrl} onSettings={onSettings} />}
+      {preferences && <PreferencesDialog settings={settings} onSettings={onSettings} onProviderUrl={onProviderUrl} showcasing={showcasing} onClose={() => setPreferences(false)} />}
     </main>
   )
 }

@@ -8,6 +8,7 @@ import { showcaseSceneSeconds, showcaseScenes, showcaseSnapshot, type ShowcaseSc
 import { buildMarketRecap, type MarketRecap } from '../../shared/recap'
 import { ShowcaseControls } from './components/ShowcaseControls'
 import { RecapDialog } from './components/RecapDialog'
+import { brand } from '../../shared/brand'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
@@ -43,7 +44,7 @@ export function App(): React.JSX.Element {
     if (!state.ready) return
     let previous = ''
     const update = (): void => {
-      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .mate-engine-tool, .compact-showcase'))
+      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .pet-options:popover-open, .compact-showcase'))
       const regions = targets.map((target) => {
         const rect = target.getBoundingClientRect()
         const x = Math.max(0, rect.left - 8)
@@ -65,11 +66,12 @@ export function App(): React.JSX.Element {
     const app = document.querySelector('.app')
     if (app) mutations.observe(app, { childList: true, subtree: true })
     window.addEventListener('resize', update)
+    document.addEventListener('toggle', update, true)
     update()
-    return () => { observer.disconnect(); mutations.disconnect(); window.removeEventListener('resize', update) }
+    return () => { observer.disconnect(); mutations.disconnect(); window.removeEventListener('resize', update); document.removeEventListener('toggle', update, true) }
   }, [state.ready, state.settings?.panelOpen])
 
-  if (!state.ready || !state.settings) return <div className="boot-state">FinPet</div>
+  if (!state.ready || !state.settings) return <div className="boot-state">{brand.name}</div>
   const demo = scene ? showcaseSnapshot(scene, now) : undefined
   const quotes = demo?.quotes ?? state.quotes
   const provider = demo ? 'demo' : state.provider
@@ -87,6 +89,7 @@ export function App(): React.JSX.Element {
         onRemoveAlert={(id) => void state.removeAlert(id)}
         onProviderUrl={(marketDataUrl) => void state.updateSettings({ marketDataUrl, marketSource: 'remote' })}
         showcasing={Boolean(scene)} onShowcase={() => { if (scene) exitShowcase(); else { chooseScene('bullish'); setPlaying(true) } }}
+        onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}

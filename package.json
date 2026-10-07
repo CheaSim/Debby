@@ -58,7 +58,7 @@
   },
   "build": {
     "appId": "com.finpet.desktop",
-    "productName": "FinPet",
+    "productName": "Debby",
     "asar": true,
     "files": [
       "out/**/*"
