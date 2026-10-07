@@ -4,27 +4,32 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from '@pixiv/three-vrm'
 import { RefreshCw } from 'lucide-react'
 import type { PetMood } from '../../../shared/types'
+import { platformApi } from '../platform-api'
 
 interface ThreeDPetProps {
   mood: PetMood
   portrait: boolean
   viewReset: number
+  rotating: boolean
+  draggable: boolean
 }
 
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
-export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
   const portraitRef = useRef(portrait)
+  const interactionRef = useRef({ rotating, draggable })
   const resetViewRef = useRef<(() => void) | null>(null)
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading')
   const [progress, setProgress] = useState(0)
   const [attempt, setAttempt] = useState(0)
   moodRef.current = mood
   portraitRef.current = portrait
+  interactionRef.current = { rotating, draggable }
 
   useEffect(() => {
     const host = hostRef.current
@@ -87,7 +92,9 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
     let dragging = false
     let moved = false
     let downX = 0
+    let downY = 0
     let downYaw = 0
+    let rotatingDrag = false
     const expressionValues = { happy: 0, sad: 0, relaxed: 0, aa: 0 }
     const pose = (name: VRMHumanBoneName, x: number, y: number, z: number): void => {
       vrm?.humanoid.getNormalizedBoneNode(name)?.rotation.set(x, y, z)
@@ -177,28 +184,33 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
       targetX = THREE.MathUtils.clamp((event.clientX - bounds.left) / bounds.width * 2 - 1, -1, 1)
       targetY = THREE.MathUtils.clamp((event.clientY - bounds.top) / bounds.height * 2 - 1, -1, 1)
       if (dragging) {
-        const difference = event.clientX - downX
-        if (Math.abs(difference) > 5) moved = true
-        targetYaw = THREE.MathUtils.clamp(downYaw + difference * 0.009, -0.8, 0.8)
+        const difference = event.screenX - downX
+        if (Math.hypot(difference, event.screenY - downY) > 5) moved = true
+        if (rotatingDrag) targetYaw = THREE.MathUtils.clamp(downYaw + difference * 0.009, -0.8, 0.8)
+        else if (moved) void platformApi.moveWindowDrag(event.screenX, event.screenY)
       }
     }
     const pointerDown = (event: PointerEvent): void => {
-      if (event.button !== 0) return
+      if (event.button !== 0 || !interactionRef.current.draggable || (event.target instanceof Element && event.target.closest('button'))) return
       dragging = true
       moved = false
-      downX = event.clientX
+      downX = event.screenX
+      downY = event.screenY
       downYaw = targetYaw
+      rotatingDrag = interactionRef.current.rotating
+      if (!rotatingDrag) void platformApi.startWindowDrag(event.screenX, event.screenY)
       host.setPointerCapture(event.pointerId)
       host.style.cursor = 'grabbing'
     }
     const pointerUp = (event: PointerEvent): void => {
       if (!dragging) return
       dragging = false
+      if (!rotatingDrag) void platformApi.endWindowDrag()
       host.style.cursor = ''
       if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId)
       if (!moved) gestureStarted = elapsed
     }
-    const pointerCancel = (): void => { dragging = false; host.style.cursor = '' }
+    const pointerCancel = (): void => { dragging = false; host.style.cursor = ''; void platformApi.endWindowDrag() }
     const pointerLeave = (): void => { if (!dragging) { targetX = 0; targetY = 0 } }
     const wheel = (event: WheelEvent): void => {
       event.preventDefault()
@@ -211,6 +223,8 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
     host.addEventListener('pointerdown', pointerDown)
     host.addEventListener('pointerup', pointerUp)
     host.addEventListener('pointercancel', pointerCancel)
+    host.addEventListener('lostpointercapture', pointerCancel)
+    window.addEventListener('blur', pointerCancel)
     host.addEventListener('pointerleave', pointerLeave)
     host.addEventListener('wheel', wheel, { passive: false })
     host.addEventListener('dblclick', reset)
@@ -227,6 +241,7 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
       pointerX = THREE.MathUtils.lerp(pointerX, targetX, smoothing)
       pointerY = THREE.MathUtils.lerp(pointerY, targetY, smoothing)
       root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, smoothing)
+      host.dataset.yaw = root.rotation.y.toFixed(3)
       lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
       const gestureTime = elapsed - gestureStarted
       const greeting = !reducedMotion && gestureTime >= 0 && gestureTime < 2.2
@@ -273,6 +288,8 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
       host.removeEventListener('pointerdown', pointerDown)
       host.removeEventListener('pointerup', pointerUp)
       host.removeEventListener('pointercancel', pointerCancel)
+      host.removeEventListener('lostpointercapture', pointerCancel)
+      window.removeEventListener('blur', pointerCancel)
       host.removeEventListener('pointerleave', pointerLeave)
       host.removeEventListener('wheel', wheel)
       host.removeEventListener('dblclick', reset)
@@ -280,13 +297,14 @@ export function ThreeDPet({ mood, portrait, viewReset }: ThreeDPetProps): React.
       renderer.dispose()
       renderer.forceContextLoss()
       resetViewRef.current = null
+      void platformApi.endWindowDrag()
     }
   }, [attempt])
 
   useEffect(() => { resetViewRef.current?.() }, [portrait, viewReset])
 
   return (
-    <div ref={hostRef} className={'three-pet-host three-pet-' + state} data-3d-ready={state === 'ready'} data-mood={mood} data-view={portrait ? 'portrait' : 'full'}>
+    <div ref={hostRef} className={'three-pet-host three-pet-' + state} data-3d-ready={state === 'ready'} data-mood={mood} data-view={portrait ? 'portrait' : 'full'} data-interaction={rotating ? 'rotate' : 'move'}>
       <canvas ref={canvasRef} className="three-pet-canvas" aria-label="Zome 3D 桌宠" />
       {state === 'loading' && <div className="three-pet-loading" role="status"><span className="avatar-spinner" /><span>{progress}%</span></div>}
       {state === 'error' && <div className="avatar-error" role="alert"><span>角色加载失败</span><button className="icon-button" title="重新加载角色" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={16} /></button></div>}

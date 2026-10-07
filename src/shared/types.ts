@@ -63,6 +63,10 @@ export interface FinPetApi {
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   togglePanel: () => Promise<boolean>
   setClickThrough: (enabled: boolean) => Promise<boolean>
+  setInteractiveRegions: (regions: { x: number; y: number; width: number; height: number }[]) => Promise<void>
+  startWindowDrag: (screenX: number, screenY: number) => Promise<void>
+  moveWindowDrag: (screenX: number, screenY: number) => Promise<void>
+  endWindowDrag: () => Promise<void>
   getMateEngineStatus: () => Promise<MateEngineStatus>
   startMateEngine: () => Promise<MateEngineStatus>
   stopMateEngine: () => Promise<MateEngineStatus>

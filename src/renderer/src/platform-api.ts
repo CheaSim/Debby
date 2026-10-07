@@ -49,6 +49,10 @@ const browserApi: FinPetApi = {
     settingsListeners.forEach((listener) => listener(browserSettings))
     return enabled
   },
+  setInteractiveRegions: async () => {},
+  startWindowDrag: async () => {},
+  moveWindowDrag: async () => {},
+  endWindowDrag: async () => {},
   getMateEngineStatus: async () => ({ installed: false, running: false, executablePath: '' }),
   startMateEngine: async () => ({ installed: false, running: false, executablePath: '' }),
   stopMateEngine: async () => ({ installed: false, running: false, executablePath: '' }),

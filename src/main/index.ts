@@ -6,6 +6,7 @@ import type { AlertEvent, AppSettings, ProviderStatus, QuoteTick } from '../shar
 import { MarketHub, type MarketHubOptions } from './market-hub'
 import { mateEngineStatus, startMateEngine, stopMateEngine } from './mate-engine'
 import { SettingsStore } from './settings-store'
+import { clampWindowPosition, containsPoint, parseInteractiveRegions, validPoint, type InteractiveRegion } from './window-interaction'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -16,6 +17,10 @@ let store: SettingsStore
 let market: MarketHub
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
+let pointerTimer: NodeJS.Timeout | undefined
+let interactiveRegions: InteractiveRegion[] = []
+let ignoringMouse = false
+let windowDrag: { pointer: { x: number; y: number }; bounds: Electron.Rectangle } | undefined
 
 if (process.env.FINPET_E2E_USER_DATA) app.setPath('userData', process.env.FINPET_E2E_USER_DATA)
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
@@ -61,7 +66,8 @@ function createWindow(): BrowserWindow {
   window.setMenu(null)
   // Electron 43's Windows taskbar placement can drop the default floating level.
   window.setAlwaysOnTop(settings.alwaysOnTop, 'pop-up-menu')
-  window.setIgnoreMouseEvents(settings.clickThrough, { forward: true })
+  ignoringMouse = settings.clickThrough && !settings.panelOpen
+  window.setIgnoreMouseEvents(ignoringMouse)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
   window.once('ready-to-show', () => {
@@ -98,8 +104,31 @@ function updateWindowMode(panelOpen: boolean): void {
   const y = Math.min(Math.max(display.y, oldBounds.y + oldBounds.height - size.height), display.y + display.height - size.height)
   mainWindow.setBounds({ x, y, ...size })
   mainWindow.setSkipTaskbar(!panelOpen)
-  if (panelOpen) mainWindow.setIgnoreMouseEvents(false)
+  windowDrag = undefined
+  syncPointerMode()
   mainWindow.show()
+}
+
+function syncPointerMode(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  const settings = store.get()
+  const bounds = mainWindow.getBounds()
+  const cursor = screen.getCursorScreenPoint()
+  const local = { x: cursor.x - bounds.x, y: cursor.y - bounds.y }
+  const overTools = interactiveRegions.some((region) => containsPoint(region, local))
+  const ignore = settings.clickThrough && !settings.panelOpen && !overTools
+  if (ignore !== ignoringMouse) {
+    ignoringMouse = ignore
+    mainWindow.setIgnoreMouseEvents(ignore)
+  }
+}
+
+function updatePointerTracking(): void {
+  if (pointerTimer) clearInterval(pointerTimer)
+  pointerTimer = undefined
+  syncPointerMode()
+  // Native cursor tracking keeps the toolbar reachable even while Chromium ignores clicks.
+  if (store.get().clickThrough) pointerTimer = setInterval(syncPointerMode, 16)
 }
 
 function buildTrayMenu(): Menu {
@@ -154,6 +183,7 @@ async function togglePanel(): Promise<boolean> {
   const panelOpen = !store.get().panelOpen
   const settings = store.update({ panelOpen, clickThrough: panelOpen ? false : store.get().clickThrough })
   updateWindowMode(panelOpen)
+  updatePointerTracking()
   emitSettings(settings)
   return panelOpen
 }
@@ -161,7 +191,7 @@ async function togglePanel(): Promise<boolean> {
 async function setClickThrough(enabled: boolean): Promise<boolean> {
   const settings = store.update({ clickThrough: enabled, panelOpen: enabled ? false : store.get().panelOpen })
   updateWindowMode(settings.panelOpen)
-  mainWindow?.setIgnoreMouseEvents(enabled, { forward: true })
+  updatePointerTracking()
   emitSettings(settings)
   return enabled
 }
@@ -228,6 +258,24 @@ function registerIpc(): void {
   })
   ipcMain.handle('window:toggle-panel', togglePanel)
   ipcMain.handle('window:set-click-through', (_event, enabled: boolean) => setClickThrough(Boolean(enabled)))
+  ipcMain.handle('window:set-interactive-regions', (_event, regions: unknown) => {
+    if (!mainWindow) return
+    interactiveRegions = parseInteractiveRegions(regions, mainWindow.getBounds())
+    syncPointerMode()
+  })
+  ipcMain.handle('window:drag-start', (_event, x: number, y: number) => {
+    if (!validPoint(x, y)) throw new Error('Invalid drag coordinates')
+    if (mainWindow && !store.get().clickThrough) windowDrag = { pointer: { x, y }, bounds: mainWindow.getBounds() }
+  })
+  ipcMain.handle('window:drag-move', (_event, x: number, y: number) => {
+    if (!validPoint(x, y)) throw new Error('Invalid drag coordinates')
+    if (!mainWindow || !windowDrag) return
+    const requested = { x: windowDrag.bounds.x + x - windowDrag.pointer.x, y: windowDrag.bounds.y + y - windowDrag.pointer.y }
+    const area = screen.getDisplayMatching({ ...windowDrag.bounds, ...requested }).workArea
+    const position = clampWindowPosition(requested, windowDrag.bounds, area)
+    mainWindow.setPosition(position.x, position.y)
+  })
+  ipcMain.handle('window:drag-end', () => { windowDrag = undefined })
   ipcMain.handle('mate-engine:status', () => mateEngineStatus())
   ipcMain.handle('mate-engine:start', () => {
     const status = startMateEngine()
@@ -255,6 +303,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
+  updatePointerTracking()
   const trayPath = app.isPackaged ? join(process.resourcesPath, 'tray.png') : join(app.getAppPath(), 'build', 'tray.png')
   const trayImage = nativeImage.createFromPath(trayPath)
   tray = new Tray(trayImage)
@@ -279,6 +328,8 @@ app.on('before-quit', () => {
   quitting = true
   stopMateEngine()
   market?.stop()
+  if (pointerTimer) clearInterval(pointerTimer)
+  if (moveTimer) clearTimeout(moveTimer)
 })
 
 app.on('window-all-closed', () => {

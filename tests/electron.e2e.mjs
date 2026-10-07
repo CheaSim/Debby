@@ -108,10 +108,56 @@ try {
   assert.deepEqual([windowState.bounds.width, windowState.bounds.height], [380, 540])
   assert.equal(windowState.alwaysOnTop, true)
   assert.equal(windowState.visible, true)
+
+  const getBounds = () => electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())
+  await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setPosition(300, 180))
+  const beforeDrag = await getBounds()
+  const pet = await page.locator('.three-pet-host').boundingBox()
+  const dragX = pet.x + pet.width / 2
+  const dragY = pet.y + pet.height / 2
+  await page.mouse.move(dragX, dragY)
+  await page.mouse.down()
+  await page.mouse.move(dragX - 40, dragY - 30)
+  await page.mouse.up()
+  await page.waitForFunction(() => window.screenX === 260 && window.screenY === 150)
+  const afterDrag = await getBounds()
+  assert.deepEqual([afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y], [-40, -30], 'Dragging the pet did not move the window')
+  await new Promise((resolve) => setTimeout(resolve, 350))
+  const savedPosition = (await page.evaluate(() => window.finpet.getSnapshot())).settings.windowPosition
+  assert.deepEqual(savedPosition, { x: afterDrag.x, y: afterDrag.y }, 'Dragged window position was not saved')
+
+  await page.locator('[title="旋转角色模式"]').click()
+  await page.mouse.move(dragX, dragY)
+  await page.mouse.down()
+  await page.mouse.move(dragX + 50, dragY)
+  await page.mouse.up()
+  await page.waitForFunction(() => Number(document.querySelector('.three-pet-host').dataset.yaw) > 0.15)
+  assert.deepEqual(await getBounds(), afterDrag, 'Rotating the character moved the desktop window')
+  await page.locator('[title="复位角色视角"]').click()
+  await page.waitForFunction(() => Math.abs(Number(document.querySelector('.three-pet-host').dataset.yaw) + 0.12) < 0.02)
+  await page.locator('[title="旋转角色模式"]').click()
+
+  await assert.rejects(page.evaluate(() => window.finpet.startWindowDrag(NaN, 0)), /Invalid drag coordinates/)
+  await assert.rejects(page.evaluate(() => window.finpet.setInteractiveRegions([{ x: 0, y: 0, width: Infinity, height: 10 }])), /Invalid interactive region/)
+  await page.locator('[title="开启鼠标穿透"]').click()
+  await page.waitForSelector('[title="关闭鼠标穿透"][aria-pressed="true"]')
+  assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.clickThrough, true)
+  await page.locator('[title="关闭鼠标穿透"]').click()
+  await page.waitForSelector('[title="开启鼠标穿透"][aria-pressed="false"]')
+
+  const compactTools = await page.locator('.pet-tools').boundingBox()
+  assert.ok(compactTools.x >= 0 && compactTools.x + compactTools.width <= 380, 'Compact toolbar is clipped')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-compact.png') })
 
   await page.locator('[title="打开行情面板"]').click()
   await page.waitForSelector('.dashboard-shell')
+  const soundSetting = (await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled
+  await page.locator('[title="声音提醒"]').click()
+  assert.equal((await page.evaluate(() => window.finpet.getSnapshot())).settings.soundEnabled, !soundSetting)
+  const headerRegion = await page.locator('.header-actions').evaluate((element) => getComputedStyle(element).webkitAppRegion)
+  assert.equal(headerRegion, 'no-drag', 'Header controls are inside a native draggable region')
+  const expandedTools = await page.locator('.pet-tools').boundingBox()
+  assert.ok(expandedTools.x >= 0 && expandedTools.x + expandedTools.width <= 228, 'Expanded toolbar overlaps the chart')
   await page.locator('[data-symbol="AAPL"]').click()
   await page.waitForFunction(() => document.querySelector('h1')?.textContent === 'Apple')
 
@@ -164,7 +210,7 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: real Zome avatar, textures, transparency, camera views, index moods, disconnect, window, chart, and persistence.')
+  console.log('Electron E2E passed: avatar, textures, transparency, views, drag/persistence, rotation/reset, buttons, click-through, IPC validation, index moods, disconnect, window and chart.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
   if (relay) {
