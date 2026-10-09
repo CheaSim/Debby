@@ -1,8 +1,20 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../shared/types'
 import type { ChatState } from '../shared/chat'
+import type { VoiceAudio, VoiceState } from '../shared/voice'
 
 const api: FinPetApi = {
+  getVoiceState: () => ipcRenderer.invoke('voice:state'),
+  configureVoice: (input) => ipcRenderer.invoke('voice:configure', input),
+  startVoice: (input) => ipcRenderer.invoke('voice:start', input),
+  stopVoice: () => ipcRenderer.invoke('voice:stop'),
+  authorizeVoiceMedia: (kind) => ipcRenderer.invoke('voice:authorize-media', kind),
+  releaseVoiceMedia: (kind) => ipcRenderer.invoke('voice:release-media', kind),
+  sendVoiceTurn: (turn) => ipcRenderer.invoke('voice:turn', turn),
+  interruptVoice: () => ipcRenderer.invoke('voice:interrupt'),
+  clearVoice: () => ipcRenderer.invoke('voice:clear'),
+  onVoiceState: (listener) => subscribe<VoiceState>('voice:changed', listener),
+  onVoiceAudio: (listener) => subscribe<VoiceAudio>('voice:audio', listener),
   getChatState: () => ipcRenderer.invoke('chat:state'),
   configureChat: (input) => ipcRenderer.invoke('chat:configure', input),
   listChatModels: () => ipcRenderer.invoke('chat:models'),

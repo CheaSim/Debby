@@ -8,6 +8,7 @@ import { brand } from '../../../shared/brand'
 import { DialoguePanel } from './DialoguePanel'
 import { ChatConfigDialog } from './ChatConfigDialog'
 import type { DebbyChatController } from '../hooks/use-debby-chat'
+import type { VoiceCompanionController } from '../hooks/use-voice-companion'
 
 interface DashboardProps {
   settings: AppSettings
@@ -27,10 +28,11 @@ interface DashboardProps {
   showcaseControls?: ReactNode
   onClose: () => void
   chat: DebbyChatController
+  companion: VoiceCompanionController
   onDialogueChange: (active: boolean) => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, onDialogueChange }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, onDialogueChange }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
   const [tab, setTab] = useState<'market' | 'alerts' | 'chat'>('market')
@@ -93,7 +95,7 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
           {showcasing ? <section className="showcase-status"><header className="section-heading"><div><h2>演示提醒</h2><p>非实盘</p></div><Clapperboard size={20} /></header><dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl></section> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} />}
         </div>
         <div id="chat-view" role="tabpanel" aria-labelledby="tab-chat" hidden={tab !== 'chat'}>
-          <DialoguePanel chat={chat} showcasing={showcasing} onConfigure={() => setChatConfig(true)} />
+          <DialoguePanel chat={chat} companion={companion} showcasing={showcasing} onConfigure={() => setChatConfig(true)} />
         </div>
       </section>
 

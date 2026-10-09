@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, safeStorage, screen, session, shell, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, powerMonitor, safeStorage, screen, session, shell, Tray } from 'electron'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { alertTriggered, formatAlert, isAllowedMarketDataUrl, marketFreshnessMs } from '../shared/domain'
@@ -12,6 +12,7 @@ import { ChatKeyStore } from './agent/key-store'
 import { OpenRouterGateway } from './agent/openrouter'
 import { marketToolsPlugin, registerTools } from './agent/plugins'
 import { DebbyAgentRuntime } from './agent/runtime'
+import { CompanionRuntime, loadLocalEnvironment, QwenGateway, VoiceConfigStore } from './companion'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -21,6 +22,7 @@ let tray: Tray | null = null
 let store: SettingsStore
 let market: MarketHub
 let chat: DebbyAgentRuntime
+let companion: CompanionRuntime
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
@@ -76,6 +78,9 @@ function createWindow(): BrowserWindow {
   window.setIgnoreMouseEvents(ignoringMouse)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
+  window.webContents.on('render-process-gone', () => companion?.stop())
+  window.on('hide', () => companion?.stop())
+  window.on('minimize', () => companion?.stop())
   window.once('ready-to-show', () => {
     if (!process.argv.includes('--hidden')) window.showInactive()
   })
@@ -102,6 +107,7 @@ function createWindow(): BrowserWindow {
 }
 
 function updateWindowMode(panelOpen: boolean): void {
+  if (!panelOpen) companion?.stop()
   if (!mainWindow) return
   const oldBounds = mainWindow.getBounds()
   const size = panelOpen ? expandedSize : collapsedSize
@@ -248,6 +254,18 @@ function registerIpc(): void {
   handleChat('chat:send', (text) => chat.send(text))
   handleChat('chat:cancel', () => chat.cancel())
   handleChat('chat:clear', () => chat.clear())
+  handleChat('voice:state', () => companion.getState())
+  handleChat('voice:configure', (input) => companion.configure(input))
+  handleChat('voice:start', (input) => {
+    if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
+    return companion.start(input)
+  })
+  handleChat('voice:stop', () => companion.stop())
+  handleChat('voice:authorize-media', (kind) => companion.authorizeMedia(kind))
+  handleChat('voice:release-media', (kind) => companion.releaseMedia(kind))
+  handleChat('voice:turn', (turn) => companion.submit(turn))
+  handleChat('voice:interrupt', () => companion.interrupt())
+  handleChat('voice:clear', () => companion.clear())
   ipcMain.handle('app:snapshot', () => ({
     settings: store.get(),
     quotes: market.getQuotes(),
@@ -311,6 +329,8 @@ function registerIpc(): void {
 
 if (hasSingleInstanceLock) app.whenReady().then(async () => {
   app.setAppUserModelId('com.finpet.desktop')
+  // Only the development main process reads local secrets; neither Vite nor the package receives them.
+  if (!app.isPackaged && !process.env.FINPET_E2E_USER_DATA) loadLocalEnvironment(join(app.getAppPath(), '.env'), process.env)
   store = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
   const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
   if (proxy) await session.defaultSession.setProxy({ proxyRules: proxy, proxyBypassRules: '<local>' })
@@ -333,6 +353,32 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
     }),
     onState: (state) => mainWindow?.webContents.send('chat:changed', state)
   })
+  const voiceCredentials = new VoiceConfigStore(join(app.getPath('userData'), 'companion-credentials.json'), {
+    available: () => safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text'),
+    encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
+  }, process.env)
+  companion = new CompanionRuntime({ credentials: voiceCredentials,
+    createProvider: (config) => new QwenGateway(request, config, voiceCredentials.getKey),
+    tools: registerTools([marketToolsPlugin], {
+      getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
+      requestQuotes: (url, init) => net.fetch(url, init)
+    }),
+    onState: (state) => mainWindow?.webContents.send('voice:changed', state),
+    onAudio: (audio) => mainWindow?.webContents.send('voice:audio', audio)
+  })
+  session.defaultSession.setPermissionCheckHandler((contents, permission, _origin, details) => {
+    const allowed = permission === 'media' && contents === mainWindow?.webContents && details.isMainFrame &&
+      details.requestingUrl === contents?.getURL() && companion.checksMedia(details.mediaType)
+    return allowed
+  })
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
+    const media = details as Electron.MediaAccessPermissionRequest
+    const allowed = permission === 'media' && contents === mainWindow?.webContents && details.isMainFrame &&
+      details.requestingUrl === contents.getURL() && companion.permitsMedia(media.mediaTypes ?? [], true)
+    callback(allowed)
+  })
+  powerMonitor.on('suspend', () => companion.stop())
+  powerMonitor.on('lock-screen', () => companion.stop())
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
@@ -362,6 +408,7 @@ app.on('before-quit', () => {
   stopMateEngine()
   market?.stop()
   chat?.cancel()
+  companion?.stop()
   if (pointerTimer) clearInterval(pointerTimer)
   if (moveTimer) clearTimeout(moveTimer)
 })

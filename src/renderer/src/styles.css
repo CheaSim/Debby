@@ -348,6 +348,22 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .dialogue-toolbar i { width: 5px; height: 5px; border-radius: 50%; background: #69b49c; flex-shrink: 0; }
 .dialogue-toolbar i.busy { background: #e6ae47; }
 .dialogue-toolbar > div { display: flex; flex-shrink: 0; }
+.dialogue-toolbar > span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.dialogue-toolbar > span > i { display: inline-block; margin: 0 5px 1px 0; }
+.dialogue-mode { border: 1px solid #e4e5eb; border-radius: 6px; padding: 2px; background: #eff0f4; }
+.dialogue-mode .ghost-icon { width: 28px; height: 25px; }
+.dialogue-mode .ghost-icon[aria-pressed="true"] { color: #bd5f88; background: #fff; box-shadow: 0 1px 3px #25273612; }
+.companion-input { grid-template-columns: minmax(0,1fr) 32px 36px; }
+.companion-input.with-camera { grid-template-columns: minmax(0,1fr) 32px 32px 36px; }
+.companion-input > .ghost-icon { width: 32px; height: 36px; border: 1px solid #e5e6ec; background: #f6f7fa; }
+.companion-input > .ghost-icon[aria-pressed="true"] { color: #b95179; border-color: #e6b9cc; background: #fceaf2; }
+.companion-mic { position: relative; }
+.companion-mic > span { position: absolute; bottom: 4px; right: 3px; width: 3px; max-height: 18px; background: #ca708e; border-radius: 1px; }
+.companion-camera { position: absolute; z-index: 7; top: 58px; right: 22px; width: 112px; height: 84px; border: 1px solid #dfe1e8; border-radius: 6px; overflow: hidden; background: #f1f2f5; }
+.companion-camera video { width: 100%; height: 100%; object-fit: cover; display: block; transform: scaleX(-1); }
+.companion-camera > span { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; gap: 4px; align-items: center; padding-left: 5px; font-size: 8px; color: #fff; background: #20242a99; }
+.companion-camera > span > i { width: 4px; height: 4px; border-radius: 50%; background: #78deb5; }
+.companion-camera > button { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; color: #fff; background: #20242a88; }
 .dialogue-box { position: absolute; z-index: 7; bottom: 20px; left: 24px; right: 24px; height: 230px; padding: 20px; border: 1px solid #e6dce3; border-radius: 8px; background: rgba(255,255,255,.96); box-shadow: 0 8px 28px rgba(35,30,45,.06); display: flex; flex-direction: column; }
 .dialogue-nameplate { position: absolute; top: -14px; left: 20px; height: 28px; display: flex; align-items: center; gap: 16px; padding: 0 14px; border: 1px solid #eadde5; border-radius: 5px; background: #fff2f7; }
 .dialogue-nameplate strong { color: #b4567b; font-size: 13px; }
@@ -391,6 +407,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .dialogue-toolbar { left: 10px; right: 8px; top: 10px; }
   .dialogue-toolbar > span { font-size: 8px; }
   .dialogue-toolbar .ghost-icon { width: 26px; height: 28px; }
+  .dialogue-toolbar { gap: 4px; }
+  .dialogue-toolbar .dialogue-mode .ghost-icon { width: 24px; height: 24px; }
+  .companion-input, .companion-input.with-camera { gap: 4px; }
+  .companion-camera { top: 54px; right: 10px; width: 80px; height: 60px; }
   .dialogue-box { left: 10px; right: 10px; bottom: 14px; padding: 20px 12px 12px; height: 242px; }
   .dialogue-text p { font-size: 12px; }
   .dialogue-history { left: 10px; right: 10px; bottom: 274px; }

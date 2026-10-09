@@ -18,6 +18,7 @@ interface MascotProps {
   onClickThrough: () => void
   demo: boolean
   dialogue?: boolean
+  mouthLevel?: number
 }
 
 const moodText = {
@@ -34,7 +35,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo, dialogue }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo, dialogue, mouthLevel = 0 }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -69,7 +70,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         <p>{behaviorText[behavior] ?? moodText[mood]}</p>
       </div>
       <div className="pet-wrap no-drag">
-        <ThreeDPet mood={mood} portrait={dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} />
+        <ThreeDPet mood={mood} portrait={dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} />
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>

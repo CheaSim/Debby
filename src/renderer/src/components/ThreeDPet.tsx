@@ -9,6 +9,7 @@ import { PetBehaviorController, type PetBehavior } from '../../../shared/pet-beh
 import { PetAnimator } from './pet-animation'
 
 interface ThreeDPetProps {
+  mouthLevel?: number
   mood: PetMood
   portrait: boolean
   viewReset: number
@@ -20,10 +21,11 @@ interface ThreeDPetProps {
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
-export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0 }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
+  const mouthRef = useRef(mouthLevel)
   const portraitRef = useRef(portrait)
   const interactionRef = useRef({ rotating, draggable })
   const resetViewRef = useRef<(() => void) | null>(null)
@@ -32,6 +34,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
   const [progress, setProgress] = useState(0)
   const [attempt, setAttempt] = useState(0)
   moodRef.current = mood
+  mouthRef.current = Number.isFinite(mouthLevel) ? Math.min(1, Math.max(0, mouthLevel)) : 0
   portraitRef.current = portrait
   interactionRef.current = { rotating, draggable }
   behaviorListener.current = onBehavior
@@ -297,12 +300,13 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         happy: currentBehavior === 'pat' || currentBehavior === 'greet' ? 0.55 : moodRef.current === 'bullish' ? 0.65 : 0.06,
         sad: currentBehavior === 'pat' ? 0 : moodRef.current === 'bearish' ? 0.55 : moodRef.current === 'offline' ? 0.18 : 0,
         relaxed: currentBehavior === 'pat' ? 0.45 : moodRef.current === 'idle' ? 0.08 : moodRef.current === 'offline' ? 0.18 : 0,
-        aa: currentBehavior === 'lifted' ? 0.16 : moodRef.current === 'alert' ? 0.2 : 0
+        aa: Math.max(mouthRef.current, currentBehavior === 'lifted' ? 0.16 : moodRef.current === 'alert' ? 0.2 : 0)
       }
       for (const name of expressionNames) {
         expressionValues[name] = THREE.MathUtils.lerp(expressionValues[name], targets[name], smoothing)
         vrm.expressionManager?.setValue(name, expressionValues[name])
       }
+      host.dataset.mouth = expressionValues.aa.toFixed(3)
       vrm.expressionManager?.setValue('blink', blink)
       vrm.update(delta)
       renderer.render(scene, camera)

@@ -21,6 +21,7 @@
     "test:watch": "vitest",
     "test:e2e": "npm run build && node tests/electron.e2e.mjs",
     "test:chat-ui": "npm run build && node tests/chat-ui.e2e.mjs",
+    "test:voice-ui": "npm run build && node tests/voice-ui.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

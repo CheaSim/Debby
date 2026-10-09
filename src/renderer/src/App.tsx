@@ -10,6 +10,7 @@ import { ShowcaseControls } from './components/ShowcaseControls'
 import { RecapDialog } from './components/RecapDialog'
 import { brand } from '../../shared/brand'
 import { useDebbyChat } from './hooks/use-debby-chat'
+import { useVoiceCompanion } from './hooks/use-voice-companion'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
@@ -17,6 +18,7 @@ export function App(): React.JSX.Element {
   const [dialogue, setDialogue] = useState(false)
   useEffect(() => { if (!state.settings?.panelOpen) setDialogue(false) }, [state.settings?.panelOpen])
   const [scene, setScene] = useState<ShowcaseScene>()
+  const companion = useVoiceCompanion(Boolean(state.settings?.panelOpen && dialogue && !scene))
   const [playing, setPlaying] = useState(false)
   const [replay, setReplay] = useState(0)
   const [now, setNow] = useState(Date.now)
@@ -95,10 +97,10 @@ export function App(): React.JSX.Element {
         showcasing={Boolean(scene)} onShowcase={() => { if (scene) exitShowcase(); else { chooseScene('bullish'); setPlaying(true) } }}
         onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
-        chat={chat} onDialogueChange={setDialogue}
+        chat={chat} companion={companion} onDialogueChange={setDialogue}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
-      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue}
+      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={companion.mouth}
         onTogglePanel={() => void state.togglePanel()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} />
       {scene && !state.settings.panelOpen && <div className="compact-showcase no-drag"><ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /></div>}
       {demo?.alerting && <div className="toast-alert demo-alert no-drag"><strong>演示提醒 · 非实盘</strong><span>模拟上证指数突破目标价，不触发系统通知。</span></div>}

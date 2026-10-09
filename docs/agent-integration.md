@@ -52,14 +52,14 @@ await runtime.clear() // aborts and waits, then discards the in-memory session
 unsubscribe()
 ```
 
-Electron 用 `net.fetch` 继承应用代理；Node 宿主自行提供代理 fetch。替换提供商实现 `DebbyAgentTransport`，stream 使用 pi 的 StreamFn，不另写循环。自定义收费 transport 属于宿主显式决策，当前应用只接 OpenRouter 免费模型。
+Electron 用 `net.fetch` 继承应用代理；Node 宿主自行提供代理 fetch。替换提供商实现 `DebbyAgentTransport`，stream 使用 pi 的 StreamFn，不另写循环。文字聊天默认只接 OpenRouter 免费模型；用户显式配置的通义陪伴使用独立 BYOK 和 ASR/TTS，可能计费，见 [陪伴接入](companion-integration.md)。
 
 React 宿主实现 `ChatApi` 后调用 `useDebbyChat(yourApi)`，将结果交给 `DialoguePanel`，无需全局 window.finpet。ChatState.revision 丢弃订阅和初始化之间的陈旧快照，订阅返回取消函数。
 
 ## 安全与限制
 
 - Key 在输入框短暂存在，保存后清空。主进程用 safeStorage 加密，Linux basic_text 被拒绝，没有明文降级。单独的 agent-credentials.json 不进入公开 AppSettings 或聊天事件。
-- 会话仅内存保存，界面最多 32 条；上下文按完整用户轮次保留最近 8 轮并限制文本预算，不输出推理链。
+- 会话仅内存保存，界面最多 32 条；上下文按完整用户轮次保留最近 8 轮并限制文本预算。pi 使用 thinkingLevel: off，OpenRouter 显式关闭 reasoning，不仅仅隐藏推理链；已知必须思考的模型不进入列表。
 - 默认 openrouter/free；每次新问题检查目录中的价格和 tools 支持，并设置提供商价格上限为零，不启用收费兜底或无限重试。
 - 输入最多 4000 字，输出最多 1024 tokens，最多 4 个模型轮次 / 8 次工具调用，90 秒停止。修改配置需停止回复并清空会话，取消或失败轮次不当作完整上下文重放。
 - 用户必须配置自己的 Key 并同意云端传输。免费供应商可能记录输入或训练模型，不发送账户、持仓、密码等敏感信息。渲染层演示场景暂停发送。

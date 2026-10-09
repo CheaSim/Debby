@@ -1,5 +1,6 @@
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../../shared/types'
 import { emptyChatState } from '../../shared/chat'
+import { emptyVoiceState } from '../../shared/voice'
 
 const names = [
   ['000001.SH', '上证指数', 3576.4, 3568.21],
@@ -34,6 +35,17 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  getVoiceState: async () => emptyVoiceState(),
+  configureVoice: async () => { throw new Error('请在桌面版配置百炼 BYOK。') },
+  startVoice: async () => { throw new Error('浏览器仅供预览，请在桌面版开启陪伴。') },
+  stopVoice: async () => {},
+  authorizeVoiceMedia: async () => { throw new Error('请在桌面版使用摄像头与麦克风。') },
+  releaseVoiceMedia: async () => {},
+  sendVoiceTurn: async () => { throw new Error('请在桌面版开启陪伴会话。') },
+  interruptVoice: async () => {},
+  clearVoice: async () => {},
+  onVoiceState: () => () => {},
+  onVoiceAudio: () => () => {},
   getChatState: async () => emptyChatState(),
   configureChat: async () => { throw new Error('请在 Debby 桌面版配置 BYOK。浏览器仅供界面预览。') },
   listChatModels: async () => [{ id: 'openrouter/free', name: 'Free Models Router', contextLength: 200000 }],

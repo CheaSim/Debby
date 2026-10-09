@@ -2,7 +2,7 @@
 
 Debby 的全称是 **Daily Equity & Balance Buddy for You**，取 Daily / Equity / Balance / Buddy / You 的首字母，寓意“每天陪你看行情、守住资产节奏的小伙伴”。
 
-Debby 是一个 Windows 优先的可爱风本地桌面伴侣。它以透明、无边框、置顶窗口常驻桌面，用桌宠状态表达自选行情，并提供可展开的行情与价格提醒工作台。内部工程名、IPC 和环境变量继续保留 `finpet / FINPET_*`，避免破坏已有配置。
+Debby 是一个 Windows 优先的可爱风本地桌面伴侣，目标是成为各种 Agent 能快速适配的虚拟人壳子。角色、媒体和界面独立于对话后端，内置 pi 可替换。它以透明、无边框、置顶窗口常驻桌面，用桌宠状态表达自选行情，并提供可展开的行情与价格提醒工作台。内部工程名、IPC 和环境变量继续保留 `finpet / FINPET_*`，避免破坏已有配置。
 
 > 默认本机获取腾讯公开 A 股行情，新浪自动备用。公开接口可能延迟、变更或限流，不构成投资建议，也不代表获得行情再分发授权。
 
@@ -29,6 +29,9 @@ Debby 是一个 Windows 优先的可爱风本地桌面伴侣。它以透明、�
 - Galgame 对话：角色近景、姓名牌与流式台词、会话回看、停止回复与新会话
 - pi Agent、只读行情工具、OpenRouter 免费模型路由、BYOK 与云端传输确认
 - 可独立集成的 Agent、工具插件、React Hook 和 [扩展接入文档](docs/agent-integration.md)
+- 中文语音陪伴：主动录音、ASR → pi Agent → TTS、可选本轮摄像头照片、播放振幅驱动嘴型
+- 默认关闭模型思考；陪伴会话限时、可打断，离开页面或锁屏立即关闭设备
+- 框架无关的 `ConversationBackend`、独立语音工厂和 [外部 harness 接入示例](examples/harness/external-reply.ts)
 
 ## 开发
 
@@ -47,6 +50,18 @@ npm.cmd run dev
 Key 经系统加密保存，不返回渲染层；会话只留内存。供应商可能记录输入或训练模型，避免敏感信息。浏览器预览不连接模型，在桌面版配置。对话设置也能从标题栏“更多 > BYOK”进入。
 
 Galgame 台词支持流式、停止、会话回看和新会话。Agent 可以读指数/自选、查询沪深证券、解释数据来源，不下单或执行脚本。第三方集成见 [插件与 Hook](docs/agent-integration.md)。
+
+### 通义语音陪伴
+
+面板“对话”切换通义陪伴。开发时可用根目录 `.env` 配置自己的 Key，字段见 [.env.example](.env.example)；桌面设置也支持系统加密的 BYOK。`.env` 被 Git 忽略且不进入安装包，密钥只在主进程使用。每位使用者必须配置自己的 Key，不内置共享凭据。
+
+开始前确认云端传输，可单独选择摄像头。点击麦克风录音，再次点击结束并发送；每段最长 30 秒，达到上限只丢弃、不自动上传。摄像头开启时仅保留本地预览，每次主动发送附上一张照片，不连续上传视频。回复播放期间按真实音量驱动角色嘴型，可随时停止。结束会话、切换页面、收起面板、锁屏或休眠关闭设备，15 分钟自动结束，不自动重连。
+
+目前使用 `qwen-audio-3.0-asr-flash`、`qwen3.8-flash` 和 `qwen-audio-3.0-tts-plus` 组合实现，不是原生 Omni、双向实时通话或持续观察。Qwen 请求设置 `enable_thinking: false`；OpenRouter 请求关闭推理并排除已知强制思考模型，具体支持仍取决于供应商。语音服务不属于 OpenRouter 免费文字额度，费用按自己的百炼账户计算。
+
+Token Plan 官方对自动化脚本、应用后端和共享 Key 用途有限制。当前仅保留用户主动交互，不代表该套餐适合对外部署；发布应用前需确认套餐条款并使用允许该用途的账户与 API。语音、照片和转写会发送供应商，避免敏感内容；不在本地保存原始媒体，结束即清空内存中的会话。AI 陪伴不是心理诊断或真人关系替代。
+
+模块划分、可替换语音提供商与媒体接口见 [陪伴扩展接入](docs/companion-integration.md)。
 
 ### 默认 3D 角色
 
@@ -78,6 +93,8 @@ npm.cmd run dev
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run test:e2e
+npm.cmd run test:chat-ui
+npm.cmd run test:voice-ui
 npm.cmd run test:live
 npm.cmd run build
 ```
@@ -167,6 +184,7 @@ tests          领域测试
 - [pixi-live2d-display](https://github.com/guansss/pixi-live2d-display)：Live2D Web 渲染集成，MIT License。
 - [Mate-Engine](https://github.com/shinyflvre/Mate-Engine)：Zome VRM 案例及可选官方运行器；上游代码和资产使用独立条款。
 - [three-vrm](https://github.com/pixiv/three-vrm)：VRM 骨骼、材质、表情与物理加载，MIT License。
+- [AAAAGENT](https://github.com/phoiex/AAAAGENT)，phoiex and contributors：参考媒体采集、轮次控制与角色表现分层，Debby 独立实现，未复制其源码或资产。上游使用自定义 [Noncommercial and Attribution License 1.0](https://github.com/phoiex/AAAAGENT/blob/main/LICENSE)，不是 MIT；参考版本与边界见陪伴接入文档。
 - [easyquotation](https://github.com/shidenggui/easyquotation)：腾讯/新浪行情字段协议参考，MIT License；本项目适配器用 TypeScript 独立实现。
 - [AKShare](https://github.com/akfamily/akshare)：财经数据集合库调研，不在桌宠运行时安装 Python 依赖。
 
@@ -178,7 +196,7 @@ Haru 样例模型与 Cubism Core 使用独立的 Live2D 条款，不属于本项
 - 增加开盘/午休/收盘陪伴流程，接入经过验证的交易日历
 - 专注与休息提醒、轻量个性化；不以交易次数或投资收益奖励成长
 - VRM 导入、窗口边缘坐姿与经许可的动作包
-- 可选行情上下文语音；核心行情、提醒、复盘不依赖 AI
+- 原生实时 Omni / VAD / 连续对话；需独立授权和合规供应商，核心行情、提醒、复盘不依赖 AI
 - 接入具有明确使用权限的行情供应商
 - 接入代码签名证书、自动更新和崩溃监控
 - 增加多显示器、DPI、休眠恢复与全屏应用兼容测试矩阵

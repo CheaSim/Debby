@@ -26,6 +26,7 @@ describe('BYOK and free-model boundary', () => {
   it('only admits zero-price tools-capable models, including per-request fees', () => {
     expect(freeToolModels([entry(), entry('paid', '0.1'), { ...entry('no-tools'), supported_parameters: [] }, { ...entry('request-fee'), pricing: { prompt: '0', completion: '0', request: '0.2' } }, null])).toHaveLength(1)
     expect(freeToolModels([{ ...entry(), pricing: { prompt: null, completion: '' } }])).toHaveLength(0)
+    expect(freeToolModels([{ ...entry(), reasoning: { mandatory: true } }])).toHaveLength(0)
   })
   it('encrypts credentials and never exposes them in public metadata', () => {
     const folder = mkdtempSync(join(tmpdir(), 'debby-key-test-'))
@@ -150,6 +151,7 @@ describe('real pi agent + OpenRouter-compatible SSE', () => {
     expect(agent.getState().messages.at(-1)?.text).toContain('3842.19')
     expect(requests).toHaveLength(2)
     expect(requests[0].provider.max_price).toEqual({ prompt: 0, completion: 0 })
+    expect(requests[0].reasoning).toEqual({ enabled: false, effort: 'none', exclude: true })
     const toolMessage = requests[1].messages.find((message: any) => message.role === 'tool')
     expect(toolMessage.content).toContain('2026-09-30T08:15:00.000Z')
     expect(states.join('')).toContain('查看指数与自选')

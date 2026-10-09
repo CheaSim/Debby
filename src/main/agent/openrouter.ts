@@ -4,7 +4,7 @@ import type { StreamFn } from '@earendil-works/pi-agent-core'
 import { defaultChatModel, type ChatModel } from '../../shared/chat'
 
 export type AgentFetch = typeof globalThis.fetch
-interface CatalogEntry { id?: unknown; name?: unknown; context_length?: unknown; pricing?: Record<string, unknown>; supported_parameters?: unknown }
+interface CatalogEntry { id?: unknown; name?: unknown; context_length?: unknown; pricing?: Record<string, unknown>; supported_parameters?: unknown; reasoning?: { mandatory?: unknown } }
 const zeroPrice = (value: unknown): boolean => (typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')) && Number(value) === 0
 
 export function freeToolModels(data: unknown): ChatModel[] {
@@ -12,7 +12,7 @@ export function freeToolModels(data: unknown): ChatModel[] {
   return data.filter((entry: CatalogEntry) => entry && typeof entry.id === 'string' && typeof entry.name === 'string' &&
     entry.pricing && zeroPrice(entry.pricing.prompt) && zeroPrice(entry.pricing.completion) &&
     Object.values(entry.pricing).every(zeroPrice) &&
-    Array.isArray(entry.supported_parameters) && entry.supported_parameters.includes('tools'))
+    entry.reasoning?.mandatory !== true && Array.isArray(entry.supported_parameters) && entry.supported_parameters.includes('tools'))
     .map((entry) => ({ id: entry.id, name: entry.name, contextLength: Number(entry.context_length) || 4096 }))
     .sort((a, b) => a.id === defaultChatModel ? -1 : b.id === defaultChatModel ? 1 : a.name.localeCompare(b.name))
 }
@@ -53,7 +53,7 @@ export class OpenRouterGateway {
   readonly stream: StreamFn = (model, context, options) => this.registry.streamSimple(model, context, {
     ...options, fetch: this.request, maxTokens: 1024, timeoutMs: 60_000, maxRetries: 0,
     headers: { 'X-Title': 'Debby', 'HTTP-Referer': 'https://github.com/CheaSim/Debby' },
-    onPayload: (payload) => ({ ...(payload as object), provider: { require_parameters: true, max_price: { prompt: 0, completion: 0 } } })
+    onPayload: (payload) => ({ ...(payload as object), reasoning: { enabled: false, effort: 'none', exclude: true }, provider: { require_parameters: true, max_price: { prompt: 0, completion: 0 } } })
   })
   async checkKey(key: string): Promise<string> {
     const response = await this.request(`${this.baseUrl}/key`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15_000), redirect: 'error' })
