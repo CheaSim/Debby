@@ -17,7 +17,7 @@ Debby 是一个 Windows 优先的可爱风本地桌面伴侣，目标是成为�
 - `idle / bullish / bearish / alert / offline` 五态行情表情
 - 心情跟随上证指数：+0.15% 及以上开心、-0.15% 及以下担忧；退出阈值为 +/-0.08%，避免边界附近反复变脸，个股选择不改变指数情绪
 - 简约浅灰双栏工作台、行情/提醒分段视图、自选切换、实际采样价格和涨跌状态
-- 桌宠仅保留面板和更多两个常驻按钮；视角、旋转、穿透收进菜单，声音/置顶/启动/行情源统一进入偏好设置
+- 桌宠常驻快速对话、面板和更多三个按钮；基础页面点击「对话」直接进入对话界面并聚焦输入，视角、旋转、穿透收进菜单，声音/置顶/启动/行情源统一进入偏好设置
 - 突破/跌破提醒、五分钟冷却、系统通知和本地持久化
 - 默认公开 A 股行情、腾讯/新浪自动切换、休市状态、真实行情时间和本地离线缓存
 - 可切换演示行情、自定义 WebSocket 中继；不把模拟数据混入真实行情
@@ -30,6 +30,7 @@ Debby 是一个 Windows 优先的可爱风本地桌面伴侣，目标是成为�
 - pi Agent、只读行情工具、OpenRouter 免费模型路由、BYOK 与云端传输确认
 - 可独立集成的 Agent、工具插件、React Hook 和 [扩展接入文档](docs/agent-integration.md)
 - 中文语音陪伴：主动录音、ASR → pi Agent → TTS、可选本轮摄像头照片、播放振幅驱动嘴型
+- 文字回复可独立开启阿里云 TTS 自动朗读：复用本地 BYOK，支持停止、嘴型和退出清理，无需开启语音采集
 - 默认关闭模型思考；陪伴会话限时、可打断，离开页面或锁屏立即关闭设备
 - 框架无关的 `ConversationBackend`、独立语音工厂和 [外部 harness 接入示例](examples/harness/external-reply.ts)
 - 统一 MCP 桌宠控制：任务进度、流式台词、动作、取消信号与单 Agent 租约；[三步接入 Codex / Claude Code / 自定义 Harness](docs/mcp-integration.md)
@@ -51,6 +52,8 @@ npm.cmd run dev
 Key 经系统加密保存，不返回渲染层；会话只留内存。供应商可能记录输入或训练模型，避免敏感信息。浏览器预览不连接模型，在桌面版配置。对话设置也能从标题栏“更多 > BYOK”进入。
 
 Galgame 台词支持流式、停止、会话回看和新会话。Agent 可以读指数/自选、查询沪深证券、解释数据来源，不下单或执行脚本。第三方集成见 [插件与 Hook](docs/agent-integration.md)。
+
+基础页面角色下方点击「对话」即可进入并聚焦输入；未配置时显示 BYOK 入口。文字模式右上角的喇叭可开启「阿里云自动朗读」，使用下方通义配置中的 TTS 模型与音色。开关默认关闭，只朗读完整回复；停止按钮中断合成与播放，切页、收起、隐藏或锁屏会停止。不会开启摄像头或麦克风。阿里云临时音频地址由主进程校验并通过 HTTPS 下载，不需要手填地址。
 
 ### 通义语音陪伴
 
@@ -96,9 +99,12 @@ npm.cmd test
 npm.cmd run test:e2e
 npm.cmd run test:chat-ui
 npm.cmd run test:voice-ui
+npm.cmd run test:read-aloud-ui
 npm.cmd run test:live
 npm.cmd run build
 ```
+
+配置自己的阿里云 Key 后，可主动运行 `npm.cmd run test:tts-live` 验证一次真实短句合成；会消耗自己的 TTS 额度，检查音频解码、时长和非静音，并将样本保存在被 Git 忽略的 `work/debby-tts-live.mp3`。普通测试不调用真实模型。
 
 Windows 安装包命令（当前模型许可未解决，检查会阻止打包）：
 

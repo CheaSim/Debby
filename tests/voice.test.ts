@@ -94,19 +94,22 @@ describe('voice media bounds', () => {
     expect(voiceError(new Error('429'))).not.toContain('免费')
   })
   it('downloads official signed TTS audio without forwarding credentials', async () => {
-    const calls: { url: string; init?: RequestInit }[] = []
-    const gateway = new QwenGateway(async (url, init) => {
-      calls.push({ url: String(url), init })
-      return calls.length === 1 ? Response.json({ output: { audio: { url: 'https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/audio.mp3?signature=synthetic' } } }) : new Response(new Uint8Array([73, 68, 51, 1]))
-    }, config, () => key)
-    expect(await gateway.synthesize('你好', new AbortController().signal)).toEqual(new Uint8Array([73, 68, 51, 1]))
-    expect(new Headers(calls[1].init?.headers).has('Authorization')).toBe(false)
-    expect(calls[1].init?.redirect).toBe('error')
+    for (const protocol of ['https:', 'http:']) {
+      const calls: { url: string; init?: RequestInit }[] = []
+      const gateway = new QwenGateway(async (url, init) => {
+        calls.push({ url: String(url), init })
+        return calls.length === 1 ? Response.json({ output: { audio: { url: `${protocol}//dashscope-result-bj.oss-cn-beijing.aliyuncs.com/audio.mp3?signature=synthetic` } } }) : new Response(new Uint8Array([73, 68, 51, 1]))
+      }, config, () => key)
+      expect(await gateway.synthesize('你好', new AbortController().signal)).toEqual(new Uint8Array([73, 68, 51, 1]))
+      expect(new Headers(calls[1].init?.headers).has('Authorization')).toBe(false)
+      expect(calls[1].init?.redirect).toBe('error')
+      expect(calls[1].url).toBe('https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/audio.mp3?signature=synthetic')
+    }
   })
   it('decodes inline TTS and refuses untrusted audio URLs before any download', async () => {
     const inline = new QwenGateway(async () => Response.json({ output: { audio: { data: 'SUQzAQ==' } } }), config, () => key)
     expect(await inline.synthesize('你好', new AbortController().signal)).toEqual(new Uint8Array([73, 68, 51, 1]))
-    for (const url of ['http://127.0.0.1/audio', 'https://evil.test/audio', 'https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com.evil.test/audio']) {
+    for (const url of ['http://127.0.0.1/audio', 'https://evil.test/audio', 'https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com.evil.test/audio', 'https://key@dashscope-result-bj.oss-cn-beijing.aliyuncs.com/audio', 'http://dashscope-result-bj.oss-cn-beijing.aliyuncs.com:8080/audio', 'ftp://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/audio']) {
       let count = 0
       const gateway = new QwenGateway(async () => { count++; return Response.json({ output: { audio: { url } } }) }, config, () => key)
       await expect(gateway.synthesize('你好', new AbortController().signal)).rejects.toThrow(/音频地址/)

@@ -33,7 +33,12 @@ export interface VoiceState {
 }
 export interface VoiceTurn { sessionId: string; text?: string; audio?: Uint8Array; image?: string }
 export interface VoiceAudio { sessionId: string; turnId: string; bytes: Uint8Array }
+export interface ReadAloudInput { requestId: string; text: string; cloudConsent: boolean }
+export interface ReadAloudAudio { requestId: string; bytes: Uint8Array }
 export interface VoiceApi {
+  readAloud: (input: ReadAloudInput) => Promise<ReadAloudAudio>
+  cancelReadAloud: () => Promise<void>
+  onReadAloudStop: (listener: () => void) => () => void
   getVoiceState: () => Promise<VoiceState>
   configureVoice: (input: VoiceConfigInput) => Promise<VoiceState>
   startVoice: (input: { cloudConsent: boolean; camera: boolean }) => Promise<VoiceState>

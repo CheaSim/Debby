@@ -1,4 +1,4 @@
-import { BellRing, Box, Cable, Ellipsis, GripVertical, MousePointer2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
+import { BellRing, Box, Cable, Ellipsis, GripVertical, MessageCircle, MousePointer2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { stableIndexMood, moodIndexSymbol } from '../../../shared/domain'
 import type { ProviderStatus, QuoteTick } from '../../../shared/types'
@@ -17,6 +17,7 @@ interface MascotProps {
   panelOpen: boolean
   clickThrough: boolean
   onTogglePanel: () => void
+  onQuickChat: () => void
   onClickThrough: () => void
   demo: boolean
   dialogue?: boolean
@@ -39,7 +40,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -87,6 +88,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
         <span className="dock-name"><i className={mood} /><strong>{brand.name}</strong></span>
+        <button className="icon-button quick-chat-button" onClick={onQuickChat} title="快速对话" aria-label="快速对话" aria-pressed={Boolean(dialogue)}><MessageCircle size={16} /><span aria-hidden="true">对话</span></button>
         <button className="icon-button" onClick={onTogglePanel} title={panelOpen ? '收起行情面板' : '打开行情面板'}><PanelLeft size={17} /></button>
         <button className="icon-button" popoverTarget="pet-options" title="桌宠选项" aria-expanded={optionsOpen}><Ellipsis size={18} /></button>
         {alerting && <span className="alert-pulse"><BellRing size={14} /></span>}

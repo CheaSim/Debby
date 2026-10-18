@@ -183,7 +183,7 @@ try {
 
   const compactTools = await page.locator('.pet-tools').boundingBox()
   assert.ok(compactTools.x >= 0 && compactTools.x + compactTools.width <= 380, 'Compact toolbar is clipped')
-  assert.equal(await page.locator('.pet-tools button').count(), 2, 'Compact pet has too many permanent buttons')
+  assert.equal(await page.locator('.pet-tools button').count(), 3, 'Expected quick chat, panel and more controls')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-compact.png') })
 
   await page.locator('[title="打开行情面板"]').click()
@@ -429,7 +429,7 @@ try {
   const persisted = JSON.parse(await readFile(resolve(userData, 'settings.json'), 'utf8'))
   assert.equal(persisted.selectedSymbol, 'AAPL')
   assert.equal(persisted.panelOpen, true)
-  console.log('Electron E2E passed: Galgame desktop/narrow layout, single avatar, BYOK encryption, consent gate, history, keyboard tabs, avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, two-button dock, popover dismissal, click-through, preferences persistence, alerts, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
+  console.log('Electron E2E passed: Galgame desktop/narrow layout, single avatar, BYOK encryption, consent gate, history, keyboard tabs, avatar, textures, transparency, pat/lift/land, views, drag/persistence, rotation/reset, compact dock with quick chat, popover dismissal, click-through, preferences persistence, alerts, isolated showcase, closing recap, IPC validation, index moods, disconnect, window and chart.')
 } finally {
   if (electronApp) await electronApp.close().catch(() => undefined)
   if (relay) {

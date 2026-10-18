@@ -110,6 +110,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .pet-tools > .icon-button, .primary-orb { flex-shrink: 0; }
 .pet-tools > .icon-button[aria-expanded="true"] { color: #007aff; background: #eaf2ff; }
 .app-expanded .pet-tools > .icon-button { width: 29px; height: 28px; }
+.pet-tools > .quick-chat-button { display: flex; justify-content: center; gap: 5px; width: auto; padding: 0 9px; color: #b36e89; background: #f8eef3; font-size: 11px; white-space: nowrap; }
+.pet-tools > .quick-chat-button:hover, .pet-tools > .quick-chat-button[aria-pressed="true"] { color: #9c4f6e; background: #f0dfe8; }
+.app-expanded .pet-tools > .quick-chat-button { padding: 0; width: 29px; }
+.app-expanded .quick-chat-button span { display: none; }
 .app-expanded .window-drag-handle { flex-basis: 14px; height: 28px; }
 .app-expanded .primary-orb { width: 32px; height: 32px; }
 .icon-button:disabled { cursor: not-allowed; opacity: .48; }

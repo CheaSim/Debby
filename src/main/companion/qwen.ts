@@ -95,7 +95,9 @@ export class QwenGateway implements SpeechProvider {
         bytes = new Uint8Array(Buffer.from(audio.data, 'base64'))
       } else if (typeof audio?.url === 'string') {
         const url = new URL(audio.url)
-        if (url.protocol !== 'https:' || url.hostname !== 'dashscope-result-bj.oss-cn-beijing.aliyuncs.com' || url.username || url.password || url.port || url.hash) throw new Error('无效音频地址。')
+        if (!['http:', 'https:'].includes(url.protocol) || url.hostname !== 'dashscope-result-bj.oss-cn-beijing.aliyuncs.com' || url.username || url.password || url.port || url.hash) throw new Error('无效音频地址。')
+        // Token Plan can return an HTTP signed URL for this OSS bucket. Fetch its HTTPS equivalent only.
+        url.protocol = 'https:'
         // Signed audio URLs never receive the API key and are never exposed to the renderer.
         const download = await this.request(url.toString(), { redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]) })
         if (!download.ok) { await download.body?.cancel(); throw new Error(String(download.status)) }

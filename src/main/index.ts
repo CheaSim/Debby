@@ -15,6 +15,7 @@ import { DebbyAgentRuntime } from './agent/runtime'
 import { CompanionRuntime, loadLocalEnvironment, QwenGateway, VoiceConfigStore } from './companion'
 import { ShellRuntime } from './bridge/runtime'
 import { ShellServer } from './bridge/server'
+import { ReadAloudRuntime } from './companion/read-aloud'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -26,12 +27,18 @@ let market: MarketHub
 let chat: DebbyAgentRuntime
 let companion: CompanionRuntime
 let agentShell: ShellServer
+let readAloud: ReadAloudRuntime
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
 let interactiveRegions: InteractiveRegion[] = []
 let ignoringMouse = false
 let windowDrag: { pointer: { x: number; y: number }; bounds: Electron.Rectangle } | undefined
+
+function stopReadAloud(): void {
+  readAloud?.cancel()
+  if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('voice:read-aloud-stop')
+}
 
 if (process.env.FINPET_E2E_USER_DATA) app.setPath('userData', process.env.FINPET_E2E_USER_DATA)
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
@@ -81,9 +88,9 @@ function createWindow(): BrowserWindow {
   window.setIgnoreMouseEvents(ignoringMouse)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
-  window.webContents.on('render-process-gone', () => companion?.stop())
-  window.on('hide', () => companion?.stop())
-  window.on('minimize', () => companion?.stop())
+  window.webContents.on('render-process-gone', () => { companion?.stop(); stopReadAloud() })
+  window.on('hide', () => { companion?.stop(); stopReadAloud() })
+  window.on('minimize', () => { companion?.stop(); stopReadAloud() })
   window.once('ready-to-show', () => {
     if (!process.argv.includes('--hidden')) window.showInactive()
   })
@@ -110,7 +117,7 @@ function createWindow(): BrowserWindow {
 }
 
 function updateWindowMode(panelOpen: boolean): void {
-  if (!panelOpen) companion?.stop()
+  if (!panelOpen) { companion?.stop(); stopReadAloud() }
   if (!mainWindow) return
   const oldBounds = mainWindow.getBounds()
   const size = panelOpen ? expandedSize : collapsedSize
@@ -278,8 +285,14 @@ function registerIpc(): void {
   handleChat('chat:cancel', () => chat.cancel())
   handleChat('chat:clear', () => chat.clear())
   handleChat('voice:state', () => companion.getState())
-  handleChat('voice:configure', (input) => companion.configure(input))
+  handleChat('voice:read-aloud', (input) => {
+    if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
+    return readAloud.read(input)
+  })
+  handleChat('voice:cancel-read-aloud', () => readAloud.cancel())
+  handleChat('voice:configure', (input) => { stopReadAloud(); return companion.configure(input) })
   handleChat('voice:start', (input) => {
+    stopReadAloud()
     if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
     return companion.start(input)
   })
@@ -381,6 +394,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
     available: () => safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text'),
     encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
   }, process.env)
+  readAloud = new ReadAloudRuntime(voiceCredentials.publicConfig, (config) => new QwenGateway(request, config, voiceCredentials.getKey))
   companion = new CompanionRuntime({ credentials: voiceCredentials,
     createProvider: (config) => new QwenGateway(request, config, voiceCredentials.getKey),
     tools: registerTools([marketToolsPlugin], {
@@ -401,8 +415,8 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
       details.requestingUrl === contents.getURL() && companion.permitsMedia(media.mediaTypes ?? [], true)
     callback(allowed)
   })
-  powerMonitor.on('suspend', () => { companion.stop(); agentShell.release() })
-  powerMonitor.on('lock-screen', () => { companion.stop(); agentShell.release() })
+  powerMonitor.on('suspend', () => { companion.stop(); stopReadAloud(); agentShell.release() })
+  powerMonitor.on('lock-screen', () => { companion.stop(); stopReadAloud(); agentShell.release() })
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
@@ -433,6 +447,7 @@ app.on('before-quit', () => {
   market?.stop()
   chat?.cancel()
   companion?.stop()
+  readAloud?.cancel()
   agentShell?.dispose()
   if (pointerTimer) clearInterval(pointerTimer)
   if (moveTimer) clearTimeout(moveTimer)

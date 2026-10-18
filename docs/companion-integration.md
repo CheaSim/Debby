@@ -13,6 +13,7 @@
 | `CompanionCredentials` / `VoiceConfigStore` | `runtime.ts` / `config.ts` | 密钥存储、公开配置与官方端点验证 |
 | `VoiceCapture` / `VoicePlayback` | `src/renderer/src/media/voice.ts` | 可复用采集和播放接口 |
 | `useVoiceCompanion(enabled, api)` | `src/renderer/src/hooks/use-voice-companion.ts` | React 订阅、设备与页面生命周期 |
+| `ReadAloudRuntime` / `useReadAloud(enabled, api)` | `src/main/companion/read-aloud.ts` / `src/renderer/src/hooks/use-read-aloud.ts` | 独立文字转语音，复用 `SpeechProvider.synthesize`，不依赖对话或采集会话 |
 | `CameraPreview` / `DialoguePanel` | `src/renderer/src/components/` | 局部预览和 Galgame 对话外观 |
 
 这是一组源码模块，不是独立发布的 npm SDK。主进程不依赖 React 或 Electron 类型，网络、加密、工具和事件由宿主注入。媒体采集只在浏览器层，Provider 不得主动开启设备。
@@ -38,6 +39,22 @@ runtime.stop()
 事件观察者不得保存原始媒体。`onAudio` 后源缓冲会清零，异步宿主需同步复制字节，使用后再清理。`submit` 只启动轮次，完成由状态或 `waitForIdle` 表达。每轮同时接受文字或音频之一；音频必须是 16kHz 单声道 16-bit PCM WAV，照片是有大小上限的 JPEG。Provider 必须遵守 AbortSignal，并自行限制响应大小、超时和重试。
 
 替换 ASR/TTS 实现 `CompanionProvider` 并更换 `createProvider`，保留 pi 的 `DebbyAgentTransport`，不用重写 UI。原生实时 Omni 的持续会话协议需要额外适配，不声称仅换模型名即可支持。UI 可实现 `VoiceApi` 后注入 Hook；采集和播放接口允许独立替换，默认 Hook 使用浏览器实现。
+
+只需让现有 Agent 的文字回复发声时，可单独使用 `ReadAloudRuntime`，不创建 `CompanionRuntime`：
+
+```ts
+import { ReadAloudRuntime } from './src/main/companion'
+
+const speech = new ReadAloudRuntime(yourCredentialStore.publicConfig,
+  (config) => new QwenGateway(yourFetch, config, yourCredentialStore.getKey))
+const { bytes } = await speech.read({
+  requestId: 'reply-1', text: '我把结果整理好啦。', cloudConsent: true
+})
+// Deliver bytes to VoicePlayback; clear the source after delivery.
+speech.cancel() // Abort pending synthesis when the user interrupts.
+```
+
+每段上限 1200 字，不隐式截断；请求带关联 ID，替换或取消的迟到音频会丢弃并清零。桌面 `readAloud` / `cancelReadAloud` / `onReadAloudStop` 将合成、取消和窗口生命周期传给 `useReadAloud`。文字对话中的自动朗读由用户点击开启，只在完整回复后调用，离开对话关闭；原有通义陪伴继续使用自己的 TTS 流程。MCP 台词目前仍只负责文字展示，不会自动开启这个开关。
 
 ## 外部 Agent 壳子
 
@@ -77,6 +94,8 @@ const runtime = new CompanionRuntime({
 
 Chat 使用配置的 `/compatible-mode/v1/chat/completions`。Token Plan 音频不是 Chat Completions：ASR 使用 `/api/v1/services/aigc/multimodal-generation/generation` 的 `input_audio`；TTS 使用 `/api/v1/services/audio/tts/SpeechSynthesizer`。适配器兼容直接二进制、JSON 内联 Base64 和官方结果地址，下载结果不发送 Key、不跟随重定向。当前结果地址白名单仅含实测北京桶，其他地域须单独核实后扩展。
 
+2026-10-18 实测该 TTS 返回北京 OSS 桶的 HTTP 临时地址。适配器仅将这个已知官方主机的地址升级为 HTTPS 后下载，保留签名路径与查询，不发起 HTTP 下载，也不把临时 URL 交给渲染层。包含凭据、非标准端口、其他域名或协议的地址仍拒绝。
+
 Token Plan 对自动化脚本、应用后端及共享 Key 有限制。用户主动触发并不自动保证所有桌面应用用途合规，公开发布或持续陪伴前须确认使用权限；不能以多 IP 绕过套餐、限额或收费。
 
 ## 测试与来源
@@ -85,9 +104,12 @@ Token Plan 对自动化脚本、应用后端及共享 Key 有限制。用户主�
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run test:voice-ui
+npm.cmd run test:read-aloud-ui
 ```
 
 领域测试覆盖真实 pi 循环、ASR/TTS 协议、关闭思考、密钥隔离、输入与响应上限、授权、取消及照片过期。桌面测试用隔离目录、虚拟摄像头和麦克风、模拟云端服务，检查真实录音 / 播放、嘴型、设备回收与窄屏像素；这些测试不能证明真实账户模型可用。
+
+2026-10-18 使用本地 `.env` 做一次短句真实 TTS 验证：取得 53,851 字节音频，浏览器解码约 2.688 秒且非静音；没有调用文字模型或采集设备。可用 `npm.cmd run test:tts-live` 主动复验，样本只写入被忽略的 `work/`，不输出 Key 或临时 URL。
 
 2026-10-09 另做少量人工触发真实验证：`qwen3.8-flash` 正确识别绿色测试色块，思考关闭；TTS 返回北京 OSS 临时音频地址，生成短中文语音后由 ASR 识别。未使用真实摄像头、麦克风或个人画面，也不把密钥和临时 URL 提交仓库。Windows 虚拟摄像头测试关闭 D3D11 采集以避开该环境的 NV12 服务崩溃，生产启动不修改这一系统选项。
 

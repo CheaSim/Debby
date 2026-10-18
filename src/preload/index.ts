@@ -5,6 +5,9 @@ import type { VoiceAudio, VoiceState } from '../shared/voice'
 import type { AgentShellState } from '../shared/shell'
 
 const api: FinPetApi = {
+  readAloud: (input) => ipcRenderer.invoke('voice:read-aloud', input),
+  cancelReadAloud: () => ipcRenderer.invoke('voice:cancel-read-aloud'),
+  onReadAloudStop: (listener) => subscribe('voice:read-aloud-stop', listener),
   getShellState: () => ipcRenderer.invoke('shell:state'),
   enableShell: (enabled) => ipcRenderer.invoke('shell:enable', enabled),
   cancelShellTask: () => ipcRenderer.invoke('shell:cancel'),

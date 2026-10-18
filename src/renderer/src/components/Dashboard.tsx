@@ -9,6 +9,9 @@ import { DialoguePanel } from './DialoguePanel'
 import { ChatConfigDialog } from './ChatConfigDialog'
 import type { DebbyChatController } from '../hooks/use-debby-chat'
 import type { VoiceCompanionController } from '../hooks/use-voice-companion'
+import type { ReadAloudController } from '../hooks/use-read-aloud'
+
+export type DashboardTab = 'market' | 'alerts' | 'chat'
 
 interface DashboardProps {
   settings: AppSettings
@@ -29,16 +32,17 @@ interface DashboardProps {
   onClose: () => void
   chat: DebbyChatController
   companion: VoiceCompanionController
-  onDialogueChange: (active: boolean) => void
+  reader: ReadAloudController
+  tab: DashboardTab
+  onTabChange: (tab: DashboardTab) => void
+  chatFocusRequest: number
   onAgentConnect: () => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, onDialogueChange, onAgentConnect }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, reader, tab, onTabChange: chooseTab, chatFocusRequest, onAgentConnect }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
-  const [tab, setTab] = useState<'market' | 'alerts' | 'chat'>('market')
   const [chatConfig, setChatConfig] = useState(false)
-  const chooseTab = (next: typeof tab): void => { setTab(next); onDialogueChange(next === 'chat') }
   const [preferences, setPreferences] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
   const optionsRef = useRef<HTMLDivElement>(null)
@@ -62,7 +66,7 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
           <div className="header-actions">
             <button className="ghost-icon" title="行情复盘" onClick={onRecap} disabled={!recapAvailable}><NotebookPen size={17} /></button>
             <button className="ghost-icon" popoverTarget="panel-options" title="面板选项" aria-expanded={optionsOpen}><Ellipsis size={18} /></button>
-            <button className="ghost-icon" title="收起行情面板" onClick={() => { onDialogueChange(false); onClose() }}><X size={17} /></button>
+            <button className="ghost-icon" title="收起行情面板" onClick={() => { chooseTab('market'); onClose() }}><X size={17} /></button>
           </div>
         </div>
       </header>
@@ -97,7 +101,7 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
           {showcasing ? <section className="showcase-status"><header className="section-heading"><div><h2>演示提醒</h2><p>非实盘</p></div><Clapperboard size={20} /></header><dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl></section> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} />}
         </div>
         <div id="chat-view" role="tabpanel" aria-labelledby="tab-chat" hidden={tab !== 'chat'}>
-          <DialoguePanel chat={chat} companion={companion} showcasing={showcasing} onConfigure={() => setChatConfig(true)} />
+          <DialoguePanel chat={chat} companion={companion} reader={reader} showcasing={showcasing} onConfigure={() => setChatConfig(true)} active={tab === 'chat'} focusRequest={chatFocusRequest} />
         </div>
       </section>
 

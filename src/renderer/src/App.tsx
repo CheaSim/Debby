@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Dashboard } from './components/Dashboard'
+import { useEffect, useRef, useState } from 'react'
+import { Dashboard, type DashboardTab } from './components/Dashboard'
 import { Mascot } from './components/Mascot'
 import { useFinPetStore } from './store/use-finpet-store'
 import { moodIndexSymbol } from '../../shared/domain'
@@ -13,16 +13,31 @@ import { useDebbyChat } from './hooks/use-debby-chat'
 import { useVoiceCompanion } from './hooks/use-voice-companion'
 import { useAgentShell } from './hooks/use-agent-shell'
 import { AgentConnectionDialog } from './components/AgentConnectionDialog'
+import { useReadAloud } from './hooks/use-read-aloud'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
   const chat = useDebbyChat()
   const agentShell = useAgentShell()
   const [agentDialog, setAgentDialog] = useState(false)
-  const [dialogue, setDialogue] = useState(false)
-  useEffect(() => { if (!state.settings?.panelOpen) setDialogue(false) }, [state.settings?.panelOpen])
+  const [panelTab, setPanelTab] = useState<DashboardTab>('market')
+  const dialogue = panelTab === 'chat'
+  const [chatFocusRequest, setChatFocusRequest] = useState(0)
+  const openingChat = useRef(false)
+  useEffect(() => { if (!state.settings?.panelOpen) setPanelTab('market') }, [state.settings?.panelOpen])
+  const openQuickChat = async (): Promise<void> => {
+    if (openingChat.current) return
+    openingChat.current = true
+    try {
+      setScene(undefined); setPlaying(false); setRecap(null)
+      if (!state.settings?.panelOpen) await state.togglePanel()
+      setPanelTab('chat')
+      setChatFocusRequest((value) => value + 1)
+    } finally { openingChat.current = false }
+  }
   const [scene, setScene] = useState<ShowcaseScene>()
   const companion = useVoiceCompanion(Boolean(state.settings?.panelOpen && dialogue && !scene))
+  const reader = useReadAloud(Boolean(state.settings?.panelOpen && dialogue && !scene))
   const [playing, setPlaying] = useState(false)
   const [replay, setReplay] = useState(0)
   const [now, setNow] = useState(Date.now)
@@ -101,11 +116,11 @@ export function App(): React.JSX.Element {
         showcasing={Boolean(scene)} onShowcase={() => { if (scene) exitShowcase(); else { chooseScene('bullish'); setPlaying(true) } }}
         onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
-        chat={chat} companion={companion} onDialogueChange={setDialogue} onAgentConnect={() => setAgentDialog(true)}
+        chat={chat} companion={companion} reader={reader} tab={panelTab} onTabChange={setPanelTab} chatFocusRequest={chatFocusRequest} onAgentConnect={() => setAgentDialog(true)}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
-      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={companion.mouth}
-        onTogglePanel={() => void state.togglePanel()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)} />
+      <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={Math.max(companion.mouth, reader.mouth)}
+        onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)} />
       {agentDialog && <AgentConnectionDialog state={agentShell} onClose={() => setAgentDialog(false)} />}
       {scene && !state.settings.panelOpen && <div className="compact-showcase no-drag"><ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /></div>}
       {demo?.alerting && <div className="toast-alert demo-alert no-drag"><strong>演示提醒 · 非实盘</strong><span>模拟上证指数突破目标价，不触发系统通知。</span></div>}
