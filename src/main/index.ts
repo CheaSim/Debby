@@ -290,6 +290,10 @@ function registerIpc(): void {
     return readAloud.read(input)
   })
   handleChat('voice:cancel-read-aloud', () => readAloud.cancel())
+  handleChat('voice:stream-read-aloud', (input) => {
+    if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
+    readAloud.stream(input, (event) => mainWindow?.webContents.send('voice:read-aloud-audio', event))
+  })
   handleChat('voice:configure', (input) => { stopReadAloud(); return companion.configure(input) })
   handleChat('voice:start', (input) => {
     stopReadAloud()

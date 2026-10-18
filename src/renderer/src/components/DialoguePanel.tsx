@@ -15,7 +15,6 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
   const [voiceConfig, setVoiceConfig] = useState(false)
   const [consent, setConsent] = useState(false)
   const [autoRead, setAutoRead] = useState(false)
-  const spoken = useRef<string>(undefined)
   useEffect(() => { if (!chosen.current && companion.state.config.configured) setMode('voice') }, [companion.state.config.configured])
   const voice = mode === 'voice'
   const messages = voice ? companion.state.chat.messages : chat.state.messages
@@ -37,16 +36,15 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
   const recording = voice && companion.recording !== 'off'
   const voiceStatus = companion.recording !== 'off' ? '正在听你说' : speaking ? '正在说话' : ({ off: '陪你聊聊', ready: '我在呢', transcribing: '听清你的话', thinking: '正在回复', synthesizing: '准备声音' })[companion.state.phase]
   const configure = () => { if (voice) setVoiceConfig(true); else onConfigure() }
-  const read = reader.read, stopRead = reader.stop
+  const updateRead = reader.update, stopRead = reader.stop
   useEffect(() => {
     if (!active || voice || showcasing) { setAutoRead(false); stopRead() }
   }, [active, voice, showcasing, stopRead])
   useEffect(() => {
-    if (busy) { stopRead(); return }
-    if (!active || voice || showcasing || !autoRead || !last?.text || last.status !== 'done' || spoken.current === last.id) return
-    spoken.current = last.id
-    void read(last.text)
-  }, [active, voice, showcasing, autoRead, busy, last?.id, last?.text, last?.status, read, stopRead])
+    if (!active || voice || showcasing || !autoRead || !last?.text.trim()) return
+    if (last.status === 'error' || last.status === 'cancelled' || chat.state.error) { stopRead(); return }
+    void updateRead(question?.id ?? last.id, last.id, last.text, !busy && last.status === 'done')
+  }, [active, voice, showcasing, autoRead, busy, question?.id, last?.id, last?.text, last?.status, chat.state.error, updateRead, stopRead])
   useEffect(() => { if (body.current) body.current.scrollTop = body.current.scrollHeight }, [last?.text])
   return <section className="dialogue-panel" aria-label="与 Debby 对话">
     <header className="dialogue-toolbar"><div className="dialogue-mode" role="group" aria-label="对话方式">
@@ -56,7 +54,7 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
       <div>{!voice && <button className="ghost-icon" aria-label="阿里云自动朗读" title={autoRead ? '关闭自动朗读' : '开启阿里云 TTS · 回复文字将发送至阿里云'} aria-pressed={autoRead} disabled={showcasing} onClick={() => {
         if (autoRead) { setAutoRead(false); reader.stop() }
         else if (!companion.state.config.configured) setVoiceConfig(true)
-        else if (reader.prepare()) { spoken.current = undefined; setAutoRead(true) }
+        else if (reader.prepare()) setAutoRead(true)
       }}>{autoRead ? <Volume2 size={16} /> : <VolumeX size={16} />}</button>}<button className="ghost-icon" title="会话回看" aria-pressed={history} onClick={() => setHistory(!history)}><History size={17} /></button>{voice && companion.state.active ? <button className="ghost-icon" title="结束陪伴" onClick={() => void companion.stop()}><Power size={16} /></button> : <button className="ghost-icon" title="新会话" disabled={busy || !messages.length} onClick={() => { reader.stop(); void (voice ? companion.clear() : chat.clear()) }}><RotateCcw size={16} /></button>}<button className="ghost-icon" title="对话设置" disabled={busy || (voice && companion.state.active)} onClick={configure}><Settings2 size={17} /></button></div></header>
     {voice && companion.camera && <CameraPreview stream={companion.camera} onOff={() => void companion.toggleCamera()} />}
     {history && <aside className="dialogue-history" aria-label="会话记录"><header><strong>会话回看</strong><button className="ghost-icon" title="关闭会话回看" onClick={() => setHistory(false)}><X size={16} /></button></header><div>

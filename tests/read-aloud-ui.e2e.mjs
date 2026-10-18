@@ -44,14 +44,30 @@ try {
     ipcMain.handle('chat:cancel', () => {})
     window.webContents.send('chat:changed', state)
     globalThis.readAloudRequests = []
+    globalThis.readAloudTexts = []
+    globalThis.holdStream = true
     net.fetch = async (url, init) => {
       const parsed = new URL(String(url))
       if (parsed.origin === 'https://token-plan.cn-beijing.maas.aliyuncs.com' && parsed.pathname.endsWith('/SpeechSynthesizer')) {
         if (new Headers(init.headers).get('Authorization') !== 'Bearer synthetic-tts-ui-key-123456789') throw Error('Missing synthesis credentials')
         globalThis.readAloudRequests.push(JSON.parse(init.body).model)
+        globalThis.readAloudTexts.push(JSON.parse(init.body).input.text)
         if (globalThis.holdTts) {
           globalThis.heldTtsSignal = init.signal
           await new Promise((resolve) => { globalThis.finishHeldTts = resolve })
+        }
+        if (!globalThis.fallbackTts) {
+          if (new Headers(init.headers).get('X-DashScope-SSE') !== 'enable') throw Error('Expected streaming synthesis')
+          const pcm = new Uint8Array(48000), pcmView = new DataView(pcm.buffer)
+          for (let i = 0; i < 24000; i++) pcmView.setInt16(i * 2, Math.sin(i * Math.PI * 440 / 24000) * 5000, true)
+          let binary = ''; for (const byte of pcm) binary += String.fromCharCode(byte)
+          const frame = new TextEncoder().encode(`data: ${JSON.stringify({ output: { type: 'sentence-synthesis', audio: { data: btoa(binary) } } })}\n\n`)
+          return new Response(new ReadableStream({ start(controller) {
+            controller.enqueue(frame)
+            const finish = () => { controller.enqueue(frame); controller.enqueue(new TextEncoder().encode('data: {"output":{"finish_reason":"stop"}}\n\n')); controller.close(); globalThis.streamFinished = true }
+            if (globalThis.holdStream) { globalThis.finishStream = finish; globalThis.streamFinished = false }
+            else finish()
+          } }), { headers: { 'Content-Type': 'text/event-stream' } })
         }
         return Response.json({ output: { audio: { url: 'http://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/fixture.wav?signature=synthetic' } } })
       }
@@ -70,18 +86,25 @@ try {
   const mouthStopped = () => page.waitForFunction(() => Number(document.querySelector('.three-pet-host').dataset.mouth) < 0.01)
   await speaker.click()
   assert.equal(await speaker.getAttribute('aria-pressed'), 'true')
-  await update('first', '【模拟回复】还在生成', false)
-  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('还在生成'))
+  await update('first', '【模拟回复】完整的第一句', false)
+  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('完整的第一句'))
   assert.deepEqual(await application.evaluate(() => globalThis.readAloudRequests), [], 'Streaming text must not trigger TTS')
-  await update('first', '【模拟回复】完整的文字会由阿里云朗读。', true)
+  await update('first', '【模拟回复】完整的第一句话。第二句话还在生成', false)
   await mouthMoving()
-  assert.deepEqual(await application.evaluate(() => globalThis.readAloudRequests), ['qwen-audio-3.0-tts-plus', 'HTTPS audio download'])
+  assert.equal((await page.evaluate(() => window.finpet.getChatState())).busy, true, 'Speech must start before the agent finishes its text')
+  assert.equal(await application.evaluate(() => globalThis.streamFinished), false, 'Playback must start before the TTS response finishes')
+  assert.deepEqual(await application.evaluate(() => globalThis.readAloudRequests), ['qwen-audio-3.0-tts-plus'])
+  await update('first', '【模拟回复】完整的第一句话。第二句话还在生成，稍后会继续。', true)
+  await application.evaluate(() => { globalThis.holdStream = false; globalThis.finishStream() })
+  await page.waitForFunction(async () => !(await window.finpet.getChatState()).busy)
   await page.screenshot({ path: resolve(root, 'work', 'debby-read-aloud.png') })
   await page.locator('[title="停止回复"]').click()
   await mouthStopped()
   assert.equal((await page.evaluate(() => window.finpet.getChatState())).messages.at(-1).status, 'done')
+  await application.evaluate(() => { globalThis.fallbackTts = true })
   await update('second', '【模拟回复】锁屏时停止朗读。', true)
   await mouthMoving()
+  assert.equal(await application.evaluate(() => globalThis.readAloudRequests.includes('HTTPS audio download')), true)
   await application.evaluate(({ powerMonitor }) => powerMonitor.emit('lock-screen'))
   await mouthStopped()
   await page.waitForSelector('[title="发送消息"]')
@@ -109,7 +132,14 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth), true)
   await page.screenshot({ path: resolve(root, 'work', 'debby-read-aloud-narrow.png') })
   assert.deepEqual(errors, [])
-  console.log('Read-aloud UI E2E passed: BYOK reuse, opt-in, complete replies only, official HTTP URL upgraded to HTTPS, no credentials on download, audio decode and mouth amplitude, stop, lock-screen, cancellation, page exit, no replay, narrow layout and no media/LLM requests. Fixture TTS only.')
+  console.log('Read-aloud UI E2E passed: speech before text completion AND TTS completion, PCM streaming, sentence queue, BYOK reuse, opt-in, signed-URL fallback over HTTPS without credentials, mouth amplitude, stop, lock-screen, cancellation, page exit, no replay, narrow layout and no media/LLM requests. Fixture TTS only.')
+} catch (error) {
+  if (application) {
+    const page = await application.firstWindow()
+    console.log('Safe read-aloud diagnostics:', await page.evaluate(async () => ({ feedback: document.querySelector('.dialogue-feedback')?.textContent,
+      nameplate: document.querySelector('.dialogue-nameplate')?.textContent, busy: (await window.finpet.getChatState()).busy })))
+  }
+  throw error
 } finally {
   if (application) await application.close()
   await rm(userData, { recursive: true, force: true })

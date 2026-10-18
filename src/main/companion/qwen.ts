@@ -1,13 +1,15 @@
 import { createModels, type Model } from '@earendil-works/pi-ai'
 import { qwenTokenPlanCnProvider } from '@earendil-works/pi-ai/providers/qwen-token-plan-cn'
 import type { StreamFn } from '@earendil-works/pi-agent-core'
-import type { VoiceConfig } from '../../shared/voice'
+import type { SpeechChunk, VoiceConfig } from '../../shared/voice'
 import { voiceLimits } from '../../shared/voice'
 import type { AgentFetch } from '../agent/openrouter'
+import { sseData } from './sse'
 
 export interface SpeechProvider {
   transcribe: (audio: Uint8Array, signal: AbortSignal) => Promise<string>
   synthesize: (text: string, signal: AbortSignal) => Promise<Uint8Array>
+  synthesizeStream?: (text: string, signal: AbortSignal) => AsyncIterable<SpeechChunk>
 }
 export async function boundedBytes(response: Response, max: number): Promise<Uint8Array> {
   if (Number(response.headers.get('content-length')) > max) { await response.body?.cancel(); throw new Error('服务响应超过大小限制。') }
@@ -54,11 +56,11 @@ export class QwenGateway implements SpeechProvider {
     onPayload: (payload) => ({ ...(payload as object), enable_thinking: false })
   })
   checkKey = async (): Promise<string> => '请主动发起对话验证；语音调用会消耗你的百炼额度。'
-  private async post(path: string, body: object, signal: AbortSignal): Promise<Response> {
+  private async post(path: string, body: object, signal: AbortSignal, streaming = false): Promise<Response> {
     const key = this.getKey()
     if (!key) throw new Error('InvalidApiKey')
     const response = await this.request(`${new URL(this.config.baseUrl).origin}${path}`, {
-      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-DashScope-SSE': 'disable' },
+      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-DashScope-SSE': streaming ? 'enable' : 'disable' },
       body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.any([signal, AbortSignal.timeout(60_000)])
     })
     if (!response.ok) { await response.body?.cancel(); throw new Error(String(response.status)) }
@@ -83,6 +85,49 @@ export class QwenGateway implements SpeechProvider {
     const response = await this.post('/api/v1/services/audio/tts/SpeechSynthesizer', {
       model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'mp3', sample_rate: 24_000 }
     }, signal)
+    return this.audioResponse(response, signal)
+  }
+  async *synthesizeStream(text: string, signal: AbortSignal): AsyncGenerator<SpeechChunk> {
+    if (!text.trim() || text.length > 1200) throw new Error('回复文本过长或为空，请缩小问题范围。')
+    const timed = AbortSignal.any([signal, AbortSignal.timeout(60_000)])
+    const response = await this.post('/api/v1/services/audio/tts/SpeechSynthesizer', {
+      model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'pcm', sample_rate: 24_000 }
+    }, timed, true)
+    if (!response.headers.get('content-type')?.includes('text/event-stream')) {
+      // Some compatible gateways return a complete file even when SSE is requested; reuse that response once.
+      const bytes = await this.audioResponse(response, timed)
+      const tag = String.fromCharCode(...bytes.subarray(0, 4))
+      const encoded = /^(RIFF|ID3|OggS)/.test(tag) || /audio\/(mpeg|wav|ogg)/i.test(response.headers.get('content-type') ?? '')
+      if (!encoded && bytes.length % 2) { bytes.fill(0); throw new Error('无效音频 PCM 响应。') }
+      yield { bytes, format: encoded ? 'encoded' : 'pcm16', sampleRate: 24_000 }
+      return
+    }
+    let size = 0, count = 0, ended = false, carry: number | undefined
+    for await (const event of sseData(response, timed)) {
+      if (event.trim() === '[DONE]') { ended = true; break }
+      let body: any
+      try { body = JSON.parse(event) } catch { throw new Error('无效音频 SSE 响应。') }
+      if (body.code) throw new Error(String(body.code))
+      const data = body.output?.audio?.data
+      if (data) {
+        if (typeof data !== 'string' || !/^[A-Za-z0-9+/]+={0,2}$/.test(data) || data.length % 4) throw new Error('无效音频 Base64 响应。')
+        let bytes = new Uint8Array(Buffer.from(data, 'base64'))
+        size += bytes.length
+        if (size > voiceLimits.responseBytes) { bytes.fill(0); throw new Error('音频流超过大小限制。') }
+        if (carry !== undefined) {
+          const joined = new Uint8Array(bytes.length + 1); joined[0] = carry; joined.set(bytes, 1); bytes.fill(0); bytes = joined; carry = undefined
+        }
+        if (bytes.length % 2) {
+          carry = bytes.at(-1)
+          const aligned = bytes.slice(0, -1); bytes.fill(0); bytes = aligned
+        }
+        if (bytes.length) { count++; yield { bytes, format: 'pcm16', sampleRate: 24_000 } }
+      }
+      if (body.output?.finish_reason === 'stop') { ended = true; break }
+    }
+    if (!ended || carry !== undefined || !count) throw new Error('无效音频：语音流提前结束。')
+  }
+  private async audioResponse(response: Response, signal: AbortSignal): Promise<Uint8Array> {
     const json = response.headers.get('content-type')?.includes('json')
     let bytes = await boundedBytes(response, json ? Math.ceil(voiceLimits.responseBytes * 4 / 3) + 200_000 : voiceLimits.responseBytes)
     if (json) {

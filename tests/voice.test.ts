@@ -182,7 +182,8 @@ describe('cascaded companion lifecycle', () => {
     expect(bodies[1].body.enable_thinking).toBe(false)
     expect(bodies[1].body.max_tokens).toBe(512)
     expect(bodies[2].body.input.voice).toBe(config.voice)
-    expect(audio).toHaveLength(1)
+    expect(audio.filter((packet) => !packet.done)).toHaveLength(1)
+    expect(audio.at(-1)?.done).toBe(true)
     expect(audio[0].bytes).toEqual(new Uint8Array([73, 68, 51, 1]))
     expect(runtime.getState().chat.messages[0].text).toBe('今天有一点累。')
     expect(wav.every((value) => value === 0)).toBe(true)
@@ -233,6 +234,7 @@ describe('cascaded companion lifecycle', () => {
   it('keeps the completed text when TTS is unavailable and sanitizes the error', async () => {
     const { runtime, gateway } = fixture()
     gateway.synthesize = async () => { throw new Error(`upstream failure ${key}`) }
+    gateway.synthesizeStream = async function* () { throw new Error(`upstream failure ${key}`) }
     const { sessionId } = await runtime.start({ cloudConsent: true, camera: false })
     await runtime.submit({ sessionId: sessionId!, text: '你好' })
     await runtime.waitForIdle()

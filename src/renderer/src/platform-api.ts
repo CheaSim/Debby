@@ -37,6 +37,8 @@ const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
   readAloud: async () => { throw new Error('请在 Debby 桌面版使用阿里云朗读。') },
+  streamReadAloud: async () => { throw new Error('请在 Debby 桌面版使用阿里云朗读。') },
+  onReadAloudAudio: () => () => {},
   cancelReadAloud: async () => {},
   onReadAloudStop: () => () => {},
   getShellState: async () => emptyShellState(),

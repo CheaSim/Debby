@@ -24,6 +24,7 @@
     "test:voice-ui": "npm run build && node tests/voice-ui.e2e.mjs",
     "test:read-aloud-ui": "npm run build && node tests/read-aloud-ui.e2e.mjs",
     "test:tts-live": "npm run build && node scripts/verify-tts-live.mjs",
+    "test:tts-stream-live": "npm run build && node scripts/verify-tts-stream-live.mjs",
     "test:agent-shell": "npm run build && node tests/agent-shell.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",

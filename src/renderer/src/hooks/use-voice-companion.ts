@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { emptyVoiceState, voiceLimits, type VoiceApi, type VoiceConfigInput, type VoiceState } from '../../../shared/voice'
 import { platformApi } from '../platform-api'
-import { BrowserVoicePlayback, cameraFrame, openVoiceCapture, type VoiceCapture } from '../media/voice'
+import { cameraFrame, openVoiceCapture, type VoiceCapture } from '../media/voice'
+import { BrowserSpeechPlayback } from '../media/speech-playback'
 
 export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi) {
   const [state, setState] = useState(emptyVoiceState)
@@ -13,7 +14,8 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
   const [camera, setCamera] = useState<MediaStream>()
   const stateRef = useRef(state), cameraRef = useRef<MediaStream>(undefined), capture = useRef<VoiceCapture>(undefined)
   const captureAbort = useRef<AbortController>(undefined), frameAbort = useRef<AbortController>(undefined), cameraAbort = useRef<AbortController>(undefined)
-  const playback = useRef<BrowserVoicePlayback>(undefined), captureTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const playback = useRef<BrowserSpeechPlayback>(undefined), captureTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const audioSequence = useRef(0)
   const finishing = useRef(false)
   const mounted = useRef(true), enabledRef = useRef(enabled)
   enabledRef.current = enabled
@@ -39,7 +41,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     void api.releaseVoiceMedia('video').catch(() => {})
     setCamera(undefined)
   }, [api])
-  const stopPlayback = useCallback(() => { playback.current?.stop(); setSpeaking(false); setMouth(0) }, [])
+  const stopPlayback = useCallback(() => { playback.current?.stop(); audioSequence.current = 0; setSpeaking(false); setMouth(0) }, [])
   const disposeMedia = useCallback(() => {
     stopRecording(); stopCamera(); stopPlayback(); frameAbort.current?.abort()
     playback.current?.close(); playback.current = undefined
@@ -50,6 +52,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     stateRef.current = next
     if (!next.active || next.sessionId !== previous.sessionId) disposeMedia()
     else if (!next.turnId && previous.turnId) stopPlayback()
+    else if (next.error || next.chat.error) stopPlayback()
     if (mounted.current) setState(next)
   }, [disposeMedia, stopPlayback])
   useEffect(() => {
@@ -58,8 +61,11 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     const removeAudio = api.onVoiceAudio((audio) => {
       const current = stateRef.current
       if (!enabledRef.current || !current.active || audio.sessionId !== current.sessionId || audio.turnId !== current.turnId || !playback.current) { audio.bytes.fill(0); return }
-      setSpeaking(true)
-      void playback.current.play(audio.bytes).catch(() => { if (mounted.current) { setSpeaking(false); setMouth(0); setError('音频播放失败，文字回复已保留。') } })
+      if (audio.sequence !== undefined && audio.sequence !== audioSequence.current) { audio.bytes.fill(0); return }
+      audioSequence.current++
+      if (audio.done) return
+      const turnId = current.turnId
+      void playback.current.enqueue({ ...audio, format: audio.format ?? 'encoded' }).catch(() => { if (mounted.current && stateRef.current.turnId === turnId) { stopPlayback(); setError('音频播放失败，文字回复已保留。'); void api.interruptVoice().catch(() => {}) } })
     })
     void api.getVoiceState().then(accept).catch(() => setError('无法连接陪伴服务。'))
     const leave = () => { disposeMedia(); void api.stopVoice().catch(() => {}) }
@@ -85,7 +91,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     const next = await api.startVoice({ cloudConsent: true, camera: useCamera })
     accept(next)
     if (!enabledRef.current) { await api.stopVoice(); return }
-    playback.current = new BrowserVoicePlayback(setMouth, () => setSpeaking(false))
+    playback.current = new BrowserSpeechPlayback(setMouth, setSpeaking)
     if (useCamera) {
       try { await startCamera() } catch { stopCamera(); setError('摄像头不可用；可以继续语音或文字陪伴。') }
     }

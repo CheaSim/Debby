@@ -1,11 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../shared/types'
 import type { ChatState } from '../shared/chat'
-import type { VoiceAudio, VoiceState } from '../shared/voice'
+import type { ReadAloudStreamEvent, VoiceAudio, VoiceState } from '../shared/voice'
 import type { AgentShellState } from '../shared/shell'
 
 const api: FinPetApi = {
   readAloud: (input) => ipcRenderer.invoke('voice:read-aloud', input),
+  streamReadAloud: (input) => ipcRenderer.invoke('voice:stream-read-aloud', input),
+  onReadAloudAudio: (listener) => subscribe<ReadAloudStreamEvent>('voice:read-aloud-audio', listener),
   cancelReadAloud: () => ipcRenderer.invoke('voice:cancel-read-aloud'),
   onReadAloudStop: (listener) => subscribe('voice:read-aloud-stop', listener),
   getShellState: () => ipcRenderer.invoke('shell:state'),

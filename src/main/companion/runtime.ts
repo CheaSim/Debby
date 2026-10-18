@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type { AgentTool } from '@earendil-works/pi-agent-core'
 import type { ChatConfigInput } from '../../shared/chat'
-import { emptyChatState } from '../../shared/chat'
+import { emptyChatState, type ChatState } from '../../shared/chat'
 import type { ConversationBackend, ConversationHost } from '../../shared/conversation'
 import { emptyVoiceState, voiceLimits, type VoiceAudio, type VoiceConfig, type VoiceConfigInput, type VoiceState, type VoiceTurn } from '../../shared/voice'
 import type { DebbyAgentTransport } from '../agent/runtime'
 import { DebbyAgentRuntime, debbyPersona } from '../agent/runtime'
 import { voiceError, type SpeechProvider } from './qwen'
+import { StreamingSpeech } from './streaming-speech'
 
 export interface CompanionCredentials { publicConfig: () => VoiceConfig; getKey: () => string | undefined; configure: (input: VoiceConfigInput) => void }
 export interface CompanionProvider extends SpeechProvider, DebbyAgentTransport {}
@@ -52,6 +53,7 @@ export class CompanionRuntime {
   private state = emptyVoiceState()
   private agent?: ConversationBackend
   private provider?: SpeechProvider
+  private speech?: StreamingSpeech
   private controller?: AbortController
   private task?: Promise<void>
   private sessionTimer?: ReturnType<typeof setTimeout>
@@ -91,7 +93,7 @@ export class CompanionRuntime {
     this.state.expiresAt = Date.now() + (this.options.sessionMs ?? voiceLimits.sessionMs)
     this.provider = provider
     const host: ConversationHost = { systemPrompt: `${debbyPersona}\n${companionship}`,
-      onState: (chat) => { if (this.state.sessionId === sessionId) { this.state.chat = chat; this.publish() } } }
+      onState: (chat) => { if (this.state.sessionId === sessionId) { this.state.chat = chat; this.publish(); this.feedSpeech(chat) } } }
     try {
       this.agent = this.options.createConversation?.(host) ?? new DebbyAgentRuntime({ credentials: {
         getKey: this.options.credentials.getKey,
@@ -147,6 +149,11 @@ export class CompanionRuntime {
       if (!accepts()) return
       this.state.phase = 'thinking'
       this.publish()
+      const turnId = this.state.turnId!
+      const speech = new StreamingSpeech(provider, controller.signal, (packet) => {
+        if (accepts()) this.options.onAudio?.({ ...packet, sessionId: turn.sessionId, turnId })
+      }, (error) => { if (accepts()) { this.state.error = error; this.publish() } })
+      this.speech = speech
       await agent.send(text, turn.image ? [{ type: 'image', data: turn.image, mimeType: 'image/jpeg' }] : undefined)
       turn.audio?.fill(0)
       turn.image = undefined
@@ -156,26 +163,32 @@ export class CompanionRuntime {
       if (agent.getState().error || reply?.status !== 'done' || !reply.text) return
       this.state.phase = 'synthesizing'
       this.publish()
-      const bytes = await provider.synthesize(reply.text, controller.signal)
-      if (accepts()) {
-        try { this.options.onAudio?.({ sessionId: turn.sessionId, turnId: this.state.turnId!, bytes }) } catch { /* No raw media enters logs on delivery errors. */ }
-      }
-      bytes.fill(0)
+      this.feedSpeech(agent.getState())
+      await speech.waitForIdle()
     } catch (error) { if (accepts()) this.state.error = voiceError(error) }
     finally {
       clearTimeout(timer)
       turn.audio?.fill(0)
       turn.image = undefined
       if (generation === this.generation) {
+        this.speech?.cancel()
+        this.speech = undefined
         this.controller = undefined
         this.state.phase = this.state.active ? 'ready' : 'off'
         this.publish()
       }
     }
   }
+  private feedSpeech(chat: ChatState): void {
+    if (!this.speech || !this.state.active) return
+    const user = chat.messages.map((line) => line.role).lastIndexOf('user')
+    const last = chat.messages.slice(user + 1).filter((line) => line.role === 'assistant').at(-1)
+    if (last?.text.trim() && !['error', 'cancelled'].includes(last.status)) this.speech.update(last.id, last.text, !chat.busy && last.status === 'done')
+  }
   interrupt(): void {
     this.generation++
     this.controller?.abort()
+    this.speech = undefined
     this.controller = undefined
     this.agent?.cancel()
     this.state.turnId = undefined

@@ -8,12 +8,14 @@
 | --- | --- | --- |
 | `VoiceApi` / `VoiceState` / `VoiceTurn` | `src/shared/voice.ts` | 宿主命令、版本化状态和媒体事件 |
 | `CompanionRuntime` / `CompanionOptions` | `src/main/companion/runtime.ts` | 会话、轮次、取消、授权、超时和事件 |
-| `CompanionProvider` / `SpeechProvider` | 同上 / `qwen.ts` | ASR、pi StreamFn、TTS；由工厂注入 |
+| `CompanionProvider` / `SpeechProvider` | 同上 / `qwen.ts` | ASR、pi StreamFn、TTS；可选 `synthesizeStream`，由工厂注入 |
 | `ConversationBackend` / `ConversationHost` | `src/shared/conversation.ts` | 与 pi、Electron 和供应商无关的外部 Agent 契约 |
 | `CompanionCredentials` / `VoiceConfigStore` | `runtime.ts` / `config.ts` | 密钥存储、公开配置与官方端点验证 |
 | `VoiceCapture` / `VoicePlayback` | `src/renderer/src/media/voice.ts` | 可复用采集和播放接口 |
+| `StreamingSpeech` / `SpeechTextBuffer` | `src/main/companion/streaming-speech.ts` / `src/shared/speech-text.ts` | 累积文字分句、串行合成、顺序事件、取消和大小上限 |
+| `BrowserSpeechPlayback` | `src/renderer/src/media/speech-playback.ts` | PCM 块共用音频时钟、兼容完整文件、真实 RMS 嘴型 |
 | `useVoiceCompanion(enabled, api)` | `src/renderer/src/hooks/use-voice-companion.ts` | React 订阅、设备与页面生命周期 |
-| `ReadAloudRuntime` / `useReadAloud(enabled, api)` | `src/main/companion/read-aloud.ts` / `src/renderer/src/hooks/use-read-aloud.ts` | 独立文字转语音，复用 `SpeechProvider.synthesize`，不依赖对话或采集会话 |
+| `ReadAloudRuntime` / `useReadAloud(enabled, api)` | `src/main/companion/read-aloud.ts` / `src/renderer/src/hooks/use-read-aloud.ts` | 独立流式文字转语音，不依赖对话或采集会话 |
 | `CameraPreview` / `DialoguePanel` | `src/renderer/src/components/` | 局部预览和 Galgame 对话外观 |
 
 这是一组源码模块，不是独立发布的 npm SDK。主进程不依赖 React 或 Electron 类型，网络、加密、工具和事件由宿主注入。媒体采集只在浏览器层，Provider 不得主动开启设备。
@@ -54,7 +56,17 @@ const { bytes } = await speech.read({
 speech.cancel() // Abort pending synthesis when the user interrupts.
 ```
 
-每段上限 1200 字，不隐式截断；请求带关联 ID，替换或取消的迟到音频会丢弃并清零。桌面 `readAloud` / `cancelReadAloud` / `onReadAloudStop` 将合成、取消和窗口生命周期传给 `useReadAloud`。文字对话中的自动朗读由用户点击开启，只在完整回复后调用，离开对话关闭；原有通义陪伴继续使用自己的 TTS 流程。MCP 台词目前仍只负责文字展示，不会自动开启这个开关。
+`read()` 保留完整文件接口。桌面默认使用 `streamReadAloud` / `onReadAloudAudio`：同一轮使用同一个 `requestId`，每条助手消息使用稳定 `lineId`，每次提交累积的 `text`，最后一次设置 `done: true`。同一条消息只允许追加；改写已提交的前缀会停止朗读，避免重说。`cancelReadAloud` / `onReadAloudStop` 连接取消和窗口生命周期。自动朗读由用户点击开启，离开对话关闭；MCP 台词仍只负责文字展示，不会自动开启声音。
+
+## 流式语音
+
+文字对话与通义陪伴共用 `StreamingSpeech`：得到完整短句就开始 TTS，不等待整轮 LLM；没有标点的长文本也会分段。每轮最多 1200 字、32 段、8 MB 音频，播放最多 120 秒，超限停止并保留文字，不隐式截断。句子串行合成，播放与下一句合成可并行；网络过慢时仍可能出现停顿，不保证句间零间隔。
+
+独立 harness 可直接消费异步文字增量，不需要 pi 或 Electron，完整示例见 [streaming-voice.ts](../examples/harness/streaming-voice.ts)。已有 `ConversationBackend` 注入不需要修改，`CompanionRuntime` 会订阅它的流式状态并驱动语音。
+
+语音提供商可额外实现 `synthesizeStream(text, signal): AsyncIterable<SpeechChunk>`，输出 `{ bytes, format: 'pcm16', sampleRate: 24000 }`：PCM 为单声道、有符号 16-bit 小端，每块必须包含完整采样。也可输出 `format: 'encoded'`，但每块必须是能独立解码的完整音频文件，不能直接切割 MP3 字节。没有实现该方法的旧 Provider 自动按句调用 `synthesize`，保持兼容。
+
+每轮音频事件包含从 0 递增的 `sequence`，最后一个 `done: true` 事件没有音频，不送入解码器；错误会结束当前朗读，不自动重试已播内容。宿主按请求 / 会话 / 轮次 ID 过滤迟到数据，按顺序交给 `BrowserSpeechPlayback.enqueue()`。所有 PCM 块排入同一个 AudioContext，后一个块不会停止前一个块。`stop()` 清理待播缓冲与节点，`close()` 同时关闭音频引擎。`onAudio` 回调返回后源字节清零，跨异步边界必须同步复制。
 
 ## 外部 Agent 壳子
 
@@ -94,6 +106,8 @@ const runtime = new CompanionRuntime({
 
 Chat 使用配置的 `/compatible-mode/v1/chat/completions`。Token Plan 音频不是 Chat Completions：ASR 使用 `/api/v1/services/aigc/multimodal-generation/generation` 的 `input_audio`；TTS 使用 `/api/v1/services/audio/tts/SpeechSynthesizer`。适配器兼容直接二进制、JSON 内联 Base64 和官方结果地址，下载结果不发送 Key、不跟随重定向。当前结果地址白名单仅含实测北京桶，其他地域须单独核实后扩展。
 
+流式 TTS 在同一接口发送 `X-DashScope-SSE: enable`，请求 `format: pcm` / `sample_rate: 24000`，逐事件解码 `output.audio.data`，以 `output.finish_reason: stop` 结束。解析器支持多行 data、CRLF、网络分块和 UTF-8 跨块；连接中途结束会报告错误，不把半段响应当作成功。兼容网关若返回完整文件或官方地址，会复用该次响应，不额外重复计费请求。
+
 2026-10-18 实测该 TTS 返回北京 OSS 桶的 HTTP 临时地址。适配器仅将这个已知官方主机的地址升级为 HTTPS 后下载，保留签名路径与查询，不发起 HTTP 下载，也不把临时 URL 交给渲染层。包含凭据、非标准端口、其他域名或协议的地址仍拒绝。
 
 Token Plan 对自动化脚本、应用后端及共享 Key 有限制。用户主动触发并不自动保证所有桌面应用用途合规，公开发布或持续陪伴前须确认使用权限；不能以多 IP 绕过套餐、限额或收费。
@@ -111,6 +125,8 @@ npm.cmd run test:read-aloud-ui
 
 2026-10-18 使用本地 `.env` 做一次短句真实 TTS 验证：取得 53,851 字节音频，浏览器解码约 2.688 秒且非静音；没有调用文字模型或采集设备。可用 `npm.cmd run test:tts-live` 主动复验，样本只写入被忽略的 `work/`，不输出 Key 或临时 URL。
 
+同日通过真实桌面 UI 验证流式 TTS：从首句提交到首块约 0.60 秒、播放约 0.79 秒，13 块 PCM 共 230,400 字节 / 4.8 秒，合成约 1.90 秒结束。文字来自确定性测试输入，首播时文字仍未结束；TTS 与播放器是真实路径，不调用真实 LLM、摄像头或麦克风。`npm.cmd run test:tts-stream-live` 可主动复验，会消耗本人的 TTS 额度。普通回归使用模拟服务，另外检查文字 / 音频都未结束时的首播、分句顺序、打断、锁屏、切页和迟到音频。
+
 2026-10-09 另做少量人工触发真实验证：`qwen3.8-flash` 正确识别绿色测试色块，思考关闭；TTS 返回北京 OSS 临时音频地址，生成短中文语音后由 ASR 识别。未使用真实摄像头、麦克风或个人画面，也不把密钥和临时 URL 提交仓库。Windows 虚拟摄像头测试关闭 D3D11 采集以避开该环境的 NV12 服务崩溃，生产启动不修改这一系统选项。
 
 参考日期：2026-10-09。
@@ -119,5 +135,6 @@ npm.cmd run test:read-aloud-ui
 - AAAAGENT 使用自定义 [Noncommercial and Attribution License 1.0](https://github.com/phoiex/AAAAGENT/blob/main/LICENSE)，不是 MIT / Apache，非商用也不意味着可以忽略署名或再分发限制；其条款不被本项目 MIT 声明覆盖。
 - [Token Plan 概览](https://help.aliyun.com/zh/model-studio/token-plan-team-overview)：模型能力、用途和账户边界。
 - [Token Plan 多模态生成](https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen)：音频服务和音色格式。
+- [Qwen-Audio TTS HTTP](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)：SSE 请求头、PCM 格式和流式事件，2026-10-18 查阅。
 - [Flash 录音识别 HTTP](https://help.aliyun.com/zh/model-studio/fun-asr-flash-recorded-speech-recognition-http-api)：ASR 原生协议。
 - [OpenRouter 推理控制](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)：关闭推理与仅隐藏推理文本的区别。
