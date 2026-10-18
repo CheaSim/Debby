@@ -1,4 +1,4 @@
-import { Bell, ChartNoAxesCombined, Clapperboard, Ellipsis, KeyRound, MessageCircle, NotebookPen, PiggyBank, Settings2, X } from 'lucide-react'
+import { Bell, Cable, ChartNoAxesCombined, Clapperboard, Ellipsis, KeyRound, MessageCircle, NotebookPen, PiggyBank, Settings2, X } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import type { AppSettings, MarketProvider, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { AlertPanel } from './AlertPanel'
@@ -30,9 +30,10 @@ interface DashboardProps {
   chat: DebbyChatController
   companion: VoiceCompanionController
   onDialogueChange: (active: boolean) => void
+  onAgentConnect: () => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, onDialogueChange }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, onDialogueChange, onAgentConnect }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
   const [tab, setTab] = useState<'market' | 'alerts' | 'chat'>('market')
@@ -68,6 +69,7 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
       <div ref={optionsRef} id="panel-options" popover="auto" className="panel-options no-drag" role="dialog" aria-label="面板选项" onToggle={(event) => setOptionsOpen((event.nativeEvent as ToggleEvent).newState === 'open')}>
         <button className="menu-command" title={showcasing ? '退出演示' : '打开演示'} onClick={() => { optionsRef.current?.hidePopover(); onShowcase() }}><Clapperboard size={16} /><span>{showcasing ? '退出演示' : '场景演示'}</span></button>
         <button className="menu-command" title="偏好设置" onClick={() => { optionsRef.current?.hidePopover(); setPreferences(true) }}><Settings2 size={16} /><span>偏好设置</span></button>
+        <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
         <button className="menu-command" title="BYOK 配置" disabled={chat.state.busy} onClick={() => { optionsRef.current?.hidePopover(); setChatConfig(true) }}><KeyRound size={16} /><span>BYOK</span></button>
       </div>
       <aside className="watchlist-pane">

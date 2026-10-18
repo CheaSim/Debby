@@ -1,10 +1,10 @@
 import type { PetMood } from './types'
 
-export type PetBehavior = 'idle' | 'greet' | 'pat' | 'lifted' | 'land' | 'celebrate' | 'comfort' | 'notify'
+export type PetBehavior = 'idle' | 'greet' | 'pat' | 'lifted' | 'land' | 'celebrate' | 'comfort' | 'notify' | 'working' | 'waiting'
 
 export const behaviorDuration: Record<PetBehavior, number> = {
   idle: Infinity, greet: 2.4, pat: 2.1, lifted: Infinity,
-  land: 0.9, celebrate: 2.6, comfort: 2.8, notify: 2.2
+  land: 0.9, celebrate: 2.6, comfort: 2.8, notify: 2.2, working: Infinity, waiting: Infinity
 }
 
 // User gestures own the body; market changes remain independent expression state.

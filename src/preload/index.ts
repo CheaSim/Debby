@@ -2,8 +2,16 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../shared/types'
 import type { ChatState } from '../shared/chat'
 import type { VoiceAudio, VoiceState } from '../shared/voice'
+import type { AgentShellState } from '../shared/shell'
 
 const api: FinPetApi = {
+  getShellState: () => ipcRenderer.invoke('shell:state'),
+  enableShell: (enabled) => ipcRenderer.invoke('shell:enable', enabled),
+  cancelShellTask: () => ipcRenderer.invoke('shell:cancel'),
+  releaseShell: () => ipcRenderer.invoke('shell:release'),
+  previewShell: (advance) => ipcRenderer.invoke('shell:preview', advance),
+  copyShellConfig: (format) => ipcRenderer.invoke('shell:copy-config', format),
+  onShellState: (listener) => subscribe<AgentShellState>('shell:changed', listener),
   getVoiceState: () => ipcRenderer.invoke('voice:state'),
   configureVoice: (input) => ipcRenderer.invoke('voice:configure', input),
   startVoice: (input) => ipcRenderer.invoke('voice:start', input),

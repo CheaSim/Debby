@@ -1,4 +1,4 @@
-import { BellRing, Box, Ellipsis, GripVertical, MousePointer2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
+import { BellRing, Box, Cable, Ellipsis, GripVertical, MousePointer2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { stableIndexMood, moodIndexSymbol } from '../../../shared/domain'
 import type { ProviderStatus, QuoteTick } from '../../../shared/types'
@@ -7,6 +7,8 @@ import type { PetMood } from '../../../shared/types'
 import { platformApi } from '../platform-api'
 import { ThreeDPet } from './ThreeDPet'
 import { brand } from '../../../shared/brand'
+import type { AgentShellState } from '../../../shared/shell'
+import { agentStatusLabel } from './AgentConnectionDialog'
 
 interface MascotProps {
   indexQuote?: QuoteTick
@@ -19,6 +21,8 @@ interface MascotProps {
   demo: boolean
   dialogue?: boolean
   mouthLevel?: number
+  agentShell: AgentShellState
+  onAgentConnect: () => void
 }
 
 const moodText = {
@@ -35,7 +39,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo, dialogue, mouthLevel = 0 }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -64,13 +68,21 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   }
   return (
     <section className={`mascot-stage mood-${mood}`} data-index-symbol={moodIndexSymbol} aria-label={`${brand.name}状态：${moodLabel[mood]}`} onContextMenu={(event) => { event.preventDefault(); optionsRef.current?.showPopover() }}>
-      <div className="speech">
+      <div className={'speech' + (agentShell.controller ? ' agent-speech' : '')} data-task-status={agentShell.task?.status}>
+        {agentShell.controller ? <>
+          <span className="speech-kicker"><span>{agentShell.controller.preview ? '本地演示' : agentShell.controller.name}</span><span className="agent-task-badge">{agentShell.task ? agentStatusLabel[agentShell.task.status] : '已连接'}</span></span>
+          <strong>{agentShell.task?.title ?? '我准备好啦'}</strong>
+          <p>{agentShell.caption?.text || '随时把进度告诉我吧。'}</p>
+          {agentShell.task?.progress !== undefined && <progress aria-label="任务进度" value={agentShell.task.progress} max={1} />}
+          <button className="agent-open" aria-label="查看 Agent 任务" title="查看 Agent 任务" onClick={onAgentConnect} />
+        </> : <>
         <span className="speech-kicker"><span>{demo ? `${brand.name} · 演示数据` : brand.name}</span><span className="mood-badge"><i />{moodLabel[mood]}</span></span>
         <strong>{indexQuote ? `${indexQuote.name} ${direction === 'up' ? '+' : ''}${indexQuote.changePct.toFixed(2)}%` : '等待指数行情'}</strong>
         <p>{behaviorText[behavior] ?? moodText[mood]}</p>
+        </>}
       </div>
       <div className="pet-wrap no-drag">
-        <ThreeDPet mood={mood} portrait={dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} />
+        <ThreeDPet mood={mood} portrait={dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} />
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
@@ -87,6 +99,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </div>
         <label className="switch-row" title="旋转角色模式"><Rotate3D size={16} /><span>旋转模式</span><input type="checkbox" checked={rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
+        <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
         {mateEngine.installed && <button className="menu-command" onClick={toggleMateEngine} title={mateEngine.running ? '关闭 Mate-Engine 独立窗口' : '打开 Mate-Engine 独立窗口'}><Box size={16} /><span>Mate-Engine</span></button>}
       </div>
     </section>

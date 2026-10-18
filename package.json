@@ -22,6 +22,7 @@
     "test:e2e": "npm run build && node tests/electron.e2e.mjs",
     "test:chat-ui": "npm run build && node tests/chat-ui.e2e.mjs",
     "test:voice-ui": "npm run build && node tests/voice-ui.e2e.mjs",
+    "test:agent-shell": "npm run build && node tests/agent-shell.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -30,6 +31,7 @@
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.0.4",
     "@earendil-works/pi-ai": "1.0.4",
+    "@modelcontextprotocol/server": "2.3.1",
     "@pixi/unsafe-eval": "^6.5.10",
     "@pixiv/three-vrm": "^3.5.5",
     "@types/three": "^0.180.0",
@@ -43,9 +45,11 @@
     "three": "^0.180.0",
     "typebox": "1.3.27",
     "ws": "latest",
+    "zod": "4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",

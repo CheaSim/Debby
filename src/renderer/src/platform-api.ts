@@ -1,6 +1,7 @@
 import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } from '../../shared/types'
 import { emptyChatState } from '../../shared/chat'
 import { emptyVoiceState } from '../../shared/voice'
+import { emptyShellState } from '../../shared/shell'
 
 const names = [
   ['000001.SH', '上证指数', 3576.4, 3568.21],
@@ -35,6 +36,13 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  getShellState: async () => emptyShellState(),
+  enableShell: async () => { throw new Error('请在 Debby 桌面版使用 Agent 接入。') },
+  cancelShellTask: async () => {},
+  releaseShell: async () => {},
+  previewShell: async () => { throw new Error('请在 Debby 桌面版体验 Agent 演示。') },
+  copyShellConfig: async () => { throw new Error('请在 Debby 桌面版复制 MCP 配置。') },
+  onShellState: () => () => {},
   getVoiceState: async () => emptyVoiceState(),
   configureVoice: async () => { throw new Error('请在桌面版配置百炼 BYOK。') },
   startVoice: async () => { throw new Error('浏览器仅供预览，请在桌面版开启陪伴。') },

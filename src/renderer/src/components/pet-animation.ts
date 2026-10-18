@@ -13,7 +13,7 @@ const bones: VRMHumanBoneName[] = [
 function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
   const phase = time / duration
   const envelope = Math.sin(Math.PI * phase) ** 2
-  const looping = behavior === 'idle' || behavior === 'lifted'
+  const looping = !Number.isFinite(behaviorDuration[behavior])
   const breathe = Math.sin(looping ? phase * Math.PI * 4 : time * 1.8)
   const sway = Math.sin(looping ? phase * Math.PI * 2 : time * 0.8)
   const pose: Pose = {
@@ -22,7 +22,15 @@ function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
     leftUpperArm: [breathe * 0.015, 0, 1.18], rightUpperArm: [0, 0, -1.18],
     leftLowerArm: [0, -0.12, 0.08], rightLowerArm: [0, 0.12, -0.08]
   }
-  if (behavior === 'greet' || behavior === 'notify') {
+  if (behavior === 'working') {
+    pose.head = [0.08 + breathe * 0.015, sway * 0.025, -0.04]
+    pose.rightUpperArm = [-0.18, -0.12, -1.0]
+    pose.rightLowerArm = [0, 0.25, -0.9 + breathe * 0.025]
+  } else if (behavior === 'waiting') {
+    pose.head = [0, sway * 0.035, 0.13 + breathe * 0.012]
+    pose.leftUpperArm = [-0.18, -0.1, 1.0]
+    pose.leftLowerArm = [0, -0.2, 0.85]
+  } else if (behavior === 'greet' || behavior === 'notify') {
     pose.rightUpperArm = [0, -0.15 * envelope, -1.18 + 1.7 * envelope]
     pose.rightLowerArm = [0, 0.12, -0.08 - envelope * (1.45 + Math.sin(time * 13) * 0.12)]
     pose.rightHand = [0, 0, -Math.sin(time * 13) * envelope * 0.18]
@@ -72,7 +80,7 @@ export class PetAnimator {
   constructor(private vrm: VRM) {
     this.mixer = new THREE.AnimationMixer(vrm.scene)
     for (const behavior of Object.keys(behaviorDuration) as PetBehavior[]) {
-      const looping = behavior === 'idle' || behavior === 'lifted'
+      const looping = !Number.isFinite(behaviorDuration[behavior])
       const duration = looping ? 4 : behaviorDuration[behavior]
       const samples = Math.ceil(duration * 12)
       const times = Array.from({ length: samples + 1 }, (_, index) => index / samples * duration)

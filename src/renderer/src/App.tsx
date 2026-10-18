@@ -11,10 +11,14 @@ import { RecapDialog } from './components/RecapDialog'
 import { brand } from '../../shared/brand'
 import { useDebbyChat } from './hooks/use-debby-chat'
 import { useVoiceCompanion } from './hooks/use-voice-companion'
+import { useAgentShell } from './hooks/use-agent-shell'
+import { AgentConnectionDialog } from './components/AgentConnectionDialog'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
   const chat = useDebbyChat()
+  const agentShell = useAgentShell()
+  const [agentDialog, setAgentDialog] = useState(false)
   const [dialogue, setDialogue] = useState(false)
   useEffect(() => { if (!state.settings?.panelOpen) setDialogue(false) }, [state.settings?.panelOpen])
   const [scene, setScene] = useState<ShowcaseScene>()
@@ -50,7 +54,7 @@ export function App(): React.JSX.Element {
     if (!state.ready) return
     let previous = ''
     const update = (): void => {
-      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .pet-options:popover-open, .compact-showcase'))
+      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .pet-options:popover-open, .compact-showcase, .agent-speech, .agent-dialog'))
       const regions = targets.map((target) => {
         const rect = target.getBoundingClientRect()
         const x = Math.max(0, rect.left - 8)
@@ -97,11 +101,12 @@ export function App(): React.JSX.Element {
         showcasing={Boolean(scene)} onShowcase={() => { if (scene) exitShowcase(); else { chooseScene('bullish'); setPlaying(true) } }}
         onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
-        chat={chat} companion={companion} onDialogueChange={setDialogue}
+        chat={chat} companion={companion} onDialogueChange={setDialogue} onAgentConnect={() => setAgentDialog(true)}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
       <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={companion.mouth}
-        onTogglePanel={() => void state.togglePanel()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} />
+        onTogglePanel={() => void state.togglePanel()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)} />
+      {agentDialog && <AgentConnectionDialog state={agentShell} onClose={() => setAgentDialog(false)} />}
       {scene && !state.settings.panelOpen && <div className="compact-showcase no-drag"><ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /></div>}
       {demo?.alerting && <div className="toast-alert demo-alert no-drag"><strong>演示提醒 · 非实盘</strong><span>模拟上证指数突破目标价，不触发系统通知。</span></div>}
       {!demo && state.latestAlert && <div className="toast-alert no-drag"><strong>价格提醒</strong><span>{state.latestAlert.message}</span></div>}

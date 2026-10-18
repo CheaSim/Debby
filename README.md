@@ -32,6 +32,7 @@ Debby 是一个 Windows 优先的可爱风本地桌面伴侣，目标是成为�
 - 中文语音陪伴：主动录音、ASR → pi Agent → TTS、可选本轮摄像头照片、播放振幅驱动嘴型
 - 默认关闭模型思考；陪伴会话限时、可打断，离开页面或锁屏立即关闭设备
 - 框架无关的 `ConversationBackend`、独立语音工厂和 [外部 harness 接入示例](examples/harness/external-reply.ts)
+- 统一 MCP 桌宠控制：任务进度、流式台词、动作、取消信号与单 Agent 租约；[三步接入 Codex / Claude Code / 自定义 Harness](docs/mcp-integration.md)
 
 ## 开发
 

@@ -5,10 +5,12 @@ import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from '@pix
 import { RefreshCw } from 'lucide-react'
 import type { PetMood } from '../../../shared/types'
 import { platformApi } from '../platform-api'
-import { PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
+import { behaviorDuration, PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
+import type { AgentShellState } from '../../../shared/shell'
 import { PetAnimator } from './pet-animation'
 
 interface ThreeDPetProps {
+  agentShell: AgentShellState
   mouthLevel?: number
   mood: PetMood
   portrait: boolean
@@ -21,11 +23,12 @@ interface ThreeDPetProps {
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
-export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0 }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
   const mouthRef = useRef(mouthLevel)
+  const agentRef = useRef(agentShell)
   const portraitRef = useRef(portrait)
   const interactionRef = useRef({ rotating, draggable })
   const resetViewRef = useRef<(() => void) | null>(null)
@@ -34,6 +37,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
   const [progress, setProgress] = useState(0)
   const [attempt, setAttempt] = useState(0)
   moodRef.current = mood
+  agentRef.current = agentShell
   mouthRef.current = Number.isFinite(mouthLevel) ? Math.min(1, Math.max(0, mouthLevel)) : 0
   portraitRef.current = portrait
   interactionRef.current = { rotating, draggable }
@@ -266,6 +270,9 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     host.addEventListener('wheel', wheel, { passive: false })
     host.addEventListener('dblclick', reset)
 
+    let lastAction = 0
+    let actionUntil = 0
+    let agentBehavior: PetBehavior = 'idle'
     const animate = (now: number): void => {
       if (disposed) return
       frame = requestAnimationFrame(animate)
@@ -280,7 +287,16 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, smoothing)
       host.dataset.yaw = root.rotation.y.toFixed(3)
       lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
-      const currentBehavior = behavior.update(moodRef.current, elapsed)
+      const localBehavior = behavior.update(moodRef.current, elapsed)
+      const external = agentRef.current
+      if (!external.controller || external.task?.status === 'cancelled') { actionUntil = 0; agentBehavior = 'idle' }
+      else if (external.action && external.action.id !== lastAction && localBehavior === 'idle') {
+        lastAction = external.action.id
+        agentBehavior = external.action.name
+        actionUntil = elapsed + behaviorDuration[agentBehavior]
+      }
+      const taskPose = external.task?.status === 'working' ? 'working' : external.task?.status === 'waiting' ? 'waiting' : 'idle'
+      const currentBehavior = localBehavior !== 'idle' ? localBehavior : elapsed < actionUntil ? agentBehavior : taskPose
       host.dataset.behavior = currentBehavior
       if (currentBehavior !== lastBehavior) {
         lastBehavior = currentBehavior

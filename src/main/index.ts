@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, net, Notification, powerMonitor, safeStorage, screen, session, shell, Tray } from 'electron'
+import { app, BrowserWindow, clipboard, ipcMain, Menu, nativeImage, net, Notification, powerMonitor, safeStorage, screen, session, shell, Tray } from 'electron'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { alertTriggered, formatAlert, isAllowedMarketDataUrl, marketFreshnessMs } from '../shared/domain'
@@ -13,6 +13,8 @@ import { OpenRouterGateway } from './agent/openrouter'
 import { marketToolsPlugin, registerTools } from './agent/plugins'
 import { DebbyAgentRuntime } from './agent/runtime'
 import { CompanionRuntime, loadLocalEnvironment, QwenGateway, VoiceConfigStore } from './companion'
+import { ShellRuntime } from './bridge/runtime'
+import { ShellServer } from './bridge/server'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -23,6 +25,7 @@ let store: SettingsStore
 let market: MarketHub
 let chat: DebbyAgentRuntime
 let companion: CompanionRuntime
+let agentShell: ShellServer
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
@@ -247,6 +250,26 @@ function registerIpc(): void {
     })
   }
   handleChat('chat:state', () => chat.getState())
+  handleChat('shell:state', () => agentShell.runtime.snapshot())
+  handleChat('shell:enable', async (enabled) => {
+    if (typeof enabled !== 'boolean') throw new Error('Invalid enabled value')
+    await agentShell.enable(enabled)
+    return agentShell.runtime.snapshot()
+  })
+  handleChat('shell:cancel', () => agentShell.runtime.cancel())
+  handleChat('shell:release', () => agentShell.release())
+  handleChat('shell:preview', (advance) => {
+    if (advance !== undefined && typeof advance !== 'boolean') throw new Error('Invalid preview value')
+    agentShell.preview(Boolean(advance))
+  })
+  handleChat('shell:copy-config', (format = 'json') => {
+    if (app.isPackaged) throw new Error('当前 MCP 接入请使用源码运行版。')
+    if (format !== 'json' && format !== 'codex') throw new Error('Invalid MCP config format')
+    const args = [join(app.getAppPath(), 'scripts', 'debby-mcp.mjs'), '--connection', agentShell.connectionPath, '--name', format === 'codex' ? 'Codex' : 'MCP Agent']
+    clipboard.writeText(format === 'codex'
+      ? `[mcp_servers.debby]\ncommand = "node"\nargs = ${JSON.stringify(args)}\n`
+      : JSON.stringify({ mcpServers: { debby: { command: 'node', args } } }, null, 2))
+  })
   handleChat('chat:configure', (input) => chat.configure(input))
   handleChat('chat:models', () => chat.listModels())
   handleChat('chat:check', () => chat.checkConnection())
@@ -332,6 +355,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   // Only the development main process reads local secrets; neither Vite nor the package receives them.
   if (!app.isPackaged && !process.env.FINPET_E2E_USER_DATA) loadLocalEnvironment(join(app.getAppPath(), '.env'), process.env)
   store = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
+  agentShell = new ShellServer(new ShellRuntime((state) => mainWindow?.webContents.send('shell:changed', state)), join(app.getPath('userData'), 'agent-bridge.json'))
   const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
   if (proxy) await session.defaultSession.setProxy({ proxyRules: proxy, proxyBypassRules: '<local>' })
   const settings = store.get()
@@ -377,8 +401,8 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
       details.requestingUrl === contents.getURL() && companion.permitsMedia(media.mediaTypes ?? [], true)
     callback(allowed)
   })
-  powerMonitor.on('suspend', () => companion.stop())
-  powerMonitor.on('lock-screen', () => companion.stop())
+  powerMonitor.on('suspend', () => { companion.stop(); agentShell.release() })
+  powerMonitor.on('lock-screen', () => { companion.stop(); agentShell.release() })
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
@@ -409,6 +433,7 @@ app.on('before-quit', () => {
   market?.stop()
   chat?.cancel()
   companion?.stop()
+  agentShell?.dispose()
   if (pointerTimer) clearInterval(pointerTimer)
   if (moveTimer) clearTimeout(moveTimer)
 })
