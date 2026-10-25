@@ -18,7 +18,7 @@ function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
   const sway = Math.sin(looping ? phase * Math.PI * 2 : time * 0.8)
   const pose: Pose = {
     spine: [breathe * 0.012, 0, sway * 0.014], chest: [0, 0, -sway * 0.009],
-    head: [0, 0, -sway * 0.012],
+    head: [breathe * 0.008, 0, -sway * 0.025],
     leftUpperArm: [breathe * 0.015, 0, 1.18], rightUpperArm: [0, 0, -1.18],
     leftLowerArm: [0, -0.12, 0.08], rightLowerArm: [0, 0.12, -0.08]
   }
@@ -38,8 +38,10 @@ function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
   } else if (behavior === 'pat') {
     pose.head = [-0.12 * envelope, Math.sin(time * 3) * envelope * 0.04, -0.15 * envelope]
     pose.neck = [0, 0, -0.05 * envelope]
-    pose.leftUpperArm = [0, 0, 1.18 - 0.12 * envelope]
-    pose.rightUpperArm = [0, 0, -1.18 + 0.12 * envelope]
+    pose.leftUpperArm = [-0.12 * envelope, -0.1 * envelope, 1.18 - 0.2 * envelope]
+    pose.rightUpperArm = [-0.12 * envelope, 0.1 * envelope, -1.18 + 0.2 * envelope]
+    pose.leftLowerArm = [0, -0.12, 0.08 + 0.38 * envelope]
+    pose.rightLowerArm = [0, 0.12, -0.08 - 0.38 * envelope]
   } else if (behavior === 'lifted') {
     pose.spine = [0.03, 0, Math.sin(phase * Math.PI * 4) * 0.04]
     pose.leftUpperArm = [-0.1, 0, 0.68]

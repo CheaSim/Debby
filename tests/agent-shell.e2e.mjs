@@ -85,6 +85,8 @@ try {
   await call(agent, 'animate', { taskId: 'build-2', name: 'celebrate' })
   await page.locator('[title="关闭 Agent 接入"]').click()
   await page.waitForSelector('[data-behavior="celebrate"]', { timeout: 15_000 })
+  await page.waitForFunction(() => document.querySelector('.three-pet-host').dataset.expression === 'sparkle' && Number(document.querySelector('.three-pet-host').dataset.emote) > 0.95)
+  await page.screenshot({ path: resolve(root, 'work/debby-star-eyes.png') })
   await page.locator('[title="打开行情面板"]').click()
   await page.waitForSelector('.app-expanded')
   await page.screenshot({ path: resolve(root, 'work/agent-expanded.png') })

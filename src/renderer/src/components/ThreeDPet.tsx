@@ -8,6 +8,8 @@ import { platformApi } from '../platform-api'
 import { behaviorDuration, PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
 import type { AgentShellState } from '../../../shared/shell'
 import { PetAnimator } from './pet-animation'
+import { faceChannels, PetExpressionController, type FaceChannel } from '../../../shared/pet-expression'
+import { bindPetExpressions } from './pet-face-bindings'
 
 interface ThreeDPetProps {
   agentShell: AgentShellState
@@ -21,7 +23,6 @@ interface ThreeDPetProps {
 }
 
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
-const expressionNames = ['happy', 'sad', 'relaxed', 'aa'] as const
 
 export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -88,6 +89,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     let vrm: VRM | undefined
     let animator: PetAnimator | undefined
     const behavior = new PetBehaviorController()
+    const face = new PetExpressionController()
     let lastBehavior: PetBehavior = 'idle'
     let disposed = false
     let frame = 0
@@ -114,7 +116,10 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     const touchPoint = new THREE.Vector2()
     const gazeRotation = new THREE.Quaternion()
     const inverseGaze = new THREE.Quaternion()
-    const expressionValues = { happy: 0, sad: 0, relaxed: 0, aa: 0 }
+    const expressionValues = Object.fromEntries(faceChannels.map((name) => [name, 0])) as Record<FaceChannel, number>
+    let expressionBindings = new Map<FaceChannel, string>()
+    let faceTilt = 0
+    let facePitch = 0
     const pose = (name: VRMHumanBoneName, x: number, y: number, z: number): void => {
       vrm?.humanoid.getNormalizedBoneNode(name)?.rotation.set(x, y, z)
     }
@@ -126,8 +131,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       canvas.width = renderer.domElement.width
       canvas.height = renderer.domElement.height
       const aspect = width / height
-      const viewHeight = (portraitRef.current ? 1.0 : Math.max(1.9, modelWidth / aspect * 1.12)) / zoom
-      const centerY = portraitRef.current ? 1.2 : 0.84
+      const viewHeight = (portraitRef.current ? 0.92 : Math.max(1.9, modelWidth / aspect * 1.12)) / zoom
+      const centerY = portraitRef.current ? 1.24 : 0.84
       camera.position.y = centerY
       camera.lookAt(0, centerY, 0)
       camera.left = -viewHeight * aspect / 2
@@ -187,6 +192,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         loaded.lookAt.autoUpdate = true
       }
       host.dataset.avatar = 'zome'
+      expressionBindings = bindPetExpressions(loaded)
+      host.dataset.expressionChannels = [...expressionBindings.keys()].join(',')
       animator = new PetAnimator(loaded)
       behavior.interact('greet', elapsed)
       resize()
@@ -306,24 +313,24 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       // Remove the previous additive gaze before the mixer reapplies its cached pose.
       if (head) head.quaternion.multiply(inverseGaze.copy(gazeRotation).invert())
       animator?.update(currentBehavior, delta, reducedMotion)
-      gazeRotation.setFromEuler(new THREE.Euler(-pointerY * 0.04, pointerX * 0.07, 0))
+      const expression = face.update(moodRef.current, currentBehavior, elapsed, mouthRef.current, reducedMotion)
+      faceTilt = THREE.MathUtils.lerp(faceTilt, expression.headTilt, smoothing)
+      facePitch = THREE.MathUtils.lerp(facePitch, expression.headPitch, smoothing)
+      gazeRotation.setFromEuler(new THREE.Euler(-pointerY * 0.04 + facePitch, pointerX * 0.07, faceTilt))
       if (head) head.quaternion.multiply(gazeRotation)
       root.position.y = THREE.MathUtils.lerp(root.position.y, !reducedMotion && currentBehavior === 'lifted' ? 0.035 : 0, smoothing)
       if (elapsed > nextBlink) { blinkStarted = elapsed; nextBlink = elapsed + 3 + Math.random() * 3 }
       const blinkTime = (elapsed - blinkStarted) / 0.18
       const blink = blinkTime >= 0 && blinkTime <= 1 ? Math.sin(blinkTime * Math.PI) ** 2 : 0
-      const targets = {
-        happy: currentBehavior === 'pat' || currentBehavior === 'greet' ? 0.55 : moodRef.current === 'bullish' ? 0.65 : 0.06,
-        sad: currentBehavior === 'pat' ? 0 : moodRef.current === 'bearish' ? 0.55 : moodRef.current === 'offline' ? 0.18 : 0,
-        relaxed: currentBehavior === 'pat' ? 0.45 : moodRef.current === 'idle' ? 0.08 : moodRef.current === 'offline' ? 0.18 : 0,
-        aa: Math.max(mouthRef.current, currentBehavior === 'lifted' ? 0.16 : moodRef.current === 'alert' ? 0.2 : 0)
+      for (const channel of faceChannels) {
+        expressionValues[channel] = THREE.MathUtils.lerp(expressionValues[channel], expression.weights[channel], smoothing)
+        const name = expressionBindings.get(channel)
+        if (name) vrm.expressionManager?.setValue(name, expressionValues[channel])
       }
-      for (const name of expressionNames) {
-        expressionValues[name] = THREE.MathUtils.lerp(expressionValues[name], targets[name], smoothing)
-        vrm.expressionManager?.setValue(name, expressionValues[name])
-      }
+      host.dataset.expression = expression.name
+      host.dataset.emote = Math.max(expressionValues.heart, expressionValues.star, expressionValues.wink).toFixed(3)
       host.dataset.mouth = expressionValues.aa.toFixed(3)
-      vrm.expressionManager?.setValue('blink', blink)
+      vrm.expressionManager?.setValue('blink', blink * (1 - expressionValues.wink))
       vrm.update(delta)
       renderer.render(scene, camera)
       context.clearRect(0, 0, canvas.width, canvas.height)

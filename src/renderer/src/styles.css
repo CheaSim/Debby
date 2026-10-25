@@ -67,6 +67,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .three-pet-host { position: absolute; inset: 0; overflow: visible; cursor: grab; touch-action: none; }
 .three-pet-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; opacity: 0; transition: opacity .4s ease; }
 .three-pet-ready .three-pet-canvas { opacity: 1; }
+.three-pet-host[data-view="portrait"] .three-pet-canvas { mask-image: linear-gradient(to bottom, #000 0%, #000 93%, transparent 100%); }
 .three-pet-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #b45a70; font-size: 11px; }
 .avatar-spinner { width: 24px; height: 24px; border: 2px solid rgba(226,126,148,.18); border-top-color: #e27e94; border-radius: 50%; animation: live2d-spin 1.1s linear infinite; }
 .avatar-error { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: #9e4058; font-size: 12px; }

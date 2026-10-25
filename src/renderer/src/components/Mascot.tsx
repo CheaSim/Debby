@@ -47,7 +47,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   useEffect(() => { previousMood.current = mood }, [mood])
   const [behavior, setBehavior] = useState<PetBehavior>('idle')
   const direction = (indexQuote?.changePct ?? 0) >= 0 ? 'up' : 'down'
-  const [portrait, setPortrait] = useState(false)
+  const [portrait, setPortrait] = useState(true)
   const [viewReset, setViewReset] = useState(0)
   const [rotating, setRotating] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -97,7 +97,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         <header><strong>角色视图</strong><button className="ghost-icon" title="复位角色视角" onClick={() => setViewReset((value) => value + 1)}><RotateCcw size={15} /></button></header>
         <div className="avatar-views" role="group" aria-label="角色视图">
           <button className="icon-button" onClick={() => setPortrait(false)} title="全身视图" aria-pressed={!portrait}><PersonStanding size={17} /></button>
-          <button className="icon-button" onClick={() => setPortrait(true)} title="近景视图" aria-pressed={portrait}><ScanFace size={17} /></button>
+          <button className="icon-button" onClick={() => setPortrait(true)} title="上半身视图" aria-pressed={portrait}><ScanFace size={17} /></button>
         </div>
         <label className="switch-row" title="旋转角色模式"><Rotate3D size={16} /><span>旋转模式</span><input type="checkbox" checked={rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
