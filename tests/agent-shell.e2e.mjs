@@ -108,8 +108,10 @@ try {
   assert.equal((await page.evaluate(() => window.finpet.getShellState())).controller.preview, true)
   await page.getByRole('button', { name: '继续演示' }).click()
   await page.waitForFunction(async () => (await window.finpet.getShellState()).task?.status === 'completed')
-  await page.getByRole('checkbox', { name: '允许本机 Agent 接入' }).uncheck()
+  // State is acknowledged asynchronously over IPC; wait for it before asserting the DOM.
+  await page.getByRole('checkbox', { name: '允许本机 Agent 接入' }).click()
   await page.waitForFunction(async () => !(await window.finpet.getShellState()).enabled)
+  await page.waitForFunction(() => !document.querySelector('input[aria-label="允许本机 Agent 接入"]').checked)
   await assert.rejects(access(join(userData, 'agent-bridge.json')))
   assert.deepEqual(errors, [])
   console.log('Agent shell E2E passed: official MCP client (legacy + auto), 5 tools, ownership, streaming, cancellation, avatar pixels/poses, preview, compact/expanded/narrow UI, cleanup.')

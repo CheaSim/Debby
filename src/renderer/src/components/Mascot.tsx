@@ -51,6 +51,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   const [viewReset, setViewReset] = useState(0)
   const [rotating, setRotating] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [chatHint, setChatHint] = useState(() => { try { return localStorage.getItem('debby:chat-intro') !== 'seen' } catch { return true } })
   const optionsRef = useRef<HTMLDivElement>(null)
   const [mateEngine, setMateEngine] = useState<{ installed: boolean; running: boolean }>({ installed: false, running: false })
   useEffect(() => {
@@ -88,7 +89,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
         <span className="dock-name"><i className={mood} /><strong>{brand.name}</strong></span>
-        <button className="icon-button quick-chat-button" onClick={onQuickChat} title="快速对话" aria-label="快速对话" aria-pressed={Boolean(dialogue)}><MessageCircle size={16} /><span aria-hidden="true">对话</span></button>
+        <button className="icon-button quick-chat-button" onClick={() => { setChatHint(false); try { localStorage.setItem('debby:chat-intro', 'seen') } catch {} onQuickChat() }} title="快速对话" aria-label="快速对话" aria-pressed={Boolean(dialogue)}><MessageCircle size={16} /><span aria-hidden="true">对话</span>{chatHint && !panelOpen && !agentShell.controller && <span className="quick-chat-hint" aria-hidden="true">点这里，问我一句</span>}</button>
         <button className="icon-button" onClick={onTogglePanel} title={panelOpen ? '收起行情面板' : '打开行情面板'}><PanelLeft size={17} /></button>
         <button className="icon-button" popoverTarget="pet-options" title="桌宠选项" aria-expanded={optionsOpen}><Ellipsis size={18} /></button>
         {alerting && <span className="alert-pulse"><BellRing size={14} /></span>}
