@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { emptyShellState, type AgentAction, type AgentShellState } from '../../shared/shell'
+import type { DanceCommand, DanceState } from '../../shared/dance'
 
 const id = z.string().regex(/^[\w.-]{1,80}$/)
 const text = (max: number) => z.string().trim().min(1).max(max).refine((v) => !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v))
@@ -9,7 +10,8 @@ const base = { sessionId: z.string().uuid(), seq: z.number().int().positive(), t
 export const eventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('task'), title: text(100), status: z.enum(['working', 'waiting', 'completed', 'error']), progress: z.number().min(0).max(1).optional() }).strict(),
   z.object({ ...base, type: z.literal('say'), turnId: id, text: text(2000), append: z.boolean().default(false), done: z.boolean().default(true) }).strict(),
-  z.object({ ...base, type: z.literal('animate'), name: z.enum(['greet', 'celebrate', 'comfort', 'notify']) }).strict()
+  z.object({ ...base, type: z.literal('animate'), name: z.enum(['greet', 'celebrate', 'comfort', 'notify']) }).strict(),
+  z.object({ ...base, type: z.literal('dance'), action: z.enum(['play', 'pause', 'resume', 'stop']), id: id.optional(), speed: z.number().min(.5).max(1.5).optional(), loop: z.boolean().optional() }).strict()
 ])
 export class BridgeError extends Error {
   constructor(public status: number, message: string) { super(message) }
@@ -22,7 +24,9 @@ export class ShellRuntime {
   private taskIds = new Set<string>()
   private turnIds = new Set<string>()
   private actionId = 0
-  constructor(private changed: (state: AgentShellState) => void, private now = Date.now) {}
+  constructor(private changed: (state: AgentShellState) => void, private now = Date.now,
+    private motion?: { snapshot(): DanceState; command(command: DanceCommand, origin: 'agent'): DanceState; stopOwned(origin: 'agent'): void }) {}
+  dances(): DanceState | undefined { return this.motion?.snapshot() }
   snapshot(): AgentShellState {
     if (this.owner && this.owner.expires <= this.now()) this.release()
     return structuredClone(this.state)
@@ -50,12 +54,14 @@ export class ShellRuntime {
   heartbeat(sessionId: string): void { this.authorize(sessionId); this.owner!.expires = this.now() + 120_000 }
   release(sessionId?: string): void {
     if (sessionId) this.authorize(sessionId)
+    this.motion?.stopOwned('agent')
     this.owner = undefined
     this.taskIds.clear(); this.turnIds.clear()
     this.state = { revision: this.state.revision, enabled: this.state.enabled }
     this.publish()
   }
   cancel(): void {
+    this.motion?.stopOwned('agent')
     if (!this.state.task || ['completed', 'error', 'cancelled'].includes(this.state.task.status)) return
     this.state.task.status = 'cancelled'
     this.state.caption = undefined
@@ -95,6 +101,11 @@ export class ShellRuntime {
         this.turnIds.add(event.turnId)
         this.state.caption = { turnId: event.turnId, text: event.text, done: event.done }
       }
+    } else if (event.type === 'dance') {
+      if (!this.motion) throw new BridgeError(503, '当前版本不支持舞蹈。')
+      if (event.action === 'play' && !event.id) throw new BridgeError(400, '请选择动作库中的舞蹈 id。')
+      try { this.motion.command(event.action === 'play' ? { action: 'play', id: event.id!, speed: event.speed, loop: event.loop } : { action: event.action }, 'agent') }
+      catch (error) { throw new BridgeError(409, error instanceof Error ? error.message : '舞蹈播放失败。') }
     } else this.animate(event.name)
     this.owner!.seq = event.seq
     this.owner!.expires = this.now() + 120_000

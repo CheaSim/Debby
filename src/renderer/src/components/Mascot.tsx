@@ -1,4 +1,4 @@
-import { BellRing, Box, Cable, Ellipsis, GripVertical, MessageCircle, MousePointer2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
+import { BellRing, Box, Cable, Ellipsis, GripVertical, MessageCircle, MousePointer2, Music2, PanelLeft, PersonStanding, Rotate3D, RotateCcw, ScanFace } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { stableIndexMood, moodIndexSymbol } from '../../../shared/domain'
 import type { ProviderStatus, QuoteTick } from '../../../shared/types'
@@ -9,8 +9,14 @@ import { ThreeDPet } from './ThreeDPet'
 import { brand } from '../../../shared/brand'
 import type { AgentShellState } from '../../../shared/shell'
 import { agentStatusLabel } from './AgentConnectionDialog'
+import type { DanceAsset, DanceCommand, DanceState } from '../../../shared/dance'
+import { DanceSpeech } from './DanceSpeech'
 
 interface MascotProps {
+  dances: DanceState
+  danceAsset?: DanceAsset
+  onDanceStudio: () => void
+  onDanceControl: (command: DanceCommand) => Promise<void>
   indexQuote?: QuoteTick
   providerStatus: ProviderStatus
   alerting: boolean
@@ -40,7 +46,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -68,10 +74,11 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   const toggleMateEngine = (): void => {
     void (mateEngine.running ? platformApi.stopMateEngine() : platformApi.startMateEngine()).then(setMateEngine)
   }
+  const dancing = dances.playback && dances.library.find(e => e.id === dances.playback!.id)
   return (
     <section className={`mascot-stage mood-${mood}`} data-index-symbol={moodIndexSymbol} aria-label={`${brand.name}状态：${moodLabel[mood]}`} onContextMenu={(event) => { event.preventDefault(); optionsRef.current?.showPopover() }}>
-      <div className={'speech' + (agentShell.controller ? ' agent-speech' : '')} data-task-status={agentShell.task?.status}>
-        {agentShell.controller ? <>
+      <div className={'speech' + (dancing ? ' dance-speech' : agentShell.controller ? ' agent-speech' : '')} data-task-status={agentShell.task?.status}>
+        {dancing && dances.playback ? <DanceSpeech entry={dancing} playback={dances.playback} onControl={onDanceControl} /> : agentShell.controller ? <>
           <span className="speech-kicker"><span>{agentShell.controller.preview ? '本地演示' : agentShell.controller.name}</span><span className="agent-task-badge">{agentShell.task ? agentStatusLabel[agentShell.task.status] : '已连接'}</span></span>
           <strong>{agentShell.task?.title ?? '我准备好啦'}</strong>
           <p>{agentShell.caption?.text || '随时把进度告诉我吧。'}</p>
@@ -84,7 +91,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </>}
       </div>
       <div className="pet-wrap no-drag">
-        <ThreeDPet mood={mood} portrait={dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} />
+        <ThreeDPet mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
@@ -103,6 +110,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         <label className="switch-row" title="旋转角色模式"><Rotate3D size={16} /><span>旋转模式</span><input type="checkbox" checked={rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
         <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
+        <button className="menu-command" title="学跳舞" onClick={() => { optionsRef.current?.hidePopover(); onDanceStudio() }}><Music2 size={16} /><span>学跳舞</span></button>
         {mateEngine.installed && <button className="menu-command" onClick={toggleMateEngine} title={mateEngine.running ? '关闭 Mate-Engine 独立窗口' : '打开 Mate-Engine 独立窗口'}><Box size={16} /><span>Mate-Engine</span></button>}
       </div>
     </section>

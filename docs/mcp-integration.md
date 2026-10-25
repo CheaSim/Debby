@@ -50,9 +50,13 @@ codex mcp list
 | `debby_set_task` | `taskId, title, status, progress?` | working / waiting / completed / error；progress 为 0–1 |
 | `debby_say` | `taskId, turnId, text, append?, done?` | 纯文本台词，默认 done=true；不会自动调用语音供应商 |
 | `debby_animate` | `taskId, name` | greet / celebrate / comfort / notify |
+| `debby_list_dances` | `{}` | 读取已保存动作的 id、名称、时长、来源与播放状态；读取不抢占 |
+| `debby_dance` | `taskId, action, id?, speed?, loop?` | play / pause / resume / stop；play 需要库中 id，speed 0.5–1.5，loop 默认 false |
 | `debby_release` | `{}` | 清空自己的控制状态，让其他 Agent 接入 |
 
 先 set_task，再 say/animate。每个任务使用新 taskId，任务结束后不能重启旧 ID。流式台词首段 `done:false`，后续同 turnId 设置 `append:true`，最后 `done:true`。每段和拼接总长最多 2000 字符；气泡显示摘要，点击查看全文。
+
+舞蹈先 `debby_list_dances` 获取 id，再 `debby_dance` 播放。用户手动播放优先，其他 Agent 不能抢占；取消任务、断开或租约到期停止此 Agent 的舞蹈。保持连接直到动作完成，再 release。原视频不经 MCP；学习、导入与移除由用户在工作室操作。参见 [舞蹈扩展协议与调研](dance-integration.md)。
 
 同一时刻只有一个控制者；其他客户端得到冲突错误。用户在桌宠里「取消任务」后，该任务的迟到消息会被拒绝。**取消是协作信号，实际执行由外部 Agent 停止**：长任务至少每几秒调用 get_state，并把 cancelled 转发自己的 AbortController/子进程停止逻辑。MCP 服务不会替 Agent 杀进程或批准执行。
 

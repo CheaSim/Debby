@@ -50,6 +50,8 @@ export class DebbyClient {
   setTask(taskId, title, status, progress) { return this.event({ type: 'task', taskId, title, status, progress }) }
   say(taskId, turnId, text, { append = false, done = true } = {}) { return this.event({ type: 'say', taskId, turnId, text, append, done }) }
   animate(taskId, name) { return this.event({ type: 'animate', taskId, name }) }
+  async listDances() { return (await this.getState()).dances }
+  dance(taskId, command) { return this.event({ ...command, type: 'dance', taskId }) }
   release() {
     return this.serial(async () => {
       clearInterval(this.timer)

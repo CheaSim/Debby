@@ -10,8 +10,12 @@ import type { AgentShellState } from '../../../shared/shell'
 import { PetAnimator } from './pet-animation'
 import { faceChannels, PetExpressionController, type FaceChannel } from '../../../shared/pet-expression'
 import { bindPetExpressions } from './pet-face-bindings'
+import { DanceAnimator } from '../motion/dance-animator'
+import { dancePosition, type DanceAsset, type DancePlayback } from '../../../shared/dance'
 
 interface ThreeDPetProps {
+  danceAsset?: DanceAsset
+  dancePlayback?: DancePlayback
   agentShell: AgentShellState
   mouthLevel?: number
   mood: PetMood
@@ -24,12 +28,14 @@ interface ThreeDPetProps {
 
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 
-export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell, danceAsset, dancePlayback }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
   const mouthRef = useRef(mouthLevel)
   const agentRef = useRef(agentShell)
+  const danceRef = useRef({ asset: danceAsset, playback: dancePlayback })
+  danceRef.current = { asset: danceAsset, playback: dancePlayback }
   const portraitRef = useRef(portrait)
   const interactionRef = useRef({ rotating, draggable })
   const resetViewRef = useRef<(() => void) | null>(null)
@@ -88,6 +94,9 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     let vrm: VRM | undefined
     let animator: PetAnimator | undefined
+    let dancer: DanceAnimator | undefined
+    let danceId: string | undefined
+    let floor = 0
     const behavior = new PetBehaviorController()
     const face = new PetExpressionController()
     let lastBehavior: PetBehavior = 'idle'
@@ -195,6 +204,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       expressionBindings = bindPetExpressions(loaded)
       host.dataset.expressionChannels = [...expressionBindings.keys()].join(',')
       animator = new PetAnimator(loaded)
+      dancer = new DanceAnimator(loaded)
+      floor = Math.min(...['leftFoot', 'rightFoot'].map(name => loaded.humanoid.getNormalizedBoneNode(name as VRMHumanBoneName)?.getWorldPosition(new THREE.Vector3()).y ?? 0))
       behavior.interact('greet', elapsed)
       resize()
       setProgress(100)
@@ -215,7 +226,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         const difference = event.screenX - downX
         if (!moved && Math.hypot(difference, event.screenY - downY) > 5) {
           moved = true
-          if (!rotatingDrag) behavior.interact('lifted', elapsed)
+          if (!rotatingDrag && !danceRef.current.playback) behavior.interact('lifted', elapsed)
         }
         if (rotatingDrag) targetYaw = THREE.MathUtils.clamp(downYaw + difference * 0.009, -0.8, 0.8)
         else if (moved) void platformApi.moveWindowDrag(event.screenX, event.screenY)
@@ -250,7 +261,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId)
       if (!rotatingDrag) {
         if (moved) behavior.interact('land', elapsed)
-        else if (touchRegion) behavior.interact(touchRegion === 'head' ? 'pat' : 'greet', elapsed)
+        else if (touchRegion && !danceRef.current.playback) behavior.interact(touchRegion === 'head' ? 'pat' : 'greet', elapsed)
       }
     }
     const pointerCancel = (): void => {
@@ -312,11 +323,26 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       const head = vrm.humanoid.getNormalizedBoneNode('head')
       // Remove the previous additive gaze before the mixer reapplies its cached pose.
       if (head) head.quaternion.multiply(inverseGaze.copy(gazeRotation).invert())
-      animator?.update(currentBehavior, delta, reducedMotion)
+      if (!dancer?.active) animator?.update(currentBehavior, delta, reducedMotion)
+      const dance = danceRef.current
+      if (dance.asset?.entry.id !== danceId) {
+        danceId = dance.asset?.entry.id
+        dancer?.stop()
+        if (dance.asset) void dancer?.load(dance.asset).catch((error) => {
+          console.error('Dance playback failed', error)
+          void platformApi.controlDance({ action: 'stop' })
+        })
+      }
+      const danceTime = dance.playback && dance.asset ? dancePosition(dance.playback, dance.asset.entry.duration) : 0
+      const dancing = dancer?.update(danceTime, delta) ?? false
+      host.dataset.danceId = dancing ? danceId : ''
+      host.dataset.danceTime = danceTime.toFixed(3)
+      host.dataset.dancePose = dancing ? vrm.humanoid.getNormalizedBoneNode('leftUpperArm')?.quaternion.toArray().map(n => n.toFixed(4)).join(',') : ''
       const expression = face.update(moodRef.current, currentBehavior, elapsed, mouthRef.current, reducedMotion)
       faceTilt = THREE.MathUtils.lerp(faceTilt, expression.headTilt, smoothing)
       facePitch = THREE.MathUtils.lerp(facePitch, expression.headPitch, smoothing)
       gazeRotation.setFromEuler(new THREE.Euler(-pointerY * 0.04 + facePitch, pointerX * 0.07, faceTilt))
+      if (dancing) gazeRotation.identity()
       if (head) head.quaternion.multiply(gazeRotation)
       root.position.y = THREE.MathUtils.lerp(root.position.y, !reducedMotion && currentBehavior === 'lifted' ? 0.035 : 0, smoothing)
       if (elapsed > nextBlink) { blinkStarted = elapsed; nextBlink = elapsed + 3 + Math.random() * 3 }
@@ -332,6 +358,13 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.dataset.mouth = expressionValues.aa.toFixed(3)
       vrm.expressionManager?.setValue('blink', blink * (1 - expressionValues.wink))
       vrm.update(delta)
+      if (dancing && dance.asset?.motion) {
+        scene.updateMatrixWorld(true)
+        const footY = Math.min(...['leftFoot', 'rightFoot'].map(name => vrm!.humanoid.getNormalizedBoneNode(name as VRMHumanBoneName)?.getWorldPosition(new THREE.Vector3()).y ?? floor))
+        const correction = THREE.MathUtils.clamp(floor - (footY - root.position.y), -.25, .25)
+        root.position.y = THREE.MathUtils.lerp(root.position.y, correction, 1 - Math.exp(-delta * 18))
+      }
+      if (dancing) host.dataset.danceHand = vrm.humanoid.getNormalizedBoneNode('leftHand')?.getWorldPosition(new THREE.Vector3()).toArray().map(n => n.toFixed(3)).join(',') ?? ''
       renderer.render(scene, camera)
       context.clearRect(0, 0, canvas.width, canvas.height)
       context.drawImage(renderer.domElement, 0, 0)
@@ -353,6 +386,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.removeEventListener('wheel', wheel)
       host.removeEventListener('dblclick', reset)
       animator?.dispose()
+      dancer?.dispose()
       VRMUtils.deepDispose(scene)
       renderer.dispose()
       renderer.forceContextLoss()

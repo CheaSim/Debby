@@ -1,6 +1,7 @@
 import type { ChatApi } from './chat'
 import type { VoiceApi } from './voice'
 import type { AgentShellApi } from './shell'
+import type { DanceApi } from './dance'
 
 export type MarketStatus = 'open' | 'closed' | 'offline'
 export type PetMood = 'idle' | 'bullish' | 'bearish' | 'alert' | 'offline'
@@ -62,7 +63,7 @@ export interface AlertEvent {
   message: string
 }
 
-export interface FinPetApi extends ChatApi, VoiceApi, AgentShellApi {
+export interface FinPetApi extends ChatApi, VoiceApi, AgentShellApi, DanceApi {
   getSnapshot: () => Promise<AppSnapshot>
   updateSettings: (patch: Partial<AppSettings>) => Promise<AppSettings>
   togglePanel: () => Promise<boolean>

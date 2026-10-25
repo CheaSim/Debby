@@ -3,8 +3,16 @@ import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } fr
 import type { ChatState } from '../shared/chat'
 import type { ReadAloudStreamEvent, VoiceAudio, VoiceState } from '../shared/voice'
 import type { AgentShellState } from '../shared/shell'
+import type { DanceState } from '../shared/dance'
 
 const api: FinPetApi = {
+  getDanceState: () => ipcRenderer.invoke('dance:state'),
+  getDanceAsset: (id) => ipcRenderer.invoke('dance:asset', id),
+  saveDance: (input) => ipcRenderer.invoke('dance:save', input),
+  removeDance: (id) => ipcRenderer.invoke('dance:remove', id),
+  controlDance: (command) => ipcRenderer.invoke('dance:control', command),
+  onDanceState: (listener) => subscribe<DanceState>('dance:changed', listener),
+  onDanceCaptureStop: (listener) => subscribe('dance:stop-capture', listener),
   readAloud: (input) => ipcRenderer.invoke('voice:read-aloud', input),
   streamReadAloud: (input) => ipcRenderer.invoke('voice:stream-read-aloud', input),
   onReadAloudAudio: (listener) => subscribe<ReadAloudStreamEvent>('voice:read-aloud-audio', listener),

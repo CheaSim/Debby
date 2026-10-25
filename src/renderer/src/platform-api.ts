@@ -2,6 +2,7 @@ import type { AlertEvent, AppSettings, FinPetApi, ProviderStatus, QuoteTick } fr
 import { emptyChatState } from '../../shared/chat'
 import { emptyVoiceState } from '../../shared/voice'
 import { emptyShellState } from '../../shared/shell'
+import { emptyDanceState } from '../../shared/dance'
 
 const names = [
   ['000001.SH', '上证指数', 3576.4, 3568.21],
@@ -36,6 +37,13 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  getDanceState: async () => emptyDanceState(),
+  getDanceAsset: async () => { throw Error('请在 Debby 桌面版打开动作库。') },
+  saveDance: async () => { throw Error('请在 Debby 桌面版学习舞蹈。') },
+  removeDance: async () => {},
+  controlDance: async () => { throw Error('请在 Debby 桌面版播放舞蹈。') },
+  onDanceState: () => () => {},
+  onDanceCaptureStop: () => () => {},
   readAloud: async () => { throw new Error('请在 Debby 桌面版使用阿里云朗读。') },
   streamReadAloud: async () => { throw new Error('请在 Debby 桌面版使用阿里云朗读。') },
   onReadAloudAudio: () => () => {},

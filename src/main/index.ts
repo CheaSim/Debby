@@ -16,6 +16,8 @@ import { CompanionRuntime, loadLocalEnvironment, QwenGateway, VoiceConfigStore }
 import { ShellRuntime } from './bridge/runtime'
 import { ShellServer } from './bridge/server'
 import { ReadAloudRuntime } from './companion/read-aloud'
+import { DanceLibrary } from './dance-library'
+import { createDanceToolsPlugin } from './agent/dance-plugin'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -28,6 +30,7 @@ let chat: DebbyAgentRuntime
 let companion: CompanionRuntime
 let agentShell: ShellServer
 let readAloud: ReadAloudRuntime
+let dances: DanceLibrary
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
@@ -38,6 +41,10 @@ let windowDrag: { pointer: { x: number; y: number }; bounds: Electron.Rectangle 
 function stopReadAloud(): void {
   readAloud?.cancel()
   if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('voice:read-aloud-stop')
+}
+function stopDancing(): void {
+  dances?.command({ action: 'stop' })
+  if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('dance:stop-capture')
 }
 
 if (process.env.FINPET_E2E_USER_DATA) app.setPath('userData', process.env.FINPET_E2E_USER_DATA)
@@ -88,9 +95,9 @@ function createWindow(): BrowserWindow {
   window.setIgnoreMouseEvents(ignoringMouse)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   window.webContents.on('will-navigate', (event) => event.preventDefault())
-  window.webContents.on('render-process-gone', () => { companion?.stop(); stopReadAloud() })
-  window.on('hide', () => { companion?.stop(); stopReadAloud() })
-  window.on('minimize', () => { companion?.stop(); stopReadAloud() })
+  window.webContents.on('render-process-gone', () => { companion?.stop(); stopReadAloud(); stopDancing() })
+  window.on('hide', () => { companion?.stop(); stopReadAloud(); stopDancing() })
+  window.on('minimize', () => { companion?.stop(); stopReadAloud(); stopDancing() })
   window.once('ready-to-show', () => {
     if (!process.argv.includes('--hidden')) window.showInactive()
   })
@@ -257,6 +264,11 @@ function registerIpc(): void {
     })
   }
   handleChat('chat:state', () => chat.getState())
+  handleChat('dance:state', () => dances.snapshot())
+  handleChat('dance:asset', (id) => dances.asset(id))
+  handleChat('dance:save', (input) => dances.save(input))
+  handleChat('dance:remove', (id) => dances.remove(id))
+  handleChat('dance:control', (command) => dances.command(command))
   handleChat('shell:state', () => agentShell.runtime.snapshot())
   handleChat('shell:enable', async (enabled) => {
     if (typeof enabled !== 'boolean') throw new Error('Invalid enabled value')
@@ -372,7 +384,8 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   // Only the development main process reads local secrets; neither Vite nor the package receives them.
   if (!app.isPackaged && !process.env.FINPET_E2E_USER_DATA) loadLocalEnvironment(join(app.getAppPath(), '.env'), process.env)
   store = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
-  agentShell = new ShellServer(new ShellRuntime((state) => mainWindow?.webContents.send('shell:changed', state)), join(app.getPath('userData'), 'agent-bridge.json'))
+  dances = new DanceLibrary(join(app.getPath('userData'), 'dances'), (state) => mainWindow?.webContents.send('dance:changed', state))
+  agentShell = new ShellServer(new ShellRuntime((state) => mainWindow?.webContents.send('shell:changed', state), Date.now, dances), join(app.getPath('userData'), 'agent-bridge.json'))
   const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY
   if (proxy) await session.defaultSession.setProxy({ proxyRules: proxy, proxyBypassRules: '<local>' })
   const settings = store.get()
@@ -388,7 +401,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
       encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
     }),
     transport: new OpenRouterGateway(request),
-    tools: registerTools([marketToolsPlugin], {
+    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances)], {
       getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
       requestQuotes: (url, init) => net.fetch(url, init)
     }),
@@ -401,7 +414,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   readAloud = new ReadAloudRuntime(voiceCredentials.publicConfig, (config) => new QwenGateway(request, config, voiceCredentials.getKey))
   companion = new CompanionRuntime({ credentials: voiceCredentials,
     createProvider: (config) => new QwenGateway(request, config, voiceCredentials.getKey),
-    tools: registerTools([marketToolsPlugin], {
+    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances)], {
       getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
       requestQuotes: (url, init) => net.fetch(url, init)
     }),
@@ -419,8 +432,8 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
       details.requestingUrl === contents.getURL() && companion.permitsMedia(media.mediaTypes ?? [], true)
     callback(allowed)
   })
-  powerMonitor.on('suspend', () => { companion.stop(); stopReadAloud(); agentShell.release() })
-  powerMonitor.on('lock-screen', () => { companion.stop(); stopReadAloud(); agentShell.release() })
+  powerMonitor.on('suspend', () => { companion.stop(); stopReadAloud(); agentShell.release(); stopDancing() })
+  powerMonitor.on('lock-screen', () => { companion.stop(); stopReadAloud(); agentShell.release(); stopDancing() })
   applyLaunchAtLogin(store.get().launchAtLogin)
   registerIpc()
   mainWindow = createWindow()
@@ -453,6 +466,7 @@ app.on('before-quit', () => {
   companion?.stop()
   readAloud?.cancel()
   agentShell?.dispose()
+  dances?.dispose()
   if (pointerTimer) clearInterval(pointerTimer)
   if (moveTimer) clearTimeout(moveTimer)
 })

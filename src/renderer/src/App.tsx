@@ -14,13 +14,23 @@ import { useVoiceCompanion } from './hooks/use-voice-companion'
 import { useAgentShell } from './hooks/use-agent-shell'
 import { AgentConnectionDialog } from './components/AgentConnectionDialog'
 import { useReadAloud } from './hooks/use-read-aloud'
+import { useDancePlayer } from './hooks/use-dance-player'
+import { DanceStudio } from './components/DanceStudio'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
   const chat = useDebbyChat()
   const agentShell = useAgentShell()
+  const dancer = useDancePlayer()
+  const [danceStudio, setDanceStudio] = useState(false)
   const [agentDialog, setAgentDialog] = useState(false)
   const [panelTab, setPanelTab] = useState<DashboardTab>('market')
+  const activeDance = dancer.state.playback?.id
+  useEffect(() => {
+    if (!activeDance) return
+    setDanceStudio(false); setPanelTab('market')
+    if (state.settings?.panelOpen) void state.togglePanel()
+  }, [activeDance])
   const dialogue = panelTab === 'chat'
   const [chatFocusRequest, setChatFocusRequest] = useState(0)
   const openingChat = useRef(false)
@@ -30,6 +40,7 @@ export function App(): React.JSX.Element {
     openingChat.current = true
     try {
       setScene(undefined); setPlaying(false); setRecap(null)
+      if (dancer.state.playback) await dancer.control({ action: 'stop' })
       if (!state.settings?.panelOpen) await state.togglePanel()
       setPanelTab('chat')
       setChatFocusRequest((value) => value + 1)
@@ -69,7 +80,7 @@ export function App(): React.JSX.Element {
     if (!state.ready) return
     let previous = ''
     const update = (): void => {
-      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .pet-options:popover-open, .compact-showcase, .agent-speech, .agent-dialog'))
+      const targets = Array.from(document.querySelectorAll<HTMLElement>('.pet-tools, .avatar-error button, .pet-options:popover-open, .compact-showcase, .agent-speech, .agent-dialog, .dance-speech, .dance-dialog'))
       const regions = targets.map((target) => {
         const rect = target.getBoundingClientRect()
         const x = Math.max(0, rect.left - 8)
@@ -79,7 +90,8 @@ export function App(): React.JSX.Element {
       const serialized = JSON.stringify(regions)
       if (serialized !== previous) {
         previous = serialized
-        void platformApi.setInteractiveRegions(regions)
+        // Native panel resizing and DOM resizing cross IPC independently. Retry a stale size.
+        void platformApi.setInteractiveRegions(regions).catch(() => { previous = ''; window.requestAnimationFrame(update) })
       }
     }
     const observer = new ResizeObserver(update)
@@ -120,7 +132,16 @@ export function App(): React.JSX.Element {
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
       <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={Math.max(companion.mouth, reader.mouth)}
-        onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)} />
+        onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)}
+        dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={() => {
+          exitShowcase(); setPanelTab('market'); setDanceStudio(true)
+          void platformApi.stopVoice(); void platformApi.cancelReadAloud()
+          if (!state.settings?.panelOpen) void state.togglePanel()
+        }} />
+      {danceStudio && <DanceStudio state={dancer.state} onClose={() => setDanceStudio(false)} onPlay={async (id, speed, loop) => {
+        await dancer.control({ action: 'play', id, speed, loop }); setDanceStudio(false)
+      }} />}
+      {dancer.error && !danceStudio && <div className="dance-error-toast no-drag" role="alert">{dancer.error}</div>}
       {agentDialog && <AgentConnectionDialog state={agentShell} onClose={() => setAgentDialog(false)} />}
       {scene && !state.settings.panelOpen && <div className="compact-showcase no-drag"><ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /></div>}
       {demo?.alerting && <div className="toast-alert demo-alert no-drag"><strong>演示提醒 · 非实盘</strong><span>模拟上证指数突破目标价，不触发系统通知。</span></div>}

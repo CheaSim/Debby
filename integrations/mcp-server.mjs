@@ -27,5 +27,9 @@ export function createDebbyMcp(client) {
     ...task, name: z.enum(['greet', 'celebrate', 'comfort', 'notify'])
   }).strict(), ({ taskId, name }) => client.animate(taskId, name))
   register('debby_release', 'Release this Agent connection after finishing. Other Agents can then take control.', z.object({}).strict(), async () => { await client.release(); return { released: true } })
+  register('debby_list_dances', 'Read saved dance IDs, names, duration and playback state. Does not claim control or access source videos.', z.object({}).strict(), () => client.listDances(), true)
+  register('debby_dance', 'Play, pause, resume or stop a saved dance. Start a task first. Use debby_list_dances for IDs. User playback takes priority. Releasing or cancelling the task stops Agent-owned playback.', z.object({
+    ...task, action: z.enum(['play', 'pause', 'resume', 'stop']), id: id.optional(), speed: z.number().min(.5).max(1.5).optional(), loop: z.boolean().optional()
+  }).strict(), ({ taskId, ...command }) => client.dance(taskId, command))
   return server
 }
