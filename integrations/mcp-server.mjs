@@ -24,7 +24,7 @@ export function createDebbyMcp(client) {
     ...task, turnId: id, text: z.string().trim().min(1).max(2000), append: z.boolean().default(false), done: z.boolean().default(true)
   }).strict(), ({ taskId, turnId, text, append, done }) => client.say(taskId, turnId, text, { append, done }))
   register('debby_animate', 'Play a curated 3D avatar gesture. User interactions take priority. Does not change the financial mood.', z.object({
-    ...task, name: z.enum(['greet', 'celebrate', 'comfort', 'notify'])
+    ...task, name: z.enum(['greet', 'celebrate', 'comfort', 'notify', 'nod', 'shake', 'heart', 'shy', 'think', 'stretch', 'bow', 'clap'])
   }).strict(), ({ taskId, name }) => client.animate(taskId, name))
   register('debby_release', 'Release this Agent connection after finishing. Other Agents can then take control.', z.object({}).strict(), async () => { await client.release(); return { released: true } })
   register('debby_list_dances', 'Read saved dance IDs, names, duration and playback state. Does not claim control or access source videos.', z.object({}).strict(), () => client.listDances(), true)

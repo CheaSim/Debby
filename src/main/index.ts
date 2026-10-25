@@ -18,6 +18,7 @@ import { ShellServer } from './bridge/server'
 import { ReadAloudRuntime } from './companion/read-aloud'
 import { DanceLibrary } from './dance-library'
 import { createDanceToolsPlugin } from './agent/dance-plugin'
+import { createCompanionToolsPlugin } from './agent/companion-plugin'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -395,13 +396,18 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   }
   market = new MarketHub(marketOptions(settings))
   const request: typeof fetch = (url, init) => net.fetch(url instanceof URL ? url.toString() : url, { ...init, redirect: 'error' })
+  let avatarCueId = 0
+  const companionTools = createCompanionToolsPlugin({ performAction: name => {
+    if (agentShell.runtime.snapshot().controller || dances.snapshot().playback) throw Error('角色正由外部 Agent 或舞蹈控制，请先结束当前动作。')
+    mainWindow?.webContents.send('avatar:action', { id: ++avatarCueId, name })
+  } })
   chat = new DebbyAgentRuntime({
     credentials: new ChatKeyStore(join(app.getPath('userData'), 'agent-credentials.json'), {
       available: () => safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text'),
       encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
     }),
     transport: new OpenRouterGateway(request),
-    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances)], {
+    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances), companionTools], {
       getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
       requestQuotes: (url, init) => net.fetch(url, init)
     }),
@@ -414,7 +420,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
   readAloud = new ReadAloudRuntime(voiceCredentials.publicConfig, (config) => new QwenGateway(request, config, voiceCredentials.getKey))
   companion = new CompanionRuntime({ credentials: voiceCredentials,
     createProvider: (config) => new QwenGateway(request, config, voiceCredentials.getKey),
-    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances)], {
+    tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances), companionTools], {
       getMarket: () => ({ quotes: market.getQuotes(), provider: market.getProvider(), providerName: market.getProviderName(), providerStatus: market.getStatus() }),
       requestQuotes: (url, init) => net.fetch(url, init)
     }),

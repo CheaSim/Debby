@@ -22,7 +22,46 @@ function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
     leftUpperArm: [breathe * 0.015, 0, 1.18], rightUpperArm: [0, 0, -1.18],
     leftLowerArm: [0, -0.12, 0.08], rightLowerArm: [0, 0.12, -0.08]
   }
-  if (behavior === 'working') {
+  if (behavior === 'nod') {
+    pose.head = [Math.sin(time * 7) * envelope * 0.16, 0, 0.035 * envelope]
+  } else if (behavior === 'shake') {
+    pose.head = [0, Math.sin(time * 7) * envelope * 0.22, 0]
+  } else if (behavior === 'heart') {
+    pose.leftUpperArm = [-0.35 * envelope, -0.18 * envelope, 1.18 - 0.4 * envelope]
+    pose.rightUpperArm = [-0.35 * envelope, 0.18 * envelope, -1.18 + 0.4 * envelope]
+    pose.leftLowerArm = [0, -0.25 * envelope, 0.08 + 1.35 * envelope]
+    pose.rightLowerArm = [0, 0.25 * envelope, -0.08 - 1.35 * envelope]
+    pose.head = [-0.04 * envelope, 0, -0.1 * envelope]
+  } else if (behavior === 'shy') {
+    pose.head = [0.12 * envelope, 0.1 * envelope, 0.12 * envelope]
+    pose.rightUpperArm = [-0.26 * envelope, 0, -1.18 + 0.35 * envelope]
+    pose.rightLowerArm = [0, 0.15 * envelope, -0.08 - 1.65 * envelope]
+  } else if (behavior === 'think') {
+    pose.head = [0.08 * envelope, -0.1 * envelope, -0.09 * envelope]
+    pose.rightUpperArm = [-0.3 * envelope, -0.15 * envelope, -1.18 + 0.2 * envelope]
+    pose.rightLowerArm = [0, 0.35 * envelope, -0.08 - 1.8 * envelope]
+  } else if (behavior === 'stretch') {
+    pose.leftUpperArm = [0, 0, 1.18 - 2.65 * envelope]
+    pose.rightUpperArm = [0, 0, -1.18 + 2.65 * envelope]
+    pose.spine = [-0.08 * envelope, 0, 0]
+    pose.head = [-0.1 * envelope, 0, 0]
+  } else if (behavior === 'bow') {
+    pose.spine = [0.28 * envelope, 0, 0]
+    pose.chest = [0.12 * envelope, 0, 0]
+    pose.head = [0.12 * envelope, 0, 0]
+  } else if (behavior === 'clap') {
+    const clap = Math.sin(time * 13) * 0.09 * envelope
+    pose.leftUpperArm = [-0.45 * envelope, -0.3 * envelope, 1.18 - 0.28 * envelope]
+    pose.rightUpperArm = [-0.45 * envelope, 0.3 * envelope, -1.18 + 0.28 * envelope]
+    pose.leftLowerArm = [0, -0.6 * envelope, 0.08 + 1.25 * envelope + clap]
+    pose.rightLowerArm = [0, 0.6 * envelope, -0.08 - 1.25 * envelope - clap]
+  } else if (behavior === 'listening') {
+    pose.head = [0.025 + breathe * 0.015, sway * 0.025, -0.1]
+  } else if (behavior === 'talking') {
+    pose.head = [breathe * 0.025, sway * 0.035, sway * 0.04]
+    pose.rightUpperArm = [-0.12, 0, -0.95]
+    pose.rightLowerArm = [0, 0.2, -0.48 + breathe * 0.12]
+  } else if (behavior === 'working') {
     pose.head = [0.08 + breathe * 0.015, sway * 0.025, -0.04]
     pose.rightUpperArm = [-0.18, -0.12, -1.0]
     pose.rightLowerArm = [0, 0.25, -0.9 + breathe * 0.025]
@@ -108,7 +147,7 @@ export class PetAnimator {
       this.previous?.stop()
       const next = this.actions.get(target)!
       next.reset().setEffectiveWeight(1).play()
-      if (this.active) this.active.crossFadeTo(next, 0.24, false)
+      if (this.active && this.active !== next) this.active.crossFadeTo(next, 0.24, false)
       this.previous = this.active
       this.active = next
       this.behavior = target
@@ -120,4 +159,6 @@ export class PetAnimator {
     this.mixer.stopAllAction()
     this.mixer.uncacheRoot(this.vrm.scene)
   }
+
+  restart(): void { this.behavior = undefined }
 }

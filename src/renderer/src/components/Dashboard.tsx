@@ -1,4 +1,4 @@
-import { Bell, Cable, ChartNoAxesCombined, Clapperboard, Ellipsis, KeyRound, MessageCircle, NotebookPen, PiggyBank, Settings2, X } from 'lucide-react'
+import { Bell, Cable, ChartNoAxesCombined, Clapperboard, Ellipsis, KeyRound, MessageCircle, NotebookPen, PiggyBank, Settings2, Sparkles, X } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import type { AppSettings, MarketProvider, ProviderStatus, QuoteTick } from '../../../shared/types'
 import { AlertPanel } from './AlertPanel'
@@ -10,10 +10,16 @@ import { ChatConfigDialog } from './ChatConfigDialog'
 import type { DebbyChatController } from '../hooks/use-debby-chat'
 import type { VoiceCompanionController } from '../hooks/use-voice-companion'
 import type { ReadAloudController } from '../hooks/use-read-aloud'
+import { DiscoveryPanel } from './DiscoveryPanel'
+import type { AvatarAction } from '../../../shared/avatar'
 
-export type DashboardTab = 'market' | 'alerts' | 'chat'
+export type DashboardTab = 'market' | 'alerts' | 'chat' | 'discover'
 
 interface DashboardProps {
+  onAvatarAction: (name: AvatarAction) => void
+  onPrompt: (text: string) => void
+  onDanceStudio: () => void
+  chatDraft?: { id: number; text: string }
   settings: AppSettings
   quotes: QuoteTick[]
   provider: MarketProvider
@@ -39,7 +45,7 @@ interface DashboardProps {
   onAgentConnect: () => void
 }
 
-export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, reader, tab, onTabChange: chooseTab, chatFocusRequest, onAgentConnect }: DashboardProps): React.JSX.Element {
+export function Dashboard({ settings, quotes, provider, providerName, providerStatus, onSelect, onSettings, onAddAlert, onRemoveAlert, onProviderUrl, showcasing, onShowcase, onRecap, recapAvailable, showcaseControls, onClose, chat, companion, reader, tab, onTabChange: chooseTab, chatFocusRequest, onAgentConnect, onAvatarAction, onPrompt, onDanceStudio, chatDraft }: DashboardProps): React.JSX.Element {
   const selected = quotes.find((quote) => quote.symbol === settings.selectedSymbol) ?? quotes[0]
   const positive = (selected?.changePct ?? 0) >= 0
   const [chatConfig, setChatConfig] = useState(false)
@@ -54,14 +60,15 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
           <div className="panel-tabs" role="tablist" aria-label="面板视图" onKeyDown={(event) => {
             if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
             event.preventDefault()
-            const tabs = ['market', 'alerts', 'chat'] as const
-            const next = tabs[(tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : 2)) % 3]
+            const tabs = ['market', 'alerts', 'chat', 'discover'] as const
+            const next = tabs[(tabs.indexOf(tab) + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
             chooseTab(next)
             document.getElementById(`tab-${next}`)?.focus()
           }}>
             <button id="tab-market" role="tab" tabIndex={tab === 'market' ? 0 : -1} aria-selected={tab === 'market'} aria-controls="market-view" onClick={() => chooseTab('market')}><ChartNoAxesCombined size={14} />行情</button>
             <button id="tab-alerts" role="tab" tabIndex={tab === 'alerts' ? 0 : -1} aria-selected={tab === 'alerts'} aria-controls="alerts-view" onClick={() => chooseTab('alerts')}><Bell size={14} />提醒{settings.alerts.length > 0 && <small>{settings.alerts.length}</small>}</button>
             <button id="tab-chat" role="tab" tabIndex={tab === 'chat' ? 0 : -1} aria-selected={tab === 'chat'} aria-controls="chat-view" onClick={() => chooseTab('chat')}><MessageCircle size={14} />对话</button>
+            <button id="tab-discover" role="tab" tabIndex={tab === 'discover' ? 0 : -1} aria-selected={tab === 'discover'} aria-controls="discover-view" onClick={() => chooseTab('discover')}><Sparkles size={14} />发现</button>
           </div>
           <div className="header-actions">
             <button className="ghost-icon" title="行情复盘" onClick={onRecap} disabled={!recapAvailable}><NotebookPen size={17} /></button>
@@ -76,7 +83,8 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
         <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
         <button className="menu-command" title="BYOK 配置" disabled={chat.state.busy} onClick={() => { optionsRef.current?.hidePopover(); setChatConfig(true) }}><KeyRound size={16} /><span>BYOK</span></button>
       </div>
-      <aside className="watchlist-pane">
+      {tab === 'discover' && <aside className="discovery-stage-background" aria-hidden="true" />}
+      <aside className="watchlist-pane" hidden={tab === 'discover'}>
         <div className="watchlist-heading"><span>自选</span><small>{quotes.length}</small></div>
         <nav className="watchlist" aria-label="自选行情">
           {quotes.length === 0 && <p className="empty-state">{providerStatus === 'offline' ? '暂无可用行情' : '正在获取行情'}</p>}
@@ -88,7 +96,7 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
         <div className="connection-status"><i className={providerStatus} /><div><strong>{providerName}</strong><span>{providerStatus === 'live' ? '已连接' : providerStatus === 'connecting' ? '正在连接' : providerStatus === 'offline' ? '离线 · 最近行情' : '演示数据 · 非实盘'}</span></div></div>
       </aside>
 
-      <section className={'market-workspace' + (tab === 'chat' ? ' dialogue-workspace' : '')}>
+      <section className={'market-workspace' + (tab === 'chat' ? ' dialogue-workspace' : tab === 'discover' ? ' discovery-workspace' : '')}>
         {showcaseControls && tab !== 'chat' && <div className="workspace-tools">{showcaseControls}</div>}
         <div id="market-view" role="tabpanel" aria-labelledby="tab-market" hidden={tab !== 'market'} className="market-view">
           <header className="workspace-header"><div><h1>{selected?.name ?? '行情'}</h1><span className="symbol-label">{selected?.symbol}</span></div><span className={'market-status' + (provider === 'demo' ? ' is-demo' : '')}>{provider === 'demo' ? '演示数据' : !selected ? '等待行情' : selected.status === 'offline' ? '离线缓存' : selected.status === 'closed' ? '已休市' : '交易中'}</span></header>
@@ -101,8 +109,9 @@ export function Dashboard({ settings, quotes, provider, providerName, providerSt
           {showcasing ? <section className="showcase-status"><header className="section-heading"><div><h2>演示提醒</h2><p>非实盘</p></div><Clapperboard size={20} /></header><dl><div><dt>数据</dt><dd>合成行情</dd></div><div><dt>提醒</dt><dd>仅窗口内展示</dd></div><div><dt>系统通知</dt><dd>不由演示触发</dd></div><div><dt>实盘配置</dt><dd>保持不变</dd></div></dl></section> : <AlertPanel settings={settings} quotes={quotes} onAdd={onAddAlert} onRemove={onRemoveAlert} />}
         </div>
         <div id="chat-view" role="tabpanel" aria-labelledby="tab-chat" hidden={tab !== 'chat'}>
-          <DialoguePanel chat={chat} companion={companion} reader={reader} showcasing={showcasing} onConfigure={() => setChatConfig(true)} active={tab === 'chat'} focusRequest={chatFocusRequest} />
+          <DialoguePanel chat={chat} companion={companion} reader={reader} showcasing={showcasing} onConfigure={() => setChatConfig(true)} active={tab === 'chat'} focusRequest={chatFocusRequest} draft={chatDraft} />
         </div>
+        <div id="discover-view" role="tabpanel" aria-labelledby="tab-discover" hidden={tab !== 'discover'}><DiscoveryPanel active={tab === 'discover'} onAction={onAvatarAction} onPrompt={onPrompt} onDance={onDanceStudio} /></div>
       </section>
 
       {preferences && <PreferencesDialog settings={settings} onSettings={onSettings} onProviderUrl={onProviderUrl} showcasing={showcasing} onClose={() => setPreferences(false)} />}

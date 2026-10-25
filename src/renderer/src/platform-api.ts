@@ -37,6 +37,7 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  onAvatarAction: () => () => {},
   getDanceState: async () => emptyDanceState(),
   getDanceAsset: async () => { throw Error('请在 Debby 桌面版打开动作库。') },
   saveDance: async () => { throw Error('请在 Debby 桌面版学习舞蹈。') },

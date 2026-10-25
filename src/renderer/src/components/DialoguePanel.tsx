@@ -8,8 +8,10 @@ import { CameraPreview } from './CameraPreview'
 import { VoiceConfigDialog, VoiceConsentDialog } from './VoiceConfigDialog'
 import { dialoguePrompts } from '../../../shared/dialogue-guidance'
 
-export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing, active, focusRequest }: { chat: DebbyChatController; companion: VoiceCompanionController; reader: ReadAloudController; onConfigure: () => void; showcasing: boolean; active: boolean; focusRequest: number }): React.JSX.Element {
+export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing, active, focusRequest, draft }: { chat: DebbyChatController; companion: VoiceCompanionController; reader: ReadAloudController; onConfigure: () => void; showcasing: boolean; active: boolean; focusRequest: number; draft?: { id: number; text: string } }): React.JSX.Element {
   const [input, setInput] = useState('')
+  const acceptedDraft = useRef(0)
+  useEffect(() => { if (active && draft && draft.id !== acceptedDraft.current) { acceptedDraft.current = draft.id; setInput(draft.text) } }, [active, draft])
   const [history, setHistory] = useState(false)
   const [mode, setMode] = useState<'text' | 'voice'>('text')
   const chosen = useRef(false)

@@ -4,6 +4,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { ZodError, z } from 'zod'
 import { ShellRuntime, BridgeError } from './runtime'
+import { avatarActions } from '../../shared/avatar'
 
 const sessionId = z.object({ sessionId: z.string().uuid() }).strict()
 function readBody(req: IncomingMessage): Promise<string> {
@@ -52,7 +53,7 @@ export class ShellServer {
         if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) throw new BridgeError(401, 'Unauthorized')
         if (Date.now() - windowStart > 1000) { budget = 0; windowStart = Date.now() }
         if (++budget > 60) throw new BridgeError(429, 'Too many requests')
-        if (req.method === 'GET' && req.url === '/v1/state') { reply(200, { ...this.runtime.snapshot(), dances: this.runtime.dances(), capabilities: ['task', 'text', 'animation', 'cancellation', ...(this.runtime.dances() ? ['dance'] : [])] }); return }
+        if (req.method === 'GET' && req.url === '/v1/state') { reply(200, { ...this.runtime.snapshot(), actions: avatarActions, dances: this.runtime.dances(), capabilities: ['task', 'text', 'animation', 'cancellation', ...(this.runtime.dances() ? ['dance'] : [])] }); return }
         if (req.method !== 'POST' || !['/v1/sessions', '/v1/events', '/v1/heartbeat', '/v1/release'].includes(req.url ?? '')) throw new BridgeError(404, 'Unknown route')
         if (req.headers['content-type'] !== 'application/json') throw new BridgeError(415, 'Expected application/json')
         const body = await readBody(req)

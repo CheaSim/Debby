@@ -4,8 +4,10 @@ import type { ChatState } from '../shared/chat'
 import type { ReadAloudStreamEvent, VoiceAudio, VoiceState } from '../shared/voice'
 import type { AgentShellState } from '../shared/shell'
 import type { DanceState } from '../shared/dance'
+import type { AvatarCue } from '../shared/avatar'
 
 const api: FinPetApi = {
+  onAvatarAction: listener => subscribe<AvatarCue>('avatar:action', listener),
   getDanceState: () => ipcRenderer.invoke('dance:state'),
   getDanceAsset: (id) => ipcRenderer.invoke('dance:asset', id),
   saveDance: (input) => ipcRenderer.invoke('dance:save', input),

@@ -16,6 +16,8 @@ import { AgentConnectionDialog } from './components/AgentConnectionDialog'
 import { useReadAloud } from './hooks/use-read-aloud'
 import { useDancePlayer } from './hooks/use-dance-player'
 import { DanceStudio } from './components/DanceStudio'
+import type { AvatarAction, AvatarCue } from '../../shared/avatar'
+import './discovery.css'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
@@ -25,6 +27,28 @@ export function App(): React.JSX.Element {
   const [danceStudio, setDanceStudio] = useState(false)
   const [agentDialog, setAgentDialog] = useState(false)
   const [panelTab, setPanelTab] = useState<DashboardTab>('market')
+  const [avatarCue, setAvatarCue] = useState<AvatarCue>()
+  const cueId = useRef(0)
+  const [chatDraft, setChatDraft] = useState<{ id: number; text: string }>()
+  const draftId = useRef(0)
+  useEffect(() => platformApi.onAvatarAction(cue => setAvatarCue({ id: ++cueId.current, name: cue.name })), [])
+  const performAction = (name: AvatarAction): void => {
+    void (async () => {
+      if (dancer.state.playback) await dancer.control({ action: 'stop' })
+      setAvatarCue({ id: ++cueId.current, name })
+    })().catch(() => { /* The dance controller presents its error in the existing toast. */ })
+  }
+  const openDiscovery = async (): Promise<void> => {
+    setScene(undefined); setPlaying(false); setRecap(null)
+    if (dancer.state.playback) await dancer.control({ action: 'stop' })
+    if (!state.settings?.panelOpen) await state.togglePanel()
+    setPanelTab('discover')
+  }
+  const openDanceStudio = (): void => {
+    exitShowcase(); setPanelTab('market'); setDanceStudio(true)
+    void platformApi.stopVoice(); void platformApi.cancelReadAloud()
+    if (!state.settings?.panelOpen) void state.togglePanel()
+  }
   const activeDance = dancer.state.playback?.id
   useEffect(() => {
     if (!activeDance) return
@@ -117,7 +141,7 @@ export function App(): React.JSX.Element {
   const indexQuote = quotes.find((quote) => quote.symbol === moodIndexSymbol)
   const currentRecap = buildMarketRecap(quotes, provider, providerName, providerStatus, now)
   return (
-    <div className={(state.settings.panelOpen ? 'app app-expanded' : 'app app-compact') + (state.settings.panelOpen && dialogue ? ' app-dialogue' : '')}>
+    <div className={(state.settings.panelOpen ? 'app app-expanded' : 'app app-compact') + (state.settings.panelOpen && dialogue ? ' app-dialogue' : '') + (state.settings.panelOpen && panelTab === 'discover' ? ' app-discover' : '')}>
       {state.settings.panelOpen && <Dashboard
         settings={scene ? { ...state.settings, selectedSymbol: showcaseSymbol } : state.settings} quotes={quotes} provider={provider} providerName={providerName} providerStatus={providerStatus}
         onSelect={(symbol) => { if (scene) setShowcaseSymbol(symbol); else void state.selectSymbol(symbol) }}
@@ -129,15 +153,13 @@ export function App(): React.JSX.Element {
         onClose={() => void state.togglePanel()}
         onRecap={() => setRecap(currentRecap)} recapAvailable={Boolean(currentRecap)}
         chat={chat} companion={companion} reader={reader} tab={panelTab} onTabChange={setPanelTab} chatFocusRequest={chatFocusRequest} onAgentConnect={() => setAgentDialog(true)}
+        chatDraft={chatDraft} onAvatarAction={performAction} onDanceStudio={openDanceStudio} onPrompt={text => { setChatDraft({ id: ++draftId.current, text }); void openQuickChat() }}
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
       <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={Math.max(companion.mouth, reader.mouth)}
+        cue={avatarCue} activity={companion.recording !== 'off' ? 'listening' : companion.speaking || reader.speaking ? 'talking' : chat.state.busy || companion.busy ? 'working' : undefined} onDiscover={() => void openDiscovery().catch(() => {})}
         onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)}
-        dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={() => {
-          exitShowcase(); setPanelTab('market'); setDanceStudio(true)
-          void platformApi.stopVoice(); void platformApi.cancelReadAloud()
-          if (!state.settings?.panelOpen) void state.togglePanel()
-        }} />
+        dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={openDanceStudio} />
       {danceStudio && <DanceStudio state={dancer.state} onClose={() => setDanceStudio(false)} onPlay={async (id, speed, loop) => {
         await dancer.control({ action: 'play', id, speed, loop }); setDanceStudio(false)
       }} />}

@@ -1,6 +1,7 @@
 /** Public avatar contract. No provider credentials or device permissions cross this boundary. */
 export type AgentTaskStatus = 'working' | 'waiting' | 'completed' | 'error' | 'cancelled'
-export type AgentAction = 'greet' | 'celebrate' | 'comfort' | 'notify'
+export type { AvatarAction as AgentAction } from './avatar'
+import type { AvatarAction as AgentAction } from './avatar'
 export interface AgentShellState {
   revision: number
   enabled: boolean

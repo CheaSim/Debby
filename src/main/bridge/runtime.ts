@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { emptyShellState, type AgentAction, type AgentShellState } from '../../shared/shell'
 import type { DanceCommand, DanceState } from '../../shared/dance'
+import { avatarActions } from '../../shared/avatar'
 
 const id = z.string().regex(/^[\w.-]{1,80}$/)
 const text = (max: number) => z.string().trim().min(1).max(max).refine((v) => !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v))
@@ -10,7 +11,7 @@ const base = { sessionId: z.string().uuid(), seq: z.number().int().positive(), t
 export const eventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('task'), title: text(100), status: z.enum(['working', 'waiting', 'completed', 'error']), progress: z.number().min(0).max(1).optional() }).strict(),
   z.object({ ...base, type: z.literal('say'), turnId: id, text: text(2000), append: z.boolean().default(false), done: z.boolean().default(true) }).strict(),
-  z.object({ ...base, type: z.literal('animate'), name: z.enum(['greet', 'celebrate', 'comfort', 'notify']) }).strict(),
+  z.object({ ...base, type: z.literal('animate'), name: z.enum(avatarActions) }).strict(),
   z.object({ ...base, type: z.literal('dance'), action: z.enum(['play', 'pause', 'resume', 'stop']), id: id.optional(), speed: z.number().min(.5).max(1.5).optional(), loop: z.boolean().optional() }).strict()
 ])
 export class BridgeError extends Error {

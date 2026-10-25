@@ -19,6 +19,7 @@ const hold = (time: number, duration: number): number => {
 
 /** Presentation only. Index mood, user gestures and agent task ownership stay independent. */
 export class PetExpressionController {
+  restart(): void { this.behavior = 'idle' }
   private behavior: PetBehavior = 'idle'
   private started = 0
   private nextAccent = 8
@@ -40,7 +41,18 @@ export class PetExpressionController {
 
     const time = now - this.started
     const reaction = pulse(time, behavior === 'pat' ? 2.1 : 2.4)
-    if (behavior === 'pat') {
+    if (behavior === 'heart') {
+      face.name = 'affectionate'; weights.heart = hold(time, 3.2); weights.smile = 0.32; weights.blush = 0.22 * weights.heart; weights.sad = 0
+    } else if (behavior === 'shy') {
+      face.name = 'affectionate'; weights.blush = reaction * 0.4; weights.smile = 0.2; weights.relaxed = 0.2
+      face.headTilt = reaction * 0.04
+    } else if (behavior === 'clap') {
+      face.name = 'sparkle'; weights.star = hold(time, 3); weights.smile = 0.3; weights.sad = 0
+    } else if (behavior === 'think' || behavior === 'listening') {
+      face.name = 'curious'; weights.smile = 0.1; face.headTilt = 0.025
+    } else if (behavior === 'stretch' || behavior === 'bow' || behavior === 'nod') {
+      face.name = 'smile'; weights.happy = 0.22; weights.smile = 0.28
+    } else if (behavior === 'pat') {
       face.name = 'affectionate'; weights.happy = 0.05; weights.sad = 0; weights.sorrow2 = 0
       weights.heart = hold(time, 2.1); weights.smile = 0.28; weights.bright = 0.25; weights.blush = weights.heart * 0.18
       face.headTilt = -reaction * 0.06; face.headPitch = -reaction * 0.025

@@ -28,6 +28,7 @@
     "test:tts-stream-live": "npm run build && node scripts/verify-tts-stream-live.mjs",
     "test:agent-shell": "npm run build && node tests/agent-shell.e2e.mjs",
     "test:dance-ui": "npm run build && node tests/dance-ui.e2e.mjs",
+    "test:discovery-ui": "npm run build && node tests/discovery-ui.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

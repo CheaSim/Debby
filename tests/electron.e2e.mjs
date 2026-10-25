@@ -310,6 +310,8 @@ try {
   await page.getByRole('tab', { name: '对话', exact: true }).click()
   await page.locator('#tab-chat').focus()
   await page.keyboard.press('ArrowRight')
+  assert.equal(await page.locator('#tab-discover').getAttribute('aria-selected'), 'true')
+  await page.keyboard.press('ArrowRight')
   assert.equal(await page.locator('#tab-market').getAttribute('aria-selected'), 'true')
 
   await electronApp.evaluate(({ BrowserWindow }) => {
