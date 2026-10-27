@@ -1,6 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, writeFileSync, renameSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { danceExpressionStyles } from '../shared/avatar-performance'
 import { createWelcomeDance, danceLimits, dancePosition, emptyDanceState, validateMotion, type DanceAsset, type DanceCommand, type DanceEntry, type DanceState } from '../shared/dance'
 
 /** Local motion store and playback clock. The renderer, MCP and future agents use this contract. */
@@ -67,7 +68,8 @@ export class DanceLibrary {
       if (!this.state.library.some(e => e.id === input.id)) throw Error('找不到这支舞蹈。')
       const speed = input.speed ?? 1
       if (!Number.isFinite(speed) || speed < .5 || speed > 1.5 || (input.loop !== undefined && typeof input.loop !== 'boolean')) throw Error('播放速度须在 0.5–1.5 倍之间。')
-      this.state.playback = { id: input.id, status: 'playing', offset: 0, startedAt: this.now(), speed, loop: input.loop ?? false, origin }
+      if (input.expressionStyle !== undefined && !danceExpressionStyles.includes(input.expressionStyle)) throw Error('未知的舞台表情风格。')
+      this.state.playback = { id: input.id, status: 'playing', offset: 0, startedAt: this.now(), speed, loop: input.loop ?? false, origin, expressionStyle: input.expressionStyle ?? 'auto' }
     } else if (input.action === 'stop') this.state.playback = undefined
     else if (previous) {
       const duration = this.state.library.find(e => e.id === previous.id)!.duration

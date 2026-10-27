@@ -1,3 +1,4 @@
+import { validateDanceExpressions, type DanceExpressionCue, type DanceExpressionStyle } from './avatar-performance'
 /** Portable normalized VRM humanoid rotations. No renderer or pose-estimator dependency. */
 export const danceBones = ['hips', 'spine', 'chest', 'neck', 'head', 'leftUpperArm', 'leftLowerArm', 'leftHand', 'rightUpperArm', 'rightLowerArm', 'rightHand', 'leftUpperLeg', 'leftLowerLeg', 'leftFoot', 'rightUpperLeg', 'rightLowerLeg', 'rightFoot'] as const
 export type DanceBone = typeof danceBones[number]
@@ -9,13 +10,14 @@ export interface DanceMotion {
   source: 'video' | 'import' | 'builtin'
   engine: string
   tracks: MotionTrack[]
+  expressions?: DanceExpressionCue[]
   quality?: { coverage: number; frames: number; missing: number; longestGap: number }
 }
 export interface DanceEntry { id: string; name: string; duration: number; format: 'motion' | 'vrma'; source: DanceMotion['source']; createdAt: number; quality?: DanceMotion['quality'] }
 export interface DanceAsset { entry: DanceEntry; motion?: DanceMotion; bytes?: Uint8Array }
-export interface DancePlayback { id: string; status: 'playing' | 'paused'; offset: number; startedAt: number; speed: number; loop: boolean; origin: 'user' | 'agent' | 'assistant' }
+export interface DancePlayback { id: string; status: 'playing' | 'paused'; offset: number; startedAt: number; speed: number; loop: boolean; origin: 'user' | 'agent' | 'assistant'; expressionStyle?: DanceExpressionStyle }
 export interface DanceState { revision: number; library: DanceEntry[]; playback?: DancePlayback }
-export type DanceCommand = { action: 'play'; id: string; speed?: number; loop?: boolean } | { action: 'pause' | 'resume' | 'stop' } | { action: 'seek'; time: number }
+export type DanceCommand = { action: 'play'; id: string; speed?: number; loop?: boolean; expressionStyle?: DanceExpressionStyle } | { action: 'pause' | 'resume' | 'stop' } | { action: 'seek'; time: number }
 export interface DanceApi {
   getDanceState(): Promise<DanceState>
   getDanceAsset(id: string): Promise<DanceAsset>
@@ -50,7 +52,7 @@ export function validateMotion(value: unknown): DanceMotion {
   if (motion.quality && (!Number.isFinite(motion.quality.coverage) || motion.quality.coverage < 0 || motion.quality.coverage > 1 || !Number.isInteger(motion.quality.frames) || motion.quality.frames < 1 || motion.quality.frames > danceLimits.frames || !Number.isInteger(motion.quality.missing) || motion.quality.missing < 0 || motion.quality.missing > motion.quality.frames || !Number.isFinite(motion.quality.longestGap) || motion.quality.longestGap < 0 || motion.quality.longestGap > motion.duration + .1)) throw Error('动作识别质量信息不正确。')
   // Whitelist public fields; do not persist source video, paths, or estimator internals.
   return { version: 1, name: motion.name.trim(), duration: motion.duration, source: motion.source, engine: motion.engine,
-    tracks: motion.tracks.map(t => ({ bone: t.bone, times: [...t.times], rotations: [...t.rotations] })), quality: motion.quality ? { coverage: motion.quality.coverage, frames: motion.quality.frames, missing: motion.quality.missing, longestGap: motion.quality.longestGap } : undefined }
+    tracks: motion.tracks.map(t => ({ bone: t.bone, times: [...t.times], rotations: [...t.rotations] })), expressions: validateDanceExpressions(motion.expressions, motion.duration), quality: motion.quality ? { coverage: motion.quality.coverage, frames: motion.quality.frames, missing: motion.quality.missing, longestGap: motion.quality.longestGap } : undefined }
 }
 
 /** Small original step-touch routine for a first preview; never presented as learned footage. */

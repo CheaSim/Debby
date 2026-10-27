@@ -1,4 +1,4 @@
-import { voiceLimits, type SpeechChunk } from '../../../shared/voice'
+import { voiceLimits, type SpeechChunk, type SpeechMark } from '../../../shared/voice'
 
 /** Schedules PCM blocks on one audio clock; encoded-file providers use the same ordered queue. */
 export class BrowserSpeechPlayback {
@@ -12,7 +12,8 @@ export class BrowserSpeechPlayback {
   private duration = 0
   private pending = 0
   private frame = 0
-  constructor(private onLevel: (level: number) => void, private onPlaying: (playing: boolean) => void) {
+  private marks: { at: number; mark: SpeechMark }[] = []
+  constructor(private onLevel: (level: number) => void, private onPlaying: (playing: boolean) => void, private onMark?: (mark: SpeechMark | undefined) => void) {
     this.analyser.fftSize = 256; this.analyser.connect(this.context.destination)
     void this.context.resume().catch(() => {})
   }
@@ -38,8 +39,9 @@ export class BrowserSpeechPlayback {
       const source = this.context.createBufferSource(); source.buffer = buffer; source.connect(this.analyser)
       const at = Math.max(this.context.currentTime + 0.045, this.nextTime)
       this.nextTime = at + buffer.duration
+      if (chunk.mark) this.marks.push({ at, mark: { ...chunk.mark } })
       this.sources.set(source, buffer)
-      source.onended = () => { this.sources.delete(source); source.disconnect(); this.clearBuffer(buffer); this.idle() }
+      source.onended = () => { this.dispatchMarks(); this.sources.delete(source); source.disconnect(); this.clearBuffer(buffer); this.idle() }
       source.start(at); this.onPlaying(true); this.animate()
     }).finally(() => {
       bytes.fill(0); this.chunks.delete(bytes)
@@ -49,6 +51,7 @@ export class BrowserSpeechPlayback {
     return task
   }
   private clearBuffer(buffer: AudioBuffer): void { for (let i = 0; i < buffer.numberOfChannels; i++) buffer.getChannelData(i).fill(0) }
+  private dispatchMarks(): void { while (this.marks[0]?.at <= this.context.currentTime) this.onMark?.(this.marks.shift()!.mark) }
   private idle(): void {
     if (this.sources.size || this.pending) return
     cancelAnimationFrame(this.frame); this.frame = 0; this.onLevel(0); this.onPlaying(false)
@@ -60,6 +63,7 @@ export class BrowserSpeechPlayback {
     const update = (now: number) => {
       this.frame = requestAnimationFrame(update)
       if (now - last < 40) return
+      this.dispatchMarks()
       last = now; this.analyser.getFloatTimeDomainData(samples)
       this.onLevel(Math.min(1, Math.sqrt(samples.reduce((sum, value) => sum + value * value, 0) / samples.length) * 5))
     }
@@ -70,6 +74,7 @@ export class BrowserSpeechPlayback {
     for (const [source, buffer] of this.sources) { source.onended = null; try { source.stop() } catch {} source.disconnect(); this.clearBuffer(buffer) }
     this.sources.clear(); this.chunks.forEach((bytes) => bytes.fill(0)); this.chunks.clear()
     this.chain = Promise.resolve(); this.nextTime = 0; this.duration = 0; this.pending = 0
+    this.marks = []; this.onMark?.(undefined)
     this.onLevel(0); this.onPlaying(false)
   }
   close(): void { this.stop(); this.analyser.disconnect(); void this.context.close().catch(() => {}) }

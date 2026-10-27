@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { emptyShellState, type AgentAction, type AgentShellState } from '../../shared/shell'
 import type { DanceCommand, DanceState } from '../../shared/dance'
 import { avatarActions } from '../../shared/avatar'
+import { avatarEmotions, danceExpressionStyles } from '../../shared/avatar-performance'
 
 const id = z.string().regex(/^[\w.-]{1,80}$/)
 const text = (max: number) => z.string().trim().min(1).max(max).refine((v) => !/[\x00-\x08\x0b\x0c\x0e-\x1f]/.test(v))
@@ -10,9 +11,9 @@ export const sessionSchema = z.object({ name: text(48) }).strict()
 const base = { sessionId: z.string().uuid(), seq: z.number().int().positive(), taskId: id }
 export const eventSchema = z.discriminatedUnion('type', [
   z.object({ ...base, type: z.literal('task'), title: text(100), status: z.enum(['working', 'waiting', 'completed', 'error']), progress: z.number().min(0).max(1).optional() }).strict(),
-  z.object({ ...base, type: z.literal('say'), turnId: id, text: text(2000), append: z.boolean().default(false), done: z.boolean().default(true) }).strict(),
+  z.object({ ...base, type: z.literal('say'), turnId: id, text: text(2000), append: z.boolean().default(false), done: z.boolean().default(true), expression: z.object({ emotion: z.enum(avatarEmotions), intensity: z.number().min(0).max(1).default(.75) }).strict().optional() }).strict(),
   z.object({ ...base, type: z.literal('animate'), name: z.enum(avatarActions) }).strict(),
-  z.object({ ...base, type: z.literal('dance'), action: z.enum(['play', 'pause', 'resume', 'stop']), id: id.optional(), speed: z.number().min(.5).max(1.5).optional(), loop: z.boolean().optional() }).strict()
+  z.object({ ...base, type: z.literal('dance'), action: z.enum(['play', 'pause', 'resume', 'stop']), id: id.optional(), speed: z.number().min(.5).max(1.5).optional(), loop: z.boolean().optional(), expressionStyle: z.enum(danceExpressionStyles).optional() }).strict()
 ])
 export class BridgeError extends Error {
   constructor(public status: number, message: string) { super(message) }
@@ -95,17 +96,21 @@ export class ShellRuntime {
         if (current.done) throw new BridgeError(409, '这段台词已结束。')
         const next = event.append ? current.text + event.text : event.text
         if (next.length > 2000) throw new BridgeError(400, '台词最多 2000 字符。')
-        this.state.caption = { turnId: event.turnId, text: next, done: event.done }
+        this.state.caption = { ...current, text: next, done: event.done }
       } else {
         if (this.turnIds.has(event.turnId)) throw new BridgeError(409, '台词已过期。')
         if (this.turnIds.size >= 256) throw new BridgeError(409, '台词过多，请创建新任务。')
         this.turnIds.add(event.turnId)
         this.state.caption = { turnId: event.turnId, text: event.text, done: event.done }
       }
+      if (event.expression) {
+        this.state.caption!.expression = event.expression
+        this.state.caption!.expressionExpiresAt = this.now() + 6500
+      }
     } else if (event.type === 'dance') {
       if (!this.motion) throw new BridgeError(503, '当前版本不支持舞蹈。')
       if (event.action === 'play' && !event.id) throw new BridgeError(400, '请选择动作库中的舞蹈 id。')
-      try { this.motion.command(event.action === 'play' ? { action: 'play', id: event.id!, speed: event.speed, loop: event.loop } : { action: event.action }, 'agent') }
+      try { this.motion.command(event.action === 'play' ? { action: 'play', id: event.id!, speed: event.speed, loop: event.loop, expressionStyle: event.expressionStyle } : { action: event.action }, 'agent') }
       catch (error) { throw new BridgeError(409, error instanceof Error ? error.message : '舞蹈播放失败。') }
     } else this.animate(event.name)
     this.owner!.seq = event.seq

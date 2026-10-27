@@ -1,4 +1,4 @@
-import type { SpeechPacket } from '../../shared/voice'
+import type { SpeechMark, SpeechPacket } from '../../shared/voice'
 import { voiceLimits } from '../../shared/voice'
 import { SpeechTextBuffer } from '../../shared/speech-text'
 import { voiceError, type SpeechProvider } from './qwen'
@@ -12,7 +12,8 @@ export class StreamingSpeech {
   private phrases = 0
   private bytes = 0
   private sequence = 0
-  private pending: string[] = []
+  private pending: { text: string; mark: SpeechMark }[] = []
+  private lineOffset = 0
   private task?: Promise<void>
   private ended = false
   private terminal = false
@@ -27,15 +28,22 @@ export class StreamingSpeech {
     if (this.signal.aborted || this.terminal || this.ended) return
     try {
       if (lineId !== this.lineId) {
-        if (this.lineId) this.pending.push(...this.buffer.update(this.text, true))
-        this.buffer = new SpeechTextBuffer(); this.text = ''; this.lineId = lineId
+        if (this.lineId) this.enqueuePhrases(this.buffer.update(this.text, true), this.text, this.lineId)
+        this.buffer = new SpeechTextBuffer(); this.text = ''; this.lineId = lineId; this.lineOffset = 0
       }
       this.characters += Math.max(0, text.length - this.text.length)
       if (this.characters > 1200) throw new Error('回复文本过长，朗读已停止，文字回复会保留。')
-      this.pending.push(...this.buffer.update(text, done)); this.text = text
+      this.enqueuePhrases(this.buffer.update(text, done), text, lineId); this.text = text
       this.ended = done
       if (!this.task) this.kick()
     } catch (error) { this.error(error) }
+  }
+  private enqueuePhrases(phrases: string[], text: string, lineId: string): void {
+    for (const phrase of phrases) {
+      const offset = Math.max(this.lineOffset, text.indexOf(phrase, this.lineOffset))
+      this.pending.push({ text: phrase, mark: { lineId, textOffset: offset, textLength: phrase.length } })
+      this.lineOffset = offset + phrase.length
+    }
   }
   private error(error: unknown): void {
     if (this.terminal || this.signal.aborted) return
@@ -56,20 +64,21 @@ export class StreamingSpeech {
   private async drain(): Promise<void> {
     while (this.pending.length && !this.signal.aborted && !this.terminal) {
       if (++this.phrases > 32) throw new Error('语音分句超过大小限制。')
-      const text = this.pending.shift()!
+      const { text, mark } = this.pending.shift()!
+      let first = true
       const stream = this.provider.synthesizeStream?.(text, this.signal)
       if (stream) {
         for await (const chunk of stream) {
           if (this.signal.aborted || this.terminal) { chunk.bytes.fill(0); return }
           this.bytes += chunk.bytes.length
           if (this.bytes > voiceLimits.responseBytes) { chunk.bytes.fill(0); throw new Error('音频流超过大小限制。') }
-          this.emit({ ...chunk, sequence: this.sequence++, done: false })
+          this.emit({ ...chunk, mark: first ? mark : undefined, sequence: this.sequence++, done: false }); first = false
         }
       } else {
         const bytes = await this.provider.synthesize(text, this.signal)
         this.bytes += bytes.length
         if (this.bytes > voiceLimits.responseBytes) { bytes.fill(0); throw new Error('音频流超过大小限制。') }
-        this.emit({ bytes, format: 'encoded', sequence: this.sequence++, done: false })
+        this.emit({ bytes, format: 'encoded', mark, sequence: this.sequence++, done: false })
       }
     }
     if (this.ended && !this.terminal && !this.signal.aborted) {

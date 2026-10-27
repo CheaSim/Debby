@@ -344,6 +344,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .app-dialogue .speech { display: none; }
 .app-dialogue .pet-wrap { top: 12px; bottom: 264px; left: 30px; right: 30px; pointer-events: auto; }
 .app-dialogue .pet-tools { position: fixed; left: 104px; pointer-events: auto; }
+.app-dialogue .pet-options { pointer-events: auto; }
 .app-dialogue .watchlist-pane { padding-bottom: 58px; }
 .dialogue-workspace { position: relative; padding: 0; }
 #chat-view, .dialogue-panel { height: 100%; min-height: 0; }
@@ -469,6 +470,10 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .dance-dialog progress { width: 100%; height: 4px; accent-color: #c98fa6; margin-top: 12px; }
 .dance-success { color: #688f7d; font-size: 11px; line-height: 1.8; padding: 10px 12px; background: #edf7f0; border-radius: 9px; }
 .dance-library { margin-top: 22px; }
+.dance-performance-choice { margin-top: 18px; padding: 12px 14px; border: 1px solid #efe6eb; background: #faf6f8; border-radius: 13px; }
+.dance-performance-choice label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12px; color: #78656e; }
+.dance-performance-choice select { min-width: 0; max-width: 60%; }
+.dance-performance-choice p { color: #a18a95; font-size: 10px; line-height: 1.7; margin: 8px 0 0; }
 .dance-library > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 9px; }
 .dance-library h3 { margin: 0; font-size: 13px; font-weight: 600; color: #69545e; }
 .dance-library h3 small { color: #bdaab3; font-size: 10px; font-weight: 400; }
@@ -484,7 +489,15 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .dance-transport { display: flex; gap: 7px; align-items: center; margin-top: 7px; }
 .dance-transport input { width: 100%; min-width: 0; accent-color: #c68ba1; height: 3px; }
 .dance-transport .icon-button { width: 25px; height: 25px; flex-shrink: 0; }
-.app-dialogue .speech.dance-speech { display: block; z-index: 8; pointer-events: auto; }
+.app-dialogue .speech.dance-speech { display: block; position: fixed; top: auto; bottom: 66px; left: 10px; width: 188px; padding: 10px; z-index: 8; pointer-events: auto; border-radius: 12px; }
+.app-dialogue .dance-speech::after { display: none; }
+.app-dialogue .dance-speech strong { font-size: 12px; margin-top: 4px; }
+.app-dialogue .dance-speech .speech-kicker { font-size: 9px; }
+@media (max-width: 720px) {
+  .app-dialogue .speech.dance-speech { left: 8px; width: 112px; padding: 8px; }
+  .app-dialogue .dance-speech .speech-kicker > span:first-child { display: none; }
+  .app-dialogue .dance-speech strong { font-size: 10px; }
+}
 .dance-error-toast { position: absolute; bottom: 10px; left: 12px; right: 12px; background: #fff1f4; border-radius: 10px; padding: 10px; color: #a25d72; font-size: 11px; z-index: 50; }
 .agent-dialog { width: 440px; max-width: calc(100vw - 28px); max-height: calc(100vh - 28px); overflow-y: auto; }
 .agent-intro { margin: -3px 0 20px; color: #8c8084; font-size: 12px; }

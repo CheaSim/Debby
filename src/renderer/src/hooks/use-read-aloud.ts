@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { VoiceApi } from '../../../shared/voice'
+import type { SpeechMark, VoiceApi } from '../../../shared/voice'
 import { BrowserSpeechPlayback } from '../media/speech-playback'
 import { platformApi } from '../platform-api'
 
@@ -8,6 +8,8 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
   const [loading, setLoading] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [mouth, setMouth] = useState(0)
+  const [cursor, setCursor] = useState<SpeechMark>()
+  const [armed, setArmed] = useState(false)
   const [error, setError] = useState<string>()
   const playback = useRef<BrowserSpeechPlayback>(undefined)
   const source = useRef<{ turn: string; requestId: string; lineId?: string; text?: string; done?: boolean; sequence: number }>(undefined)
@@ -18,13 +20,14 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
     source.current = undefined
     playback.current?.close(); playback.current = undefined
     void api.cancelReadAloud().catch(() => {})
-    if (mounted.current) { setLoading(false); setSpeaking(false); setMouth(0) }
+    if (mounted.current) { setLoading(false); setSpeaking(false); setMouth(0); setCursor(undefined); setArmed(false) }
   }, [api])
   // Called from the user's speaker-button gesture so the audio engine is ready for later replies.
   const prepare = useCallback((): boolean => {
     if (!enabledRef.current) return false
     try {
-      playback.current ??= new BrowserSpeechPlayback(setMouth, (value) => { if (mounted.current) setSpeaking(value) })
+      playback.current ??= new BrowserSpeechPlayback(setMouth, (value) => { if (mounted.current) setSpeaking(value) }, mark => { if (mounted.current) setCursor(mark) })
+      setArmed(true)
       setError(undefined); blocked.current = undefined
       return true
     } catch { setError('音频输出不可用，文字回复已保留。'); return false }
@@ -64,6 +67,6 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
     return () => { mounted.current = false; unsubscribe(); removeAudio(); stop(); window.removeEventListener('pagehide', stop); document.removeEventListener('visibilitychange', visibility) }
   }, [api, stop])
   useEffect(() => { if (!enabled) stop() }, [enabled, stop])
-  return { loading, speaking, mouth, error, prepare, update, stop }
+  return { loading, speaking, mouth, cursor, armed, error, prepare, update, stop }
 }
 export type ReadAloudController = ReturnType<typeof useReadAloud>

@@ -1,3 +1,4 @@
+import type { DialogueExpressionCue } from './avatar-performance'
 export const defaultChatModel = 'openrouter/free'
 
 export interface ChatModel { id: string; name: string; contextLength: number }
@@ -14,6 +15,7 @@ export interface ChatLine {
   text: string
   status: 'streaming' | 'done' | 'cancelled' | 'error'
   timestamp: number
+  expressions?: DialogueExpressionCue[]
 }
 export interface ChatState {
   revision: number

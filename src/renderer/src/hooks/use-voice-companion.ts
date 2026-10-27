@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { emptyVoiceState, voiceLimits, type VoiceApi, type VoiceConfigInput, type VoiceState } from '../../../shared/voice'
+import { emptyVoiceState, voiceLimits, type SpeechMark, type VoiceApi, type VoiceConfigInput, type VoiceState } from '../../../shared/voice'
 import { platformApi } from '../platform-api'
 import { cameraFrame, openVoiceCapture, type VoiceCapture } from '../media/voice'
 import { BrowserSpeechPlayback } from '../media/speech-playback'
@@ -10,6 +10,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
   const [recording, setRecording] = useState<'off' | 'starting' | 'on' | 'finishing'>('off')
   const [speaking, setSpeaking] = useState(false)
   const [mouth, setMouth] = useState(0)
+  const [cursor, setCursor] = useState<SpeechMark>()
   const [inputLevel, setInputLevel] = useState(0)
   const [camera, setCamera] = useState<MediaStream>()
   const stateRef = useRef(state), cameraRef = useRef<MediaStream>(undefined), capture = useRef<VoiceCapture>(undefined)
@@ -41,7 +42,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     void api.releaseVoiceMedia('video').catch(() => {})
     setCamera(undefined)
   }, [api])
-  const stopPlayback = useCallback(() => { playback.current?.stop(); audioSequence.current = 0; setSpeaking(false); setMouth(0) }, [])
+  const stopPlayback = useCallback(() => { playback.current?.stop(); audioSequence.current = 0; setSpeaking(false); setMouth(0); setCursor(undefined) }, [])
   const disposeMedia = useCallback(() => {
     stopRecording(); stopCamera(); stopPlayback(); frameAbort.current?.abort()
     playback.current?.close(); playback.current = undefined
@@ -91,7 +92,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     const next = await api.startVoice({ cloudConsent: true, camera: useCamera })
     accept(next)
     if (!enabledRef.current) { await api.stopVoice(); return }
-    playback.current = new BrowserSpeechPlayback(setMouth, setSpeaking)
+    playback.current = new BrowserSpeechPlayback(setMouth, setSpeaking, mark => { if (mounted.current) setCursor(mark) })
     if (useCamera) {
       try { await startCamera() } catch { stopCamera(); setError('摄像头不可用；可以继续语音或文字陪伴。') }
     }
@@ -135,7 +136,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
       capture.current = opened; setRecording('on')
     } catch (failure) { stopRecording(); throw failure }
   })
-  return { state, error: error ?? state.error ?? state.chat.error, recording, speaking, mouth, inputLevel, camera,
+  return { state, error: error ?? state.error ?? state.chat.error, recording, speaking, mouth, cursor, inputLevel, camera,
     busy: ['transcribing', 'thinking', 'synthesizing'].includes(state.phase),
     start, send, interrupt, toggleRecording,
     stop: async () => { disposeMedia(); await act(api.stopVoice) },

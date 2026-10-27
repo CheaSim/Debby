@@ -14,8 +14,10 @@ import { DanceSpeech } from './DanceSpeech'
 import { avatarActionInfo, type AvatarCue } from '../../../shared/avatar'
 import { LayeredPet } from './LayeredPet'
 import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
+import type { AvatarPerformance } from '../../../shared/avatar-performance'
 
 interface MascotProps {
+  performance?: AvatarPerformance
   layeredAsset?: LayeredAvatarAsset
   onAvatarStudio: () => void
   onLayeredError: (message: string) => void
@@ -55,7 +57,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError, performance }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -100,7 +102,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </>}
       </div>
       <div className="pet-wrap no-drag">
-        {layeredAsset && !dancing ? <LayeredPet asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={dialogue || portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet cue={cue} activity={activity} mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
+        {layeredAsset && !dancing ? <LayeredPet performance={performance} asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={dialogue || portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet performance={performance} cue={cue} activity={activity} mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>

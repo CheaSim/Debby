@@ -77,6 +77,10 @@ describe('ordered cancellable speech queue', () => {
     release(); await speech.waitForIdle()
     expect(calls).toEqual(['你好，我是 Debby。', '后面的句子也会按顺序说。'])
     expect(host.packets.map((packet) => packet.sequence)).toEqual([0, 1, 2])
+    expect(host.packets.filter(packet => packet.mark).map(packet => packet.mark)).toEqual([
+      { lineId: 'line', textOffset: 0, textLength: calls[0].length },
+      { lineId: 'line', textOffset: calls[0].length, textLength: calls[1].length }
+    ])
     expect(host.packets.at(-1)?.done).toBe(true)
     expect(host.errors).toEqual([])
   })

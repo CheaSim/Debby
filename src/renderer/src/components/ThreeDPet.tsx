@@ -8,13 +8,15 @@ import { platformApi } from '../platform-api'
 import { behaviorDuration, PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
 import type { AgentShellState } from '../../../shared/shell'
 import { PetAnimator } from './pet-animation'
-import { faceChannels, PetExpressionController, type FaceChannel } from '../../../shared/pet-expression'
+import { applyPerformanceFace, faceChannels, PetExpressionController, type FaceChannel } from '../../../shared/pet-expression'
 import { bindPetExpressions } from './pet-face-bindings'
 import { DanceAnimator } from '../motion/dance-animator'
 import { dancePosition, type DanceAsset, type DancePlayback } from '../../../shared/dance'
 import type { AvatarCue } from '../../../shared/avatar'
+import { danceExpressionAt, type AvatarPerformance } from '../../../shared/avatar-performance'
 
 interface ThreeDPetProps {
+  performance?: AvatarPerformance
   cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'
   danceAsset?: DanceAsset
@@ -31,12 +33,13 @@ interface ThreeDPetProps {
 
 const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 
-export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell, danceAsset, dancePlayback, cue, activity }: ThreeDPetProps): React.JSX.Element {
+export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell, danceAsset, dancePlayback, cue, activity, performance }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const moodRef = useRef(mood)
   const cueRef = useRef(cue)
   const activityRef = useRef(activity)
+  const performanceRef = useRef(performance); performanceRef.current = performance
   cueRef.current = cue
   activityRef.current = activity
   const mouthRef = useRef(mouthLevel)
@@ -315,7 +318,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
       const external = agentRef.current
       const cue = cueRef.current
-      if (cue && cue.id !== lastCue && !dragging && behavior.current !== 'lifted' && !danceRef.current.playback) {
+      if (cue && cue.id !== lastCue && !dragging && behavior.current !== 'lifted') {
         lastCue = cue.id
         behavior.interact(cue.name, elapsed)
         animator?.restart(); face.restart()
@@ -352,7 +355,13 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.dataset.danceId = dancing ? danceId : ''
       host.dataset.danceTime = danceTime.toFixed(3)
       host.dataset.dancePose = dancing ? vrm.humanoid.getNormalizedBoneNode('leftUpperArm')?.quaternion.toArray().map(n => n.toFixed(4)).join(',') : ''
-      const expression = face.update(moodRef.current, currentBehavior, elapsed, mouthRef.current, reducedMotion)
+      const conversation = performanceRef.current && performanceRef.current.expiresAt > Date.now() ? performanceRef.current : undefined
+      const stage = dancing && dance.playback && dance.asset ? danceExpressionAt(danceTime, dance.asset.entry.duration, dance.playback.expressionStyle, dance.asset.motion?.expressions) : undefined
+      const directTouch = ['pat', 'lifted', 'land'].includes(currentBehavior)
+      const directive = directTouch ? undefined : conversation ?? stage
+      const expression = applyPerformanceFace(face.update(moodRef.current, currentBehavior, elapsed, mouthRef.current, reducedMotion), directive, mouthRef.current, reducedMotion)
+      host.dataset.emotion = directive?.emotion ?? ''
+      host.dataset.emotionSource = directive ? conversation ? conversation.source : 'dance' : ''
       faceTilt = THREE.MathUtils.lerp(faceTilt, expression.headTilt, smoothing)
       facePitch = THREE.MathUtils.lerp(facePitch, expression.headPitch, smoothing)
       gazeRotation.setFromEuler(new THREE.Euler(-pointerY * 0.04 + facePitch, pointerX * 0.07, faceTilt))
@@ -370,6 +379,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.dataset.expression = expression.name
       host.dataset.emote = Math.max(expressionValues.heart, expressionValues.star, expressionValues.wink).toFixed(3)
       host.dataset.mouth = expressionValues.aa.toFixed(3)
+      host.dataset.blush = expressionValues.blush.toFixed(3)
+      host.dataset.sad = expressionValues.sad.toFixed(3)
       vrm.expressionManager?.setValue('blink', blink * (1 - expressionValues.wink))
       vrm.update(delta)
       host.dataset.gesturePose = ['head', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm'].map(name => vrm!.humanoid.getNormalizedBoneNode(name as VRMHumanBoneName)?.quaternion.toArray().map(n => n.toFixed(3)).join(',') ?? '').join(';')

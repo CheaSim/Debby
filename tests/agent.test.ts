@@ -120,7 +120,10 @@ describe('real pi agent + OpenRouter-compatible SSE', () => {
       if (mode === 'slow') { response.write(': waiting\n\n'); return }
       const chunk = (delta: object, finish_reason: string | null = null) => response.write(`data: ${JSON.stringify({ id: 'test-stream', model: payload.model, choices: [{ index: 0, delta, finish_reason }] })}\n\n`)
       chunk({ role: 'assistant' })
-      if (mode === 'endless' || !payload.messages.some((message: any) => message.role === 'tool')) {
+      if (mode === 'expressions') {
+        for (const content of ['[', '[emo', 'tion:caring]]辛苦啦，先休息。', '[[emotion:', 'proud]]你已经做得很好啦。']) chunk({ content })
+        chunk({}, 'stop')
+      } else if (mode === 'endless' || !payload.messages.some((message: any) => message.role === 'tool')) {
         chunk({ tool_calls: [{ index: 0, id: 'quote-tool', type: 'function', function: { name: 'get_market_snapshot', arguments: '{}' } }] })
         chunk({}, 'tool_calls')
       } else {
@@ -138,6 +141,19 @@ describe('real pi agent + OpenRouter-compatible SSE', () => {
   })
   afterAll(async () => { for (const socket of sockets) socket.destroy(); await new Promise<void>((resolve) => server.close(() => resolve())) })
   const runtime = () => new DebbyAgentRuntime({ credentials: credentials(), transport: gateway, tools: registerTools([marketToolsPlugin], context), timeoutMs: 5000 })
+  it('extracts multiple semantic faces before publishing any text and keeps generation thinking disabled', async () => {
+    mode = 'expressions'; requests.length = 0
+    const agent = runtime(), visible: string[] = []
+    agent.subscribe(state => visible.push(...state.messages.filter(line => line.role === 'assistant').map(line => line.text)))
+    await agent.send('今天有点累')
+    await waitUntil(() => !agent.getState().busy)
+    const line = agent.getState().messages.at(-1)!
+    expect(line.text).toBe('辛苦啦，先休息。你已经做得很好啦。')
+    expect(line.expressions?.map(cue => cue.emotion)).toEqual(['caring', 'proud'])
+    expect(visible.every(text => !text.includes('[[emotion:'))).toBe(true)
+    expect(requests).toHaveLength(1)
+    expect(requests[0].reasoning.enabled).toBe(false)
+  })
   it('streams a reply, executes a real registered tool, preserves source time, and publishes safe state', async () => {
     mode = 'tools'; requests.length = 0
     const agent = runtime()

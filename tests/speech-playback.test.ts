@@ -17,12 +17,28 @@ function fixture() {
   }
   vi.stubGlobal('AudioContext', class { constructor() { return context } })
   vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1)); vi.stubGlobal('cancelAnimationFrame', vi.fn())
-  const levels = vi.fn(), playing = vi.fn()
-  return { player: new BrowserSpeechPlayback(levels, playing), context, sources, buffers, levels, playing, buffer }
+  const levels = vi.fn(), playing = vi.fn(), marks = vi.fn()
+  return { player: new BrowserSpeechPlayback(levels, playing, marks), context, sources, buffers, levels, playing, marks, buffer }
 }
 afterEach(() => vi.unstubAllGlobals())
 
 describe('continuous audio playback queue', () => {
+  it('emits sentence cursors at the audio clock, not packet arrival, and drops cancelled queued cues', async () => {
+    const { player, context, marks } = fixture()
+    let frame!: FrameRequestCallback
+    vi.stubGlobal('requestAnimationFrame', vi.fn(callback => { frame = callback; return 1 }))
+    const first = { lineId: 'a', textOffset: 0, textLength: 6 }, second = { lineId: 'a', textOffset: 6, textLength: 8 }
+    await player.enqueue({ bytes: new Uint8Array(4800), format: 'pcm16', sampleRate: 24000, mark: first })
+    await player.enqueue({ bytes: new Uint8Array(4800), format: 'pcm16', sampleRate: 24000, mark: second })
+    expect(marks).not.toHaveBeenCalled()
+    context.currentTime = 4.05; frame(50)
+    expect(marks.mock.calls).toEqual([[first]])
+    context.currentTime = 4.15; frame(100)
+    expect(marks.mock.calls).toEqual([[first], [second]])
+    await player.enqueue({ bytes: new Uint8Array(4800), format: 'pcm16', sampleRate: 24000, mark: { ...second, lineId: 'cancelled' } })
+    player.stop(); context.currentTime = 10; frame(200)
+    expect(marks.mock.calls).toEqual([[first], [second], [undefined]])
+  })
   it('schedules adjacent PCM chunks without overlap or restarting the previous sound', async () => {
     const { player, sources, buffers, playing } = fixture()
     const first = new Uint8Array(4800).fill(1), second = new Uint8Array(4800).fill(2)

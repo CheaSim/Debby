@@ -72,6 +72,8 @@ try {
   harness = new DebbyClient(resolve(userData, 'agent-bridge.json'), 'Layered renderer E2E')
   await harness.setTask('layered-task', '检查新立绘', 'working')
   await page.waitForFunction(() => document.querySelector('.pet-wrap .layered-pet-host').dataset.behavior === 'working')
+  await harness.say('layered-task', 'layered-face', '我陪你慢慢来。', { expression: { emotion: 'caring', intensity: .8 } })
+  await page.waitForSelector('.pet-wrap [data-emotion=caring][data-emotion-source=agent]')
   await harness.animate('layered-task', 'nod')
   await page.waitForFunction(() => document.querySelector('.pet-wrap .layered-pet-host').dataset.behavior === 'nod')
   const pose = await page.locator('.pet-wrap .layered-pet-host').getAttribute('data-pose')

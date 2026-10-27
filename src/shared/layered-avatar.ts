@@ -1,5 +1,6 @@
 import type { PetBehavior } from './pet-behavior'
 import type { PetMood } from './types'
+import type { ExpressionDirective } from './avatar-performance'
 
 export const layeredAvatarLimits = { bytes: 64 * 1024 * 1024, timeout: 90_000 } as const
 export interface LayeredRig {
@@ -8,6 +9,22 @@ export interface LayeredRig {
   anchors: { face: { x0: number; x1: number; y0: number; y1: number }; neckPivot: { cx: number; cy: number } }
   warnings: string[]
   synth: { eye: boolean; mouth: boolean }
+}
+
+/** Same semantic expression contract, mapped to the 2.5D rigger's parameters. */
+export function applyLayeredPerformance(params: Record<string, number>, expression?: ExpressionDirective, reducedMotion = false): Record<string, number> {
+  if (!expression) return params
+  const i = Math.max(0, Math.min(1, expression.intensity)), p: Record<string, number> = { ...params, mouthForm: 0, brow: 0, browAngSym: 0, eyeScaleL: 1, eyeScaleR: 1, irisScale: 1 }
+  switch (expression.emotion) {
+    case 'happy': case 'proud': p.mouthForm = .8 * i; p.brow = .2 * i; break
+    case 'caring': p.mouthForm = .35 * i; p.browAngSym = .15 * i; break
+    case 'sad': p.mouthForm = -.5 * i; p.brow = -.35 * i; p.browAngSym = .45 * i; break
+    case 'shy': p.mouthForm = .45 * i; p.brow = -.12 * i; if (!reducedMotion) p.angleZ += .25 * i; break
+    case 'surprised': p.brow = .7 * i; p.irisScale = 1 - .15 * i; break
+    case 'curious': p.brow = .3 * i; if (!reducedMotion) p.angleZ -= .25 * i; break
+    case 'playful': p.mouthForm = .65 * i; if (!reducedMotion) p.eyeOpenL = Math.min(p.eyeOpenL, 1 - i); break
+  }
+  return p
 }
 export interface LayeredAvatarAsset { name: string; file: Blob; rig: LayeredRig }
 export interface LayeredFrameInput { time: number; mood: PetMood; behavior: PetBehavior; mouth: number; gaze: { x: number; y: number }; reducedMotion?: boolean }
@@ -25,7 +42,7 @@ export function layeredParameters({ time: t, mood, behavior, mouth, gaze, reduce
   const p = { angleX: clamp(gaze.x) * .35, angleY: -clamp(gaze.y) * .25, angleZ: .07 * Math.sin(t * .6), body: .07 * Math.sin(t * .8),
     eyeOpenL: blink, eyeOpenR: blink, eyeX: clamp(gaze.x) * .6, eyeY: -clamp(gaze.y) * .4,
     mouthOpen: Math.max(0, clamp(mouth)), mouthForm: happy ? .65 : sad ? -.35 : .1, brow: sad ? -.3 : happy ? .2 : 0,
-    browAngSym: sad ? .35 : 0, armY: 0, breath: .5 + .5 * Math.sin(t * 1.85), breathHead: .5 + .5 * Math.sin(t * 1.85 - .6) }
+    browAngSym: sad ? .35 : 0, irisScale: 1, eyeScaleL: 1, eyeScaleR: 1, armY: 0, breath: .5 + .5 * Math.sin(t * 1.85), breathHead: .5 + .5 * Math.sin(t * 1.85 - .6) }
   if (behavior === 'nod') p.angleY += .5 * Math.sin(t * 7)
   if (behavior === 'shake') p.angleX += .6 * Math.sin(t * 7)
   if (['shy', 'heart', 'pat', 'comfort'].includes(behavior)) p.angleZ += behavior === 'shy' ? -.5 : .3

@@ -32,9 +32,10 @@ export interface VoiceState {
   error?: string
 }
 export interface VoiceTurn { sessionId: string; text?: string; audio?: Uint8Array; image?: string }
-export interface SpeechChunk { bytes: Uint8Array; format: 'pcm16' | 'encoded'; sampleRate?: number }
+export interface SpeechMark { lineId: string; textOffset: number; textLength: number }
+export interface SpeechChunk { bytes: Uint8Array; format: 'pcm16' | 'encoded'; sampleRate?: number; mark?: SpeechMark }
 export interface SpeechPacket extends SpeechChunk { sequence: number; done: boolean }
-export interface VoiceAudio { sessionId: string; turnId: string; bytes: Uint8Array; format?: SpeechChunk['format']; sampleRate?: number; sequence?: number; done?: boolean }
+export interface VoiceAudio { sessionId: string; turnId: string; bytes: Uint8Array; format?: SpeechChunk['format']; sampleRate?: number; sequence?: number; done?: boolean; mark?: SpeechMark }
 export interface ReadAloudInput { requestId: string; text: string; cloudConsent: boolean }
 export interface ReadAloudAudio { requestId: string; bytes: Uint8Array }
 export interface ReadAloudStreamInput extends ReadAloudInput { lineId: string; done: boolean }

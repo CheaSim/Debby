@@ -1,5 +1,6 @@
 import type { PetBehavior } from './pet-behavior'
 import type { PetMood } from './types'
+import type { ExpressionDirective } from './avatar-performance'
 
 export const faceChannels = ['happy', 'sad', 'relaxed', 'aa', 'oh', 'heart', 'star', 'wink', 'fun2', 'sorrow2', 'bright', 'smile', 'blush'] as const
 export type FaceChannel = typeof faceChannels[number]
@@ -9,6 +10,30 @@ export interface PetFace {
   weights: Record<FaceChannel, number>
   headTilt: number
   headPitch: number
+}
+
+/** Face-only layer. Never writes skeleton rotations, playback time or the real audio mouth. */
+export function applyPerformanceFace(base: PetFace, directive?: ExpressionDirective, mouth = 0, reducedMotion = false): PetFace {
+  if (!directive) return base
+  const face: PetFace = { name: 'soft', weights: Object.fromEntries(faceChannels.map(channel => [channel, 0])) as PetFace['weights'], headTilt: 0, headPitch: 0 }
+  const w = face.weights
+  switch (directive.emotion) {
+    case 'neutral': w.happy = .12; w.relaxed = .12; w.smile = .15; break
+    case 'happy': face.name = 'smile'; w.happy = .4; w.smile = .45; w.bright = .3; break
+    case 'caring': face.name = 'reassuring'; w.relaxed = .35; w.smile = .18; w.happy = .12; face.headTilt = -.035; break
+    case 'sad': face.name = 'concerned'; w.sad = .5; w.sorrow2 = .35; face.headPitch = -.025; break
+    case 'shy': face.name = 'affectionate'; w.blush = .6; w.relaxed = .18; w.smile = .3; face.headTilt = .045; break
+    case 'surprised': face.name = 'surprised'; w.oh = .3; w.bright = .3; break
+    case 'curious': face.name = 'curious'; w.relaxed = .12; w.smile = .1; face.headTilt = .055; break
+    case 'playful': face.name = 'wink'; w.wink = .85; w.fun2 = .18; w.smile = .3; face.headTilt = .035; break
+    case 'proud': face.name = 'sparkle'; w.star = .9; w.smile = .3; w.bright = .2; break
+  }
+  const intensity = clamp(directive.intensity)
+  for (const channel of faceChannels) w[channel] *= intensity
+  w.aa = clamp(mouth)
+  if (w.aa > .025) { w.oh = w.wink = w.fun2 = w.smile = 0; w.happy *= .45 }
+  if (reducedMotion) { face.headTilt = face.headPitch = 0; w.wink = w.fun2 = 0 }
+  return face
 }
 const clamp = (value: number): number => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0
 const pulse = (time: number, duration: number): number => Math.sin(Math.PI * clamp(time / duration)) ** 2

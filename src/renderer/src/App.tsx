@@ -21,6 +21,7 @@ import './discovery.css'
 import './avatar-studio.css'
 import { AvatarStudio } from './components/AvatarStudio'
 import { useLayeredAvatar } from './hooks/use-layered-avatar'
+import { useAvatarPerformance } from './hooks/use-avatar-performance'
 
 export function App(): React.JSX.Element {
   const state = useFinPetStore()
@@ -57,8 +58,8 @@ export function App(): React.JSX.Element {
   const activeDance = dancer.state.playback?.id
   useEffect(() => {
     if (!activeDance) return
-    setDanceStudio(false); setPanelTab('market')
-    if (state.settings?.panelOpen) void state.togglePanel()
+    setDanceStudio(false)
+    if (panelTab !== 'chat') { setPanelTab('market'); if (state.settings?.panelOpen) void state.togglePanel() }
   }, [activeDance])
   const dialogue = panelTab === 'chat'
   const [chatFocusRequest, setChatFocusRequest] = useState(0)
@@ -69,7 +70,6 @@ export function App(): React.JSX.Element {
     openingChat.current = true
     try {
       setScene(undefined); setPlaying(false); setRecap(null)
-      if (dancer.state.playback) await dancer.control({ action: 'stop' })
       if (!state.settings?.panelOpen) await state.togglePanel()
       setPanelTab('chat')
       setChatFocusRequest((value) => value + 1)
@@ -78,6 +78,9 @@ export function App(): React.JSX.Element {
   const [scene, setScene] = useState<ShowcaseScene>()
   const companion = useVoiceCompanion(Boolean(state.settings?.panelOpen && dialogue && !scene))
   const reader = useReadAloud(Boolean(state.settings?.panelOpen && dialogue && !scene))
+  const conversationPerformance = useAvatarPerformance(companion.state.active ? companion.state.chat : chat.state, companion.state.active || reader.armed, companion.state.active ? companion.cursor : reader.cursor)
+  const caption = agentShell.caption
+  const performance = conversationPerformance ?? (caption?.expression && caption.expressionExpiresAt ? { ...caption.expression, id: `${caption.turnId}:${caption.expressionExpiresAt}`, source: 'agent' as const, expiresAt: caption.expressionExpiresAt } : undefined)
   const [playing, setPlaying] = useState(false)
   const [replay, setReplay] = useState(0)
   const [now, setNow] = useState(Date.now)
@@ -162,14 +165,14 @@ export function App(): React.JSX.Element {
         showcaseControls={scene ? <ShowcaseControls scene={scene} playing={playing} onScene={chooseScene} onPlaying={setPlaying} onExit={exitShowcase} /> : undefined}
       />}
       <Mascot indexQuote={indexQuote} providerStatus={providerStatus} alerting={demo ? demo.alerting : Boolean(state.latestAlert)} panelOpen={state.settings.panelOpen} clickThrough={state.settings.clickThrough} demo={provider === 'demo'} dialogue={state.settings.panelOpen && dialogue} mouthLevel={Math.max(companion.mouth, reader.mouth)}
-        cue={avatarCue} activity={companion.recording !== 'off' ? 'listening' : companion.speaking || reader.speaking ? 'talking' : chat.state.busy || companion.busy ? 'working' : undefined} onDiscover={() => void openDiscovery().catch(() => {})}
+        performance={performance} cue={avatarCue} activity={companion.recording !== 'off' ? 'listening' : companion.speaking || reader.speaking ? 'talking' : chat.state.busy || companion.busy ? 'working' : undefined} onDiscover={() => void openDiscovery().catch(() => {})}
         onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)}
         layeredAsset={layeredAvatar.selected ? layeredAvatar.asset : undefined} onLayeredError={layeredAvatar.failed} onAvatarStudio={() => { exitShowcase(); setDanceStudio(false); setAvatarStudio(true); void platformApi.stopVoice(); void platformApi.cancelReadAloud(); if (!state.settings?.panelOpen) void state.togglePanel() }}
         dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={openDanceStudio} />
       {avatarStudio && <AvatarStudio avatar={layeredAvatar} onClose={() => setAvatarStudio(false)} />}
       {layeredAvatar.error && !avatarStudio && <div className="dance-error-toast no-drag" role="alert">{layeredAvatar.error}</div>}
-      {danceStudio && <DanceStudio state={dancer.state} onClose={() => setDanceStudio(false)} onPlay={async (id, speed, loop) => {
-        await dancer.control({ action: 'play', id, speed, loop }); setDanceStudio(false)
+      {danceStudio && <DanceStudio state={dancer.state} onClose={() => setDanceStudio(false)} onPlay={async (id, speed, loop, expressionStyle) => {
+        await dancer.control({ action: 'play', id, speed, loop, expressionStyle }); setDanceStudio(false)
       }} />}
       {dancer.error && !danceStudio && <div className="dance-error-toast no-drag" role="alert">{dancer.error}</div>}
       {agentDialog && <AgentConnectionDialog state={agentShell} onClose={() => setAgentDialog(false)} />}

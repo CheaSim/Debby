@@ -54,6 +54,21 @@ describe('avatar controller lifecycle', () => {
     f.event({ type: 'say', turnId: 'b', text: 'new', done: false })
     expect(() => f.event({ type: 'say', turnId: 'a', text: 'late' })).toThrow(/过期/)
   })
+  it('keeps optional typed expressions across text chunks, expires them and clears them on cancellation', () => {
+    const f = fixture(); f.task()
+    f.event({ type: 'say', turnId: 'a', text: '辛苦啦', done: false, expression: { emotion: 'caring', intensity: .6 } })
+    const caption = f.runtime.snapshot().caption!
+    expect(caption.expression).toEqual({ emotion: 'caring', intensity: .6 })
+    expect(caption.expressionExpiresAt).toBe(6600)
+    f.event({ type: 'say', turnId: 'a', text: '我陪你。', append: true })
+    expect(f.runtime.snapshot().caption?.expressionExpiresAt).toBe(caption.expressionExpiresAt)
+    const before = f.runtime.snapshot()
+    expect(() => f.event({ type: 'say', turnId: 'bad', text: 'x', expression: { emotion: 'execute' } })).toThrow()
+    expect(() => f.event({ type: 'say', turnId: 'bad', text: 'x', expression: { emotion: 'happy', intensity: Infinity } })).toThrow()
+    expect(f.runtime.snapshot()).toEqual(before)
+    f.runtime.cancel()
+    expect(f.runtime.snapshot().caption).toBeUndefined()
+  })
   it('bounds assembled captions and validates event fields atomically', () => {
     const f = fixture(); f.task()
     f.event({ type: 'say', turnId: 'a', text: 'a'.repeat(1999), done: false })

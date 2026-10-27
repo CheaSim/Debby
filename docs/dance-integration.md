@@ -54,6 +54,8 @@ flowchart LR
 
 ## Agent 接入
 
+舞台表情可选择自动/温柔/元气/俏皮，也能关闭。对话覆盖脸部而不打断身体动作；JSON 动作可携带 `expressions` 时间轴，与暂停、跳转、变速和循环共用时钟。协议与集成例子见 [对话表情与舞蹈表演](avatar-performance.md)。
+
 现有 MCP 配置保持兼容，新增 `debby_list_dances` 和 `debby_dance`。先读库、创建任务，再发播放指令。任务取消、断开或租约到期会停止该外部 Agent 的舞蹈；用户操作优先，不会被外部 Agent 抢占。内置 pi 与外部 Agent 也分别记录所有者。
 
 ```js

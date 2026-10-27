@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react'
 import { danceLimits, validateMotion, type DanceState } from '../../../shared/dance'
 import { platformApi } from '../platform-api'
 import { MediaPipeVideoBackend, type CaptureProgress, type VideoMotionBackend } from '../motion/video-capture'
+import { danceExpressionLabels, danceExpressionStyles, type DanceExpressionStyle } from '../../../shared/avatar-performance'
 
 const backend = new MediaPipeVideoBackend()
 const edges = [[11, 12], [11, 23], [12, 24], [23, 24], [11, 13], [13, 15], [12, 14], [14, 16], [23, 25], [25, 27], [24, 26], [26, 28]]
 const sourceLabel = { builtin: '内置原创', video: '视频学习', import: '导入动作' }
 export function DanceStudio({ state, onClose, onPlay, capture = backend }: {
-  state: DanceState; onClose: () => void; onPlay: (id: string, speed: number, loop: boolean) => Promise<void>; capture?: VideoMotionBackend
+  state: DanceState; onClose: () => void; onPlay: (id: string, speed: number, loop: boolean, expressionStyle: DanceExpressionStyle) => Promise<void>; capture?: VideoMotionBackend
 }): React.JSX.Element {
   const dialog = useRef<HTMLDialogElement>(null)
   const video = useRef<HTMLVideoElement>(null)
@@ -23,6 +24,7 @@ export function DanceStudio({ state, onClose, onPlay, capture = backend }: {
   const [mirror, setMirror] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [loop, setLoop] = useState(false)
+  const [expressionStyle, setExpressionStyle] = useState<DanceExpressionStyle>('auto')
   const [progress, setProgress] = useState<CaptureProgress>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -95,8 +97,9 @@ export function DanceStudio({ state, onClose, onPlay, capture = backend }: {
     </section>}
     {error && <p className="provider-error" role="alert">{error}</p>}
     {notice && <p className="dance-success" role="status">{notice}</p>}
+    <div className="dance-performance-choice"><label>舞台表情<select aria-label="舞台表情风格" value={expressionStyle} onChange={e => setExpressionStyle(e.target.value as DanceExpressionStyle)}>{danceExpressionStyles.map(style => <option key={style} value={style}>{danceExpressionLabels[style]}</option>)}</select></label><p>身体按舞步，脸跟着对话。没有对话时按所选风格演出。</p></div>
     <section className="dance-library"><header><h3>我们的动作库 <small>{state.library.length}</small></h3><div><select aria-label="舞蹈播放速度" value={speed} onChange={e => setSpeed(Number(e.target.value))}>{[.5, .75, 1, 1.25, 1.5].map(v => <option key={v} value={v}>{v}×</option>)}</select><label><input type="checkbox" checked={loop} onChange={e => setLoop(e.target.checked)} />循环</label></div></header>
-      {state.library.map(entry => <div className="dance-entry" key={entry.id} data-dance-entry={entry.id}><Music2 size={18} /><div><strong>{entry.name}</strong><small>{sourceLabel[entry.source]} · {entry.duration.toFixed(1)} 秒{entry.quality ? ` · 可见 ${Math.round(entry.quality.coverage * 100)}%` : ''}</small></div><button className="icon-button" disabled={busy} title={`播放 ${entry.name}`} onClick={() => void run(() => onPlay(entry.id, speed, loop))}><Play size={16} /></button><button className="icon-button" disabled={busy} title={`导出 ${entry.name}`} onClick={() => void exportMotion(entry.id)}><Download size={15} /></button>{entry.source !== 'builtin' && <button className="icon-button" disabled={busy} title={`移除 ${entry.name}`} onClick={() => void run(async () => { await platformApi.removeDance(entry.id); setNotice('已移出动作库，原动作文件保留在本机，可恢复。') })}><Trash2 size={14} /></button>}</div>)}
+      {state.library.map(entry => <div className="dance-entry" key={entry.id} data-dance-entry={entry.id}><Music2 size={18} /><div><strong>{entry.name}</strong><small>{sourceLabel[entry.source]} · {entry.duration.toFixed(1)} 秒{entry.quality ? ` · 可见 ${Math.round(entry.quality.coverage * 100)}%` : ''}</small></div><button className="icon-button" disabled={busy} title={`播放 ${entry.name}`} onClick={() => void run(() => onPlay(entry.id, speed, loop, expressionStyle))}><Play size={16} /></button><button className="icon-button" disabled={busy} title={`导出 ${entry.name}`} onClick={() => void exportMotion(entry.id)}><Download size={15} /></button>{entry.source !== 'builtin' && <button className="icon-button" disabled={busy} title={`移除 ${entry.name}`} onClick={() => void run(async () => { await platformApi.removeDance(entry.id); setNotice('已移出动作库，原动作文件保留在本机，可恢复。') })}><Trash2 size={14} /></button>}</div>)}
     </section>
     <p className="dance-note">也支持标准 VRMA。单段视频会有深度和遮挡误差，复杂转身、地板动作建议导入精修动作。</p>
   </dialog>

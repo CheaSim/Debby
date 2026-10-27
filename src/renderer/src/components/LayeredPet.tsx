@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { layeredParameters, type LayeredAvatarAsset, type LayeredAvatarDriver } from '../../../shared/layered-avatar'
+import { applyLayeredPerformance, layeredParameters, type LayeredAvatarAsset, type LayeredAvatarDriver } from '../../../shared/layered-avatar'
+import type { AvatarPerformance } from '../../../shared/avatar-performance'
 import type { AvatarCue } from '../../../shared/avatar'
 import type { PetMood } from '../../../shared/types'
 import { behaviorDuration, PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
@@ -8,6 +9,7 @@ import { createLayeredDriver } from '../avatar/layered-runtime'
 import { platformApi } from '../platform-api'
 
 interface Props {
+  performance?: AvatarPerformance
   asset: LayeredAvatarAsset; portrait?: boolean; mouthLevel?: number; mood?: PetMood; cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'; agentShell?: AgentShellState; draggable?: boolean
   onBehavior?: (behavior: PetBehavior) => void; onReady?: () => void; onError: (message: string) => void
@@ -75,7 +77,9 @@ export function LayeredPet(props: Props): React.JSX.Element {
       }
       if (active === 'idle' && elapsed < actionUntil) active = agentBehavior
       if (active === 'idle') active = shell?.controller && shell.task?.status === 'working' ? 'working' : shell?.controller && shell.task?.status === 'waiting' ? 'waiting' : p.activity ?? 'idle'
-      const target = layeredParameters({ time: elapsed, mood: p.mood ?? 'idle', behavior: active, mouth: p.mouthLevel ?? 0, gaze, reducedMotion: reduced.matches })
+      const performance = p.performance && p.performance.expiresAt > Date.now() && !['pat', 'lifted', 'land'].includes(active) ? p.performance : undefined
+      const target = applyLayeredPerformance(layeredParameters({ time: elapsed, mood: p.mood ?? 'idle', behavior: active, mouth: p.mouthLevel ?? 0, gaze, reducedMotion: reduced.matches }), performance, reduced.matches)
+      host.dataset.emotion = performance?.emotion ?? ''; host.dataset.emotionSource = performance?.source ?? ''
       filtered ??= { ...target }
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
