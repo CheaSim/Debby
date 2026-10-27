@@ -1,0 +1,4 @@
+# Preserve pinned third-party source bytes and their recorded SHA-256 hashes on Windows.
+src/renderer/public/vendor/anime25d/* -text
+# Keep upstream parser formatting intact rather than modifying the pinned source.
+src/renderer/public/vendor/anime25d/ag-psd.min.js whitespace=-blank-at-eol

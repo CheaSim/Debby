@@ -12,8 +12,13 @@ import { agentStatusLabel } from './AgentConnectionDialog'
 import type { DanceAsset, DanceCommand, DanceState } from '../../../shared/dance'
 import { DanceSpeech } from './DanceSpeech'
 import { avatarActionInfo, type AvatarCue } from '../../../shared/avatar'
+import { LayeredPet } from './LayeredPet'
+import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
 
 interface MascotProps {
+  layeredAsset?: LayeredAvatarAsset
+  onAvatarStudio: () => void
+  onLayeredError: (message: string) => void
   cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'
   onDiscover: () => void
@@ -50,7 +55,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover }: MascotProps): React.JSX.Element {
+export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -95,7 +100,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </>}
       </div>
       <div className="pet-wrap no-drag">
-        <ThreeDPet cue={cue} activity={activity} mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />
+        {layeredAsset && !dancing ? <LayeredPet asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={dialogue || portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet cue={cue} activity={activity} mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
@@ -111,10 +116,11 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
           <button className="icon-button" onClick={() => setPortrait(false)} title="全身视图" aria-pressed={!portrait}><PersonStanding size={17} /></button>
           <button className="icon-button" onClick={() => setPortrait(true)} title="上半身视图" aria-pressed={portrait}><ScanFace size={17} /></button>
         </div>
-        <label className="switch-row" title="旋转角色模式"><Rotate3D size={16} /><span>旋转模式</span><input type="checkbox" checked={rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
+        <label className="switch-row" title={layeredAsset ? '2.5D 使用目光跟随' : '旋转角色模式'}><Rotate3D size={16} /><span>{layeredAsset ? '2.5D · 目光跟随' : '旋转模式'}</span><input type="checkbox" disabled={Boolean(layeredAsset)} checked={!layeredAsset && rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
         <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
         <button className="menu-command" title="学跳舞" onClick={() => { optionsRef.current?.hidePopover(); onDanceStudio() }}><Music2 size={16} /><span>学跳舞</span></button>
+        <button className="menu-command" title="角色工坊" onClick={() => { optionsRef.current?.hidePopover(); onAvatarStudio() }}><ScanFace size={16} /><span>角色工坊 · 2.5D 立绘</span></button>
         <button className="menu-command" title="发现更多陪伴" onClick={() => { optionsRef.current?.hidePopover(); onDiscover() }}><MessageCircle size={16} /><span>发现 · 塔罗与日常</span></button>
         {mateEngine.installed && <button className="menu-command" onClick={toggleMateEngine} title={mateEngine.running ? '关闭 Mate-Engine 独立窗口' : '打开 Mate-Engine 独立窗口'}><Box size={16} /><span>Mate-Engine</span></button>}
       </div>

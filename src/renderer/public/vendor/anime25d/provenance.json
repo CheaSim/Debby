@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/852wa/Anime2.5DRig",
+  "commit": "7ddbd9943ea3152561b3dc8348fd752c850f3e95",
+  "license": "MIT",
+  "sources": {
+    "lib/rigger.js": "52edffbafdda0ffde9a0e4ddbd1ef43aabadc3cb1767f4da84d39bda332c2b86",
+    "lib/runtime.js": "4723921832215e6a6d09285c3aeb7bf3617d04a01834278fc81fb42ccd19c7f0",
+    "lib/renderer.js": "3e2b7db3a62f35b5ed8beedb777138cac53e449f35f8b1b48095a00ca7f18d2b",
+    "lib/ag-psd.min.js": "1df9691925fbd64bdc9f7e3e74a42733cc443ecee770df996f2349a7102c0fe6",
+    "LICENSE": "15183bfbec774052a5817a28eb03730c40ec941a642097b597f0c50092594adb",
+    "lib/app.js": "6adea8f44cd3989ee4d86aed97ba3a996a24c39202c64cc6c054ddcff4e87877"
+  },
+  "modifications": "debby-rig.js mechanically extracts mesh/deformation/springs from app.js; disables bust physics; accepts host parameters. Other source files are unmodified. No artwork or device modules included."
+}
