@@ -15,6 +15,7 @@ import { avatarActionInfo, type AvatarCue } from '../../../shared/avatar'
 import { LayeredPet } from './LayeredPet'
 import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
 import type { AvatarPerformance } from '../../../shared/avatar-performance'
+import { debbyMoodLines } from '../../../shared/debby-character'
 
 interface MascotProps {
   performance?: AvatarPerformance
@@ -43,18 +44,10 @@ interface MascotProps {
   onAgentConnect: () => void
 }
 
-const moodText = {
-  idle: '今天也陪你认真盯盘。',
-  bullish: '涨得不错，开心也要守纪律呀。',
-  bearish: '先别慌，我陪你看看计划。',
-  alert: '价格提醒命中，快来看看！',
-  offline: '行情走丢了，等它回来再判断。'
-}
-
 const moodLabel = { idle: '平静', bullish: '开心', bearish: '担忧', alert: '提醒', offline: '等待' }
 const behaviorText: Partial<Record<PetBehavior, string>> = {
-  pat: '嗯，收到你的鼓励啦。', lifted: '轻一点，我还在陪你呢。',
-  land: '站稳啦，继续陪你。', greet: '我在呢，今天也按计划来。'
+  pat: '嘿嘿，收到你的鼓励啦。', lifted: '哇，轻一点点，我还在陪你呢。',
+  land: '站稳啦！继续陪你。', greet: '我在呀！看行情，还是聊聊天？'
 }
 
 export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError, performance }: MascotProps): React.JSX.Element {
@@ -98,7 +91,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </> : <>
         <span className="speech-kicker"><span>{demo ? `${brand.name} · 演示数据` : brand.name}</span><span className="mood-badge"><i />{moodLabel[mood]}</span></span>
         <strong>{indexQuote ? `${indexQuote.name} ${direction === 'up' ? '+' : ''}${indexQuote.changePct.toFixed(2)}%` : '等待指数行情'}</strong>
-        <p>{behaviorText[behavior] ?? (behavior in avatarActionInfo ? avatarActionInfo[behavior as keyof typeof avatarActionInfo].text : moodText[mood])}</p>
+        <p>{behaviorText[behavior] ?? (behavior in avatarActionInfo ? avatarActionInfo[behavior as keyof typeof avatarActionInfo].text : debbyMoodLines[mood])}</p>
         </>}
       </div>
       <div className="pet-wrap no-drag">

@@ -105,7 +105,7 @@ try {
   await page.waitForFunction(() => document.querySelector('.dialogue-feedback').textContent.includes('暂时不可用'))
   assert.equal(await page.getByRole('textbox', { name: '对 Debby 说' }).inputValue(), '错误', 'Failed sends should keep the draft')
   await page.locator('[title="新会话"]').click()
-  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('今天想聊些什么'))
+  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('嗨，我是 Debby'))
   await application.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setResizable(true); window.setBounds({ width: 390, height: 740 }) })
   await page.waitForFunction(() => innerWidth <= 400)
   await page.getByRole('textbox', { name: '对 Debby 说' }).fill('窄屏对话')

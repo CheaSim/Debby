@@ -7,6 +7,7 @@ import type { ReadAloudController } from '../hooks/use-read-aloud'
 import { CameraPreview } from './CameraPreview'
 import { VoiceConfigDialog, VoiceConsentDialog } from './VoiceConfigDialog'
 import { dialoguePrompts } from '../../../shared/dialogue-guidance'
+import { debbyCharacter } from '../../../shared/debby-character'
 
 export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing, active, focusRequest, draft }: { chat: DebbyChatController; companion: VoiceCompanionController; reader: ReadAloudController; onConfigure: () => void; showcasing: boolean; active: boolean; focusRequest: number; draft?: { id: number; text: string } }): React.JSX.Element {
   const [input, setInput] = useState('')
@@ -82,7 +83,7 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
       <div className="dialogue-nameplate"><strong>{brand.name}</strong><span>{voice ? companion.state.chat.activeTool ?? voiceStatus : chat.state.activeTool ?? (busy ? '正在回复' : reader.loading ? '准备声音' : reader.speaking ? '正在朗读' : autoRead ? '阿里云朗读已开启' : '陪你聊聊')}</span></div>
       {question && <p className="dialogue-question" title={question.text}>你 · {question.text}</p>}
       <div className="dialogue-text" ref={body} tabIndex={0} aria-label="Debby 的台词">
-        <p>{last?.text || (last?.status === 'cancelled' ? '回复已停止。' : busy ? '正在回复…' : question ? '我在呢，可以继续聊。' : voice ? '我在呢。今天过得怎么样？点一句开始，或者直接告诉我。' : configured ? '我在呢。今天想聊些什么？点一句开始，或者直接告诉我。' : '我是 Debby。先选个想聊的话题，或者直接写一句。连接后，我们就从这里开始。')}</p>
+        <p>{last?.text || (last?.status === 'cancelled' ? '回复已停止。' : busy ? '正在回复…' : question ? '我在呢，可以继续聊。' : voice || configured ? debbyCharacter.welcome : debbyCharacter.welcomeSetup)}</p>
         {last?.status === 'cancelled' && <small>已停止</small>}
       </div>
       {!busy && !recording && !input.trim() && !showcasing && <div className="dialogue-suggestions" role="group" aria-label={question ? '接着聊' : '试着问一句'}>
@@ -90,7 +91,7 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
       </div>}
       <div className="dialogue-feedback" role="status">{failure ?? (recording ? '麦克风已开启 · 本地录音' : voice && busy ? voiceStatus : chat.state.activeTool && !voice ? `${chat.state.activeTool}…` : busy ? '正在回复…' : !configured ? input.trim() ? '问题已保留 · 连接后点发送，从这句开始。' : voice ? '先开启本次陪伴；麦克风和摄像头由你决定。' : '选一句或直接输入 · 首次需连接自己的模型 Key。' : input.trim() ? '按 Enter 发送 · Shift + Enter 换行' : voice ? '云端会话 · 点一句继续聊 · 结束后清空记录' : '点一句继续聊 · 公开行情可能延迟，不构成投资建议。')}</div>
       <form className={'dialogue-input' + (!configured ? ' setup-input' : voice ? ' companion-input' : '') + (voice && configured && companion.state.cameraAllowed ? ' with-camera' : '')} onSubmit={(event) => { event.preventDefault(); if (!busy && !recording) void send() }}>
-        <textarea ref={inputRef} aria-label="对 Debby 说" value={input} maxLength={4000} rows={1} placeholder={configured ? '对 Debby 说…' : '先写一句，连接后发送…'} disabled={showcasing || recording} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (!busy && !showcasing && !recording) void send() } }} />
+        <textarea ref={inputRef} aria-label="对 Debby 说" value={input} maxLength={4000} rows={1} placeholder={configured ? '问行情、聊计划，或喊一声 Debby…' : '先写一句，连接后发送…'} disabled={showcasing || recording} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (!busy && !showcasing && !recording) void send() } }} />
         {!configured ? <button ref={startRef} type="button" className="byok-command" disabled={showcasing} onClick={beginSetup}>{voice ? <Headphones size={15} /> : <KeyRound size={15} />}{voice && companion.state.config.configured ? '开始陪伴' : '配置 BYOK'}</button> : <>
           {voice && <button type="button" className={'ghost-icon companion-mic' + (recording ? ' recording' : '')} data-recording={companion.recording} title={recording ? '结束录音并发送' : '录音对话'} disabled={companion.recording === 'finishing'} aria-pressed={recording} onClick={() => void companion.toggleRecording()}><Mic size={17} />{recording && <span style={{ height: `${Math.max(2, companion.inputLevel * 18)}px` }} />}</button>}
           {voice && companion.state.cameraAllowed && <button type="button" className="ghost-icon" title={companion.camera ? '关闭摄像头' : '开启摄像头'} aria-pressed={Boolean(companion.camera)} onClick={() => void companion.toggleCamera()}><Video size={17} /></button>}
