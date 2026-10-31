@@ -29,9 +29,10 @@ export function applyLayeredPerformance(params: Record<string, number>, expressi
 export interface LayeredAvatarAsset { name: string; file: Blob; rig: LayeredRig }
 export interface LayeredFrameInput { time: number; mood: PetMood; behavior: PetBehavior; mouth: number; gaze: { x: number; y: number }; reducedMotion?: boolean }
 export interface LayeredAvatarDriver {
-  frame(params: Record<string, number>, dt: number, time: number): void
+  frame(params: Record<string, number>, dt: number, time: number, expression?: ExpressionDirective): void
   dispose(): void
 }
+export interface LayeredAvatarSurface extends LayeredAvatarDriver { canvas: HTMLCanvasElement; visible(): boolean }
 /** Portable mapping: expressions/head/arm deformation, not VRM skeletal dance. */
 export function layeredParameters({ time: t, mood, behavior, mouth, gaze, reducedMotion }: LayeredFrameInput): Record<string, number> {
   const clamp = (n: number): number => Number.isFinite(n) ? Math.max(-1, Math.min(1, n)) : 0

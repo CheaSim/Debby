@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+  "commit": "046b848f244450e6e636335766276bf3343fe84b",
+  "license": "CC-BY-NC-SA-4.0",
+  "sources": {
+    "maid-left.webp": "af7bfd2e18505fc9d6f94cefd9febc92b31c1b2b66c756982d91fc7b93fb184c",
+    "whale-cheerful.webp": "117ed691623da550075056963764cee7a4cd14318d5ab87ce63d11926b83aa4b",
+    "whale-shy.webp": "87dea8920f550d75e68d189a816856fcc77379532a79c169cc766f02aeeb80f4",
+    "whale-serious.webp": "2974cc4a814f6b1f95d907d22f62d9e0094dd7e538b6145e7c8a1dbb6154de34",
+    "whale-confused.webp": "f879656eeec7d02e07543774efcf93a62f03d5b73e577a4c5440d855b942d436",
+    "whale-frightened.webp": "a74c7b1afd6b6deaa60d3bbceeaf079dd2379b6b8be3da6265c492921522867b",
+    "whale-exasperated.webp": "c627bea1c000d304a538f1d63a2cf244f73824496ca585e0bda91a91450b67aa",
+    "whale-starry.webp": "65a3bd1eb9ad4f8cb357af4825311f84e91be4f7f57deb5357fb79116bcad774"
+  },
+  "changes": "Removed border-connected near-white source remnants; resized and padded to 800x1280; converted WebP to paletted PNG; packaged as StandRig pose layers. No painting or automatic layer segmentation.",
+  "removedPixels": {
+    "maid-left": 0,
+    "whale-cheerful": 0,
+    "whale-shy": 0,
+    "whale-serious": 0,
+    "whale-confused": 0,
+    "whale-frightened": 0,
+    "whale-exasperated": 0,
+    "whale-starry": 2
+  },
+  "modelSha256": "e00b90ae5e1f49b014f2f99ba18bc047add49574d6e216abc3eb67504f270c1c"
+}

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { applyLayeredPerformance, layeredParameters, type LayeredAvatarAsset, type LayeredAvatarDriver } from '../../../shared/layered-avatar'
+import { applyLayeredPerformance, layeredParameters, type LayeredAvatarAsset, type LayeredAvatarSurface } from '../../../shared/layered-avatar'
 import type { AvatarPerformance } from '../../../shared/avatar-performance'
 import type { AvatarCue } from '../../../shared/avatar'
 import type { PetMood } from '../../../shared/types'
 import { behaviorDuration, PetBehaviorController, type PetBehavior } from '../../../shared/pet-behavior'
 import type { AgentShellState } from '../../../shared/shell'
-import { createLayeredDriver } from '../avatar/layered-runtime'
+import { createLayeredSurface } from '../avatar/layered-runtime'
 import { platformApi } from '../platform-api'
+import { isPortraitRig, isStandRig } from '../../../shared/standrig-avatar'
 
 interface Props {
   performance?: AvatarPerformance
@@ -21,13 +22,12 @@ export function LayeredPet(props: Props): React.JSX.Element {
   const [ready, setReady] = useState(false)
   useEffect(() => {
     const host = hostRef.current!, output = canvasRef.current!, source = document.createElement('canvas')
-    let disposed = false, driver: LayeredAvatarDriver | undefined, frame = 0, previous = 0, lastCue = -1, lastAction = -1
+    let disposed = false, driver: LayeredAvatarSurface | undefined, frame = 0, previous = 0, lastCue = -1, lastAction = -1
     let dragging = false, moved = false, downX = 0, downY = 0, elapsed = 0, lastBehavior: PetBehavior = 'idle'
     let agentBehavior: PetBehavior = 'idle', actionUntil = 0, filtered: Record<string, number> | undefined
     const gaze = { x: 0, y: 0 }, behavior = new PetBehaviorController()
     const reduced = matchMedia('(prefers-reduced-motion: reduce)')
     const context = output.getContext('2d', { alpha: true })
-    const gl = source.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: true })
     const fail = (e: unknown): void => { if (!disposed) { setReady(false); current.current.onError(e instanceof Error ? e.message : String(e)) } }
     const resize = (): void => {
       const rect = host.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1)
@@ -84,7 +84,8 @@ export function LayeredPet(props: Props): React.JSX.Element {
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
       try {
-        driver!.frame(params, dt, elapsed)
+        driver!.frame(params, dt, elapsed, performance)
+        host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
         const { w, h } = p.asset.rig.canvas, face = p.asset.rig.anchors.face
         const cropW = p.portrait ? Math.min(w, (face.x1 - face.x0) * 2.25) : w
         const cropH = p.portrait ? Math.min(h, (face.y1 - face.y0) * 2.8) : h
@@ -92,22 +93,19 @@ export function LayeredPet(props: Props): React.JSX.Element {
         const sy = p.portrait ? Math.max(0, Math.min(h - cropH, face.y0 - (face.y1 - face.y0) * .65)) : 0
         const scale = Math.min(output.width / cropW, output.height / cropH), dw = cropW * scale, dh = cropH * scale
         context!.clearRect(0, 0, output.width, output.height)
-        context!.drawImage(source, sx, sy, cropW, cropH, (output.width - dw) / 2, output.height - dh, dw, dh)
+        context!.drawImage(source, sx * source.width / w, sy * source.height / h, cropW * source.width / w, cropH * source.height / h, (output.width - dw) / 2, output.height - dh, dw, dh)
         host.dataset.behavior = active; host.dataset.mouth = params.mouthOpen.toFixed(3); host.dataset.pose = params.angleY.toFixed(3) + ':' + params.angleX.toFixed(3)
         if (active !== lastBehavior) { lastBehavior = active; p.onBehavior?.(active) }
       } catch (e) { cancelAnimationFrame(frame); fail(e) }
     }
     setReady(false)
     void (async () => {
-      if (!gl || !context) throw Error('这台设备无法创建透明角色画布。')
-      source.width = props.asset.rig.canvas.w; source.height = props.asset.rig.canvas.h
-      driver = await createLayeredDriver(gl, props.asset.rig)
-      if (disposed) { driver.dispose(); gl.getExtension('WEBGL_lose_context')?.loseContext(); return }
+      if (!context) throw Error('这台设备无法创建透明角色画布。')
+      driver = await createLayeredSurface(source, props.asset.rig)
+      if (disposed) { driver.dispose(); return }
       driver.frame(layeredParameters({ time: 1, mood: 'idle', behavior: 'idle', mouth: 0, gaze }), 0, 1)
       // Verify that the rig actually produces visible pixels before enabling Apply.
-      const pixel = new Uint8Array(source.width * source.height * 4)
-      gl.readPixels(0, 0, source.width, source.height, gl.RGBA, gl.UNSIGNED_BYTE, pixel)
-      if (!pixel.some((n, i) => i % 4 === 3 && n > 10)) throw Error('PSD 没有生成可见角色，请检查图层内容。')
+      if (!driver.visible()) throw Error('模型没有生成可见角色，请检查部件内容。')
       setReady(true); current.current.onReady?.(); frame = requestAnimationFrame(tick)
     })().catch(fail)
     return () => {
@@ -116,10 +114,10 @@ export function LayeredPet(props: Props): React.JSX.Element {
       host.removeEventListener('pointerup', pointerUp); host.removeEventListener('pointercancel', cancelDrag)
       host.removeEventListener('lostpointercapture', cancelDrag); host.removeEventListener('pointerleave', leave)
       window.removeEventListener('blur', cancelDrag); source.removeEventListener('webglcontextlost', lost)
-      driver?.dispose(); gl?.getExtension('WEBGL_lose_context')?.loseContext()
+      driver?.dispose()
     }
   }, [props.asset])
-  return <div ref={hostRef} className="layered-pet-host" data-layered-ready={ready} data-mood={props.mood ?? 'idle'} data-view={props.portrait ? 'portrait' : 'full'} aria-label={`${props.asset.name} · 2.5D 角色`}>
+  return <div ref={hostRef} className="layered-pet-host" data-engine={isStandRig(props.asset.rig) ? 'standrig' : 'anime25d'} data-portrait-poses={isPortraitRig(props.asset.rig)} data-layered-ready={ready} data-mood={props.mood ?? 'idle'} data-view={props.portrait ? 'portrait' : 'full'} aria-label={`${props.asset.name} · 2D 角色`}>
     <canvas ref={canvasRef} className="layered-pet-canvas" />
     {!ready && <span className="layered-loading">正在唤醒角色…</span>}
   </div>

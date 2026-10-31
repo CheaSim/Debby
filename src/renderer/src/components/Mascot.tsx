@@ -16,6 +16,7 @@ import { LayeredPet } from './LayeredPet'
 import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
 import type { AvatarPerformance } from '../../../shared/avatar-performance'
 import { debbyMoodLines } from '../../../shared/debby-character'
+import { isPortraitRig } from '../../../shared/standrig-avatar'
 
 interface MascotProps {
   performance?: AvatarPerformance
@@ -111,7 +112,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
           <button className="icon-button" onClick={() => setPortrait(false)} title="全身视图" aria-pressed={!portrait}><PersonStanding size={17} /></button>
           <button className="icon-button" onClick={() => setPortrait(true)} title="上半身视图" aria-pressed={portrait}><ScanFace size={17} /></button>
         </div>
-        <label className="switch-row" title={layeredAsset ? '2.5D 使用目光跟随' : '旋转角色模式'}><Rotate3D size={16} /><span>{layeredAsset ? '2.5D · 目光跟随' : '旋转模式'}</span><input type="checkbox" disabled={Boolean(layeredAsset)} checked={!layeredAsset && rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
+        <label className="switch-row" title={layeredAsset ? isPortraitRig(layeredAsset.rig) ? '此角色使用表情立绘' : '2.5D 使用目光跟随' : '旋转角色模式'}><Rotate3D size={16} /><span>{layeredAsset ? isPortraitRig(layeredAsset.rig) ? '表情立绘' : '2.5D · 目光跟随' : '旋转模式'}</span><input type="checkbox" disabled={Boolean(layeredAsset)} checked={!layeredAsset && rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
         <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
         <button className="menu-command" title="学跳舞" onClick={() => { optionsRef.current?.hidePopover(); onDanceStudio() }}><Music2 size={16} /><span>学跳舞</span></button>

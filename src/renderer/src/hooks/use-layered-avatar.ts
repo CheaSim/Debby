@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
-import { Anime25DBackend, type LayeredAvatarBackend } from '../avatar/layered-runtime'
+import { PortableAvatarBackend, type LayeredAvatarBackend } from '../avatar/layered-runtime'
 import { IndexedDbAvatarStore, type LayeredAvatarStore } from '../avatar/layered-store'
-const defaultStore = new IndexedDbAvatarStore(), defaultBackend = new Anime25DBackend()
+const defaultStore = new IndexedDbAvatarStore(), defaultBackend = new PortableAvatarBackend()
 export function useLayeredAvatar(store: LayeredAvatarStore = defaultStore, backend: LayeredAvatarBackend = defaultBackend) {
   const [asset, setAsset] = useState<LayeredAvatarAsset>()
   const [selected, setSelected] = useState(false)
