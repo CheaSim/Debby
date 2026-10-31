@@ -12,6 +12,9 @@ if (execFileSync('git', ['status', '--porcelain', '--untracked-files=no'], { cwd
 const target = resolve(root, 'src/renderer/public/models/whale-girl'), evidence = resolve(root, 'work/whale-girl')
 mkdirSync(target, { recursive: true }); mkdirSync(evidence, { recursive: true })
 const poses = { neutral: 'maid-left', happy: 'whale-cheerful', shy: 'whale-shy', caring: 'whale-serious', curious: 'whale-confused', surprised: 'whale-frightened', sad: 'whale-exasperated', proud: 'whale-starry', playful: 'whale-cheerful' }
+// Authored in the padded 800x1280 stage. Closed eyes have no pupil displacement.
+const eyeCenters = { neutral: [[348,178],[414,159]], happy: [], shy: [[361,203],[415,181]], caring: [[366,176],[429,164]], curious: [[379,180],[444,159]], surprised: [[360,178],[419,174]], sad: [[361,173],[424,152]], proud: [[379,186],[459,178]], playful: [] }
+const motion = { version: 1, head: { x: 405, y: 175, radiusX: 190, radiusY: 235, pivotX: 405, pivotY: 310 }, eyes: Object.fromEntries(Object.entries(eyeCenters).map(([key, eyes]) => [key, eyes.map(([x,y]) => ({ x, y, radiusX: 23, radiusY: 25 }))])) }
 const parameters = parameterDefinitionsForRig({ parameters: [] })
 const assets = [], parts = [], inputs = {}, thumbs = [], cleanup = {}
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
@@ -48,12 +51,12 @@ for (const [emotion, file] of Object.entries(poses)) {
 }
 const rig = { schemaVersion: '0.1.0', name: 'Debby · 鲸鱼娘', stage: { width: 800, height: 1280, background: 'transparent' },
   assets, parameters, parts, physics: { enabled: false, chains: [] }, deformers: [],
-  metadata: { source: 'https://github.com/JAdpp/dsh-whale-galgame/tree/' + commit, notes: 'CC BY-NC-SA 4.0; see NOTICE.md. Portrait expressions only; no facial mesh, lip sync or skeletal dance.', debby: { mode: 'portrait-poses', face: { x0: 240, x1: 560, y0: 100, y1: 360 } } },
+  metadata: { source: 'https://github.com/JAdpp/dsh-whale-galgame/tree/' + commit, notes: 'CC BY-NC-SA 4.0; see NOTICE.md. Portrait expressions with authored image-space gaze/head motion; no separated facial mesh, lip sync or skeletal dance.', debby: { mode: 'portrait-poses', face: { x0: 240, x1: 560, y0: 100, y1: 360 }, motion } },
   facialPresets: { version: 1, expressions: Object.keys(poses).map(emotion => ({ id: emotion, name: emotion, document: { Type: 'Live2D Expression', FadeInTime: 0, FadeOutTime: 0, Parameters: Object.keys(poses).map(key => ({ Id: 'Pose_' + key, Value: key === emotion ? 1 : 0, Blend: 'Overwrite' })) } })) }
 }
 writeFileSync(resolve(target, 'debby-whale-girl.srig'), JSON.stringify(rig))
 await sharp(prepared.get('maid-left')).webp({ quality: 95 }).toFile(resolve(target, 'cover.webp'))
 await sharp({ create: { width: 720, height: 1152, channels: 4, background: '#edf1fa' } }).composite(thumbs).png().toFile(resolve(evidence, 'expressions.png'))
 for (const [from, to] of [['LICENSE.md', 'UPSTREAM-LICENSE.md'], ['NOTICE.md', 'UPSTREAM-NOTICE.md'], ['assets/default/licenses/dsh-deep-whale-LICENSE.txt', 'LICENSE-CC-BY-NC-SA-4.0.txt'], ['assets/default/licenses/dsh-deep-whale-NOTICE.txt', 'UPSTREAM-ATTRIBUTION.txt']]) writeFileSync(resolve(target, to), readFileSync(resolve(source, from)))
-writeFileSync(resolve(target, 'provenance.json'), JSON.stringify({ repository: 'https://github.com/JAdpp/dsh-whale-galgame', commit, license: 'CC-BY-NC-SA-4.0', sources: inputs, changes: 'Removed border-connected near-white source remnants; resized and padded to 800x1280; converted WebP to paletted PNG; packaged as StandRig pose layers. No painting or automatic layer segmentation.', removedPixels: cleanup, modelSha256: hash(readFileSync(resolve(target, 'debby-whale-girl.srig'))) }, null, 2) + '\n')
+writeFileSync(resolve(target, 'provenance.json'), JSON.stringify({ repository: 'https://github.com/JAdpp/dsh-whale-galgame', commit, license: 'CC-BY-NC-SA-4.0', sources: inputs, changes: 'Removed border-connected near-white source remnants; resized and padded to 800x1280; converted WebP to paletted PNG; packaged as StandRig pose layers; authored per-expression eye anchors and head region for bounded image-space motion. No painting or automatic layer segmentation.', removedPixels: cleanup, modelSha256: hash(readFileSync(resolve(target, 'debby-whale-girl.srig'))) }, null, 2) + '\n')
 console.log('Prepared credited whale-girl expression pack; inspect work/whale-girl/expressions.png before release.')

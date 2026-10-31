@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
 import { PortableAvatarBackend, type LayeredAvatarBackend } from '../avatar/layered-runtime'
 import { IndexedDbAvatarStore, type LayeredAvatarStore } from '../avatar/layered-store'
+import { refreshBuiltinAvatar } from '../avatar/builtin-avatar'
 const defaultStore = new IndexedDbAvatarStore(), defaultBackend = new PortableAvatarBackend()
 export function useLayeredAvatar(store: LayeredAvatarStore = defaultStore, backend: LayeredAvatarBackend = defaultBackend) {
   const [asset, setAsset] = useState<LayeredAvatarAsset>()
@@ -15,8 +16,13 @@ export function useLayeredAvatar(store: LayeredAvatarStore = defaultStore, backe
     void (async () => {
       const saved = await store.load()
       if (!saved || controller.signal.aborted) return
-      const rig = await backend.parse(saved.file, { signal: controller.signal })
-      if (!controller.signal.aborted) { setAsset({ name: saved.name, file: saved.file, rig }); setSelected(saved.selected) }
+      const file = await refreshBuiltinAvatar(saved.file, async () => {
+        const response = await fetch(new URL('models/whale-girl/debby-whale-girl.srig', document.baseURI), { signal: controller.signal })
+        if (!response.ok) throw Error('内置角色包不可用')
+        return response.blob()
+      }, controller.signal)
+      const rig = await backend.parse(file, { signal: controller.signal })
+      if (!controller.signal.aborted) { setAsset({ name: saved.name, file, rig }); setSelected(saved.selected) }
     })().catch(e => { if (!controller.signal.aborted) setError(`角色恢复失败，已使用 3D：${e.message}`) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => { active.current = false; controller.abort() }

@@ -20,7 +20,7 @@ export async function mountLayeredAvatar(canvas: HTMLCanvasElement, file: Blob, 
     if (disposed) return
     const dt = Math.min(.05, Math.max(0, (now - previous) / 1000)); previous = now
     input.time += dt
-    driver.frame(applyLayeredPerformance(layeredParameters(input), expression), dt, input.time, expression)
+    driver.frame(applyLayeredPerformance(layeredParameters(input), expression, input.reducedMotion), dt, input.time, expression, { behavior: input.behavior, reducedMotion: Boolean(input.reducedMotion) })
     frame = requestAnimationFrame(tick)
   }
   signal.addEventListener('abort', dispose, { once: true }); frame = requestAnimationFrame(tick)

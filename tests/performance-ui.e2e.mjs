@@ -32,6 +32,11 @@ try {
   await page.getByTitle('文字对话', { exact: true }).click()
   await app.evaluate(({ ipcMain, BrowserWindow, net }) => {
     const window = BrowserWindow.getAllWindows()[0]
+    if (window.webContents.isOffscreen()) {
+      // Exercise speech eligibility in isolation while the real OS window stays hidden and muted.
+      globalThis.performanceNativeVisible = window.isVisible.bind(window)
+      window.isVisible = () => true
+    }
     const state = { revision: 100, config: { configured: true, cloudConsent: true, storage: 'none', modelId: '表情联动验证' }, busy: false, messages: [] }
     ipcMain.removeHandler('chat:state'); ipcMain.handle('chat:state', () => state)
     globalThis.performanceReply = ({ text, expressions, status = 'done', turn = 'one' }) => {
@@ -129,6 +134,7 @@ try {
   await page.getByTitle('停止跳舞', { exact: true }).click()
   await page.waitForSelector('[data-view=portrait]')
   assert.deepEqual(errors, [])
+  if (process.env.FINPET_E2E_BACKGROUND === '1') assert.deepEqual(await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; return { visible: globalThis.performanceNativeVisible(), focused: window.isFocused(), muted: window.webContents.isAudioMuted() } }), { visible: false, focused: false, muted: true })
   console.log('Performance E2E passed: dialogue faces, blush, dancing through chat, real PCM sentence sync, cancellation, imported cue timeline, pause/seek, portrait restoration.')
 } catch (error) {
   await page?.screenshot({ path: resolve(root, 'work/performance-failure.png') }).catch(() => {})

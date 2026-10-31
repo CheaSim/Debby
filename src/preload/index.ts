@@ -5,8 +5,11 @@ import type { ReadAloudStreamEvent, VoiceAudio, VoiceState } from '../shared/voi
 import type { AgentShellState } from '../shared/shell'
 import type { DanceState } from '../shared/dance'
 import type { AvatarCue } from '../shared/avatar'
+import type { CursorPosition } from '../shared/avatar-gaze'
 
 const api: FinPetApi = {
+  getCursorPosition: () => ipcRenderer.invoke('window:cursor'),
+  onCursorPosition: listener => subscribe<CursorPosition>('window:cursor-position', listener),
   onAvatarAction: listener => subscribe<AvatarCue>('avatar:action', listener),
   getDanceState: () => ipcRenderer.invoke('dance:state'),
   getDanceAsset: (id) => ipcRenderer.invoke('dance:asset', id),

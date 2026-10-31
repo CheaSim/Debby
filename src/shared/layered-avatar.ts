@@ -29,7 +29,7 @@ export function applyLayeredPerformance(params: Record<string, number>, expressi
 export interface LayeredAvatarAsset { name: string; file: Blob; rig: LayeredRig }
 export interface LayeredFrameInput { time: number; mood: PetMood; behavior: PetBehavior; mouth: number; gaze: { x: number; y: number }; reducedMotion?: boolean }
 export interface LayeredAvatarDriver {
-  frame(params: Record<string, number>, dt: number, time: number, expression?: ExpressionDirective): void
+  frame(params: Record<string, number>, dt: number, time: number, expression?: ExpressionDirective, context?: { behavior: PetBehavior; reducedMotion: boolean }): void
   dispose(): void
 }
 export interface LayeredAvatarSurface extends LayeredAvatarDriver { canvas: HTMLCanvasElement; visible(): boolean }
@@ -48,6 +48,12 @@ export function layeredParameters({ time: t, mood, behavior, mouth, gaze, reduce
   if (behavior === 'shake') p.angleX += .6 * Math.sin(t * 7)
   if (['shy', 'heart', 'pat', 'comfort'].includes(behavior)) p.angleZ += behavior === 'shy' ? -.5 : .3
   if (['think', 'working', 'waiting', 'listening'].includes(behavior)) { p.angleZ += .25; p.angleY -= .12; p.brow += .15 }
+  if (behavior === 'talking') {
+    p.angleY += .045 * Math.sin(t * 4.8) * (.35 + p.mouthOpen)
+    p.angleZ += .06 * Math.sin(t * 1.6)
+    p.armY = .12 + .1 * Math.sin(t * 2.8)
+    p.body += .025 * Math.sin(t * 2.8)
+  }
   if (['notify', 'lifted'].includes(behavior)) { p.eyeOpenL = p.eyeOpenR = 1; p.brow = .6; p.angleY = .3 }
   if (behavior === 'bow') p.angleY -= .7 * (.5 + .5 * Math.sin(t * 2.2))
   if (['greet', 'clap', 'stretch', 'celebrate'].includes(behavior)) { p.armY = behavior === 'stretch' ? .8 : .5 + .3 * Math.sin(t * 7); p.body += .12 * Math.sin(t * 3) }

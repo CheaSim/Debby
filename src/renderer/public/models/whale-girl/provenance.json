@@ -12,7 +12,7 @@
     "whale-exasperated.webp": "c627bea1c000d304a538f1d63a2cf244f73824496ca585e0bda91a91450b67aa",
     "whale-starry.webp": "65a3bd1eb9ad4f8cb357af4825311f84e91be4f7f57deb5357fb79116bcad774"
   },
-  "changes": "Removed border-connected near-white source remnants; resized and padded to 800x1280; converted WebP to paletted PNG; packaged as StandRig pose layers. No painting or automatic layer segmentation.",
+  "changes": "Removed border-connected near-white source remnants; resized and padded to 800x1280; converted WebP to paletted PNG; packaged as StandRig pose layers; authored per-expression eye anchors and head region for bounded image-space motion. No painting or automatic layer segmentation.",
   "removedPixels": {
     "maid-left": 0,
     "whale-cheerful": 0,
@@ -23,5 +23,5 @@
     "whale-exasperated": 0,
     "whale-starry": 2
   },
-  "modelSha256": "e00b90ae5e1f49b014f2f99ba18bc047add49574d6e216abc3eb67504f270c1c"
+  "modelSha256": "f896b2ef1a925917445044f1067dbbc832f721f63419c3b04efa04eb828f8783"
 }

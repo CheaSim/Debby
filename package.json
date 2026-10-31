@@ -33,6 +33,7 @@
     "test:layered-avatar": "npm run build && node tests/layered-avatar.e2e.mjs",
     "test:performance-ui": "npm run build && node tests/performance-ui.e2e.mjs",
     "test:standrig-avatar": "npm run build && node tests/standrig-avatar.e2e.mjs",
+    "test:avatar-motion": "npm run build && node tests/avatar-motion.e2e.mjs",
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

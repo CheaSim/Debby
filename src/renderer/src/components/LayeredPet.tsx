@@ -8,6 +8,7 @@ import type { AgentShellState } from '../../../shared/shell'
 import { createLayeredSurface } from '../avatar/layered-runtime'
 import { platformApi } from '../platform-api'
 import { isPortraitRig, isStandRig } from '../../../shared/standrig-avatar'
+import { createAvatarGaze } from '../../../shared/avatar-gaze'
 
 interface Props {
   performance?: AvatarPerformance
@@ -26,6 +27,7 @@ export function LayeredPet(props: Props): React.JSX.Element {
     let dragging = false, moved = false, downX = 0, downY = 0, elapsed = 0, lastBehavior: PetBehavior = 'idle'
     let agentBehavior: PetBehavior = 'idle', actionUntil = 0, filtered: Record<string, number> | undefined
     const gaze = { x: 0, y: 0 }, behavior = new PetBehaviorController()
+    const cursor = createAvatarGaze(platformApi)
     const reduced = matchMedia('(prefers-reduced-motion: reduce)')
     const context = output.getContext('2d', { alpha: true })
     const fail = (e: unknown): void => { if (!disposed) { setReady(false); current.current.onError(e instanceof Error ? e.message : String(e)) } }
@@ -35,9 +37,6 @@ export function LayeredPet(props: Props): React.JSX.Element {
     }
     const observer = new ResizeObserver(resize); observer.observe(host); resize()
     const pointerMove = (event: PointerEvent): void => {
-      const rect = host.getBoundingClientRect()
-      gaze.x = Math.max(-1, Math.min(1, (event.clientX - rect.left) / rect.width * 2 - 1))
-      gaze.y = Math.max(-1, Math.min(1, (event.clientY - rect.top) / rect.height * 2 - 1))
       if (!dragging) return
       if (!moved && Math.hypot(event.screenX - downX, event.screenY - downY) > 5) { moved = true; behavior.interact('lifted', elapsed) }
       if (moved) void platformApi.moveWindowDrag(event.screenX, event.screenY)
@@ -57,26 +56,31 @@ export function LayeredPet(props: Props): React.JSX.Element {
       if (host.hasPointerCapture(event.pointerId)) host.releasePointerCapture(event.pointerId)
       behavior.interact(moved ? 'land' : 'pat', elapsed)
     }
-    const leave = (): void => { if (!dragging) gaze.x = gaze.y = 0 }
     const lost = (event: Event): void => { event.preventDefault(); cancelDrag(); fail(Error('图形上下文已丢失。')) }
     host.addEventListener('pointermove', pointerMove); host.addEventListener('pointerdown', pointerDown)
     host.addEventListener('pointerup', pointerUp); host.addEventListener('pointercancel', cancelDrag)
-    host.addEventListener('lostpointercapture', cancelDrag); host.addEventListener('pointerleave', leave)
+    host.addEventListener('lostpointercapture', cancelDrag)
     window.addEventListener('blur', cancelDrag); source.addEventListener('webglcontextlost', lost)
     const tick = (now: number): void => {
       if (disposed) return
       frame = requestAnimationFrame(tick)
-      if (document.hidden || now - previous < 1000 / 30) return
-      const dt = Math.min(.05, (now - (previous || now)) / 1000); previous = now; elapsed += dt
+      if (document.hidden) { previous = now; return }
+      if (now - previous < 1000 / 30) return
+      const seconds = Math.max(0, (now - (previous || now)) / 1000)
+      const dt = Math.min(.05, seconds); previous = now; elapsed += seconds
+      host.dataset.elapsed = elapsed.toFixed(2)
       const p = current.current, shell = p.agentShell
+      Object.assign(gaze, cursor.read(host.getBoundingClientRect(), p.portrait ? .3 : .18))
+      host.dataset.gaze = `${gaze.x.toFixed(3)}:${gaze.y.toFixed(3)}`
       if (p.cue && p.cue.id !== lastCue && !dragging) { lastCue = p.cue.id; behavior.interact(p.cue.name, elapsed) }
-      let active = behavior.update(p.mood ?? 'idle', elapsed)
+      const autonomous = !shell?.controller && !p.activity && !dragging
+      let active = behavior.update(p.mood ?? 'idle', elapsed, autonomous && !reduced.matches, autonomous)
       if (!shell?.controller || shell.task?.status === 'cancelled') { actionUntil = 0; agentBehavior = 'idle' }
       else if (!dragging && active === 'idle' && shell.action && shell.action.id !== lastAction) {
         lastAction = shell.action.id; agentBehavior = shell.action.name; actionUntil = elapsed + behaviorDuration[agentBehavior]
       }
       if (active === 'idle' && elapsed < actionUntil) active = agentBehavior
-      if (active === 'idle') active = shell?.controller && shell.task?.status === 'working' ? 'working' : shell?.controller && shell.task?.status === 'waiting' ? 'waiting' : p.activity ?? 'idle'
+      if (active === 'idle') active = p.activity ?? (shell?.controller && shell.task?.status === 'working' ? 'working' : shell?.controller && shell.task?.status === 'waiting' ? 'waiting' : 'idle')
       const performance = p.performance && p.performance.expiresAt > Date.now() && !['pat', 'lifted', 'land'].includes(active) ? p.performance : undefined
       const target = applyLayeredPerformance(layeredParameters({ time: elapsed, mood: p.mood ?? 'idle', behavior: active, mouth: p.mouthLevel ?? 0, gaze, reducedMotion: reduced.matches }), performance, reduced.matches)
       host.dataset.emotion = performance?.emotion ?? ''; host.dataset.emotionSource = performance?.source ?? ''
@@ -84,8 +88,9 @@ export function LayeredPet(props: Props): React.JSX.Element {
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
       try {
-        driver!.frame(params, dt, elapsed, performance)
+        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches })
         host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
+        host.dataset.portraitMotion = source.dataset.portraitMotion ?? ''
         const { w, h } = p.asset.rig.canvas, face = p.asset.rig.anchors.face
         const cropW = p.portrait ? Math.min(w, (face.x1 - face.x0) * 2.25) : w
         const cropH = p.portrait ? Math.min(h, (face.y1 - face.y0) * 2.8) : h
@@ -94,6 +99,7 @@ export function LayeredPet(props: Props): React.JSX.Element {
         const scale = Math.min(output.width / cropW, output.height / cropH), dw = cropW * scale, dh = cropH * scale
         context!.clearRect(0, 0, output.width, output.height)
         context!.drawImage(source, sx * source.width / w, sy * source.height / h, cropW * source.width / w, cropH * source.height / h, (output.width - dw) / 2, output.height - dh, dw, dh)
+        host.dataset.renderedView = p.portrait ? 'portrait' : 'full'
         host.dataset.behavior = active; host.dataset.mouth = params.mouthOpen.toFixed(3); host.dataset.pose = params.angleY.toFixed(3) + ':' + params.angleX.toFixed(3)
         if (active !== lastBehavior) { lastBehavior = active; p.onBehavior?.(active) }
       } catch (e) { cancelAnimationFrame(frame); fail(e) }
@@ -109,10 +115,10 @@ export function LayeredPet(props: Props): React.JSX.Element {
       setReady(true); current.current.onReady?.(); frame = requestAnimationFrame(tick)
     })().catch(fail)
     return () => {
-      disposed = true; cancelAnimationFrame(frame); cancelDrag(); observer.disconnect()
+      disposed = true; cancelAnimationFrame(frame); cancelDrag(); observer.disconnect(); cursor.dispose()
       host.removeEventListener('pointermove', pointerMove); host.removeEventListener('pointerdown', pointerDown)
       host.removeEventListener('pointerup', pointerUp); host.removeEventListener('pointercancel', cancelDrag)
-      host.removeEventListener('lostpointercapture', cancelDrag); host.removeEventListener('pointerleave', leave)
+      host.removeEventListener('lostpointercapture', cancelDrag)
       window.removeEventListener('blur', cancelDrag); source.removeEventListener('webglcontextlost', lost)
       driver?.dispose()
     }

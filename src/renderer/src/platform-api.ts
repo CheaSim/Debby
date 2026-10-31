@@ -37,6 +37,12 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  getCursorPosition: async () => null,
+  onCursorPosition(listener) {
+    const move = (event: PointerEvent): void => listener({ x: event.clientX, y: event.clientY, source: 'browser' })
+    window.addEventListener('pointermove', move)
+    return () => window.removeEventListener('pointermove', move)
+  },
   onAvatarAction: () => () => {},
   getDanceState: async () => emptyDanceState(),
   getDanceAsset: async () => { throw Error('请在 Debby 桌面版打开动作库。') },

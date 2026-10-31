@@ -28,6 +28,10 @@ describe('StandRig portable model boundary', () => {
     expect(() => importStandRig(broken)).toThrow('校验失败')
     const crop = pack(); crop.metadata.debby.face.x0 = crop.stage.width
     expect(() => importStandRig(crop)).toThrow('取景范围')
+    const anchors = pack(); anchors.metadata.debby.motion.eyes.neutral[0].radiusX = -1
+    expect(() => importStandRig(anchors)).toThrow('视线绑定')
+    const head = pack(); head.metadata.debby.motion.head.pivotY = 9999
+    expect(() => importStandRig(head)).toThrow('视线绑定')
     expect(() => portableStandRig({ ...pack(), schemaVersion: 'future' })).toThrow('模型版本')
   })
   it('accepts a portable bundle and clamps host channels to the authored range', () => {

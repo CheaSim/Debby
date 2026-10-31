@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { _electron as electron } from 'playwright'
 import { DebbyClient } from '../integrations/client.mjs'
+import { waitForNativePosition } from './electron-helpers.mjs'
 
 const root = resolve(import.meta.dirname, '..'), require = createRequire(import.meta.url)
 const userData = await mkdtemp(resolve(tmpdir(), 'debby-standrig-'))
@@ -26,6 +27,7 @@ try {
   await page.waitForSelector(ready, { timeout: 30000 })
   assert.equal(await page.getByRole('button', { name: '试试口型', exact: true }).count(), 0)
   await page.getByRole('button', { name: '查看全身', exact: true }).click()
+  await page.waitForSelector('.avatar-preview [data-rendered-view=full]')
   const original = JSON.parse(await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl.srig'), 'utf8'))
   // Compare real pixels with a single source illustration; catches opaque/ghosted idle layers.
   for (const emotion of ['neutral', 'happy', 'shy', 'caring', 'surprised', 'proud']) {
@@ -75,7 +77,7 @@ try {
   const pet = await page.locator('.pet-wrap .layered-pet-host').boundingBox()
   await page.mouse.move(pet.x + pet.width / 2, pet.y + pet.height / 2); await page.mouse.down()
   await page.mouse.move(pet.x + pet.width / 2 - 30, pet.y + pet.height / 2 - 20); await page.mouse.up()
-  await page.waitForFunction(() => window.screenX === 270 && window.screenY === 160)
+  await waitForNativePosition(app, 270, 160)
   assert.equal((await page.evaluate(() => window.finpet.getVoiceState())).active, false)
   await open(); await page.getByRole('button', { name: '使用原来的 3D', exact: true }).click()
   await page.waitForSelector('.pet-wrap [data-3d-ready=true]', { timeout: 30000 })

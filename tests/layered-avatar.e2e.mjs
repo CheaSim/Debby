@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
 import { _electron as electron } from 'playwright'
 import { DebbyClient } from '../integrations/client.mjs'
+import { waitForNativePosition } from './electron-helpers.mjs'
 
 const root = resolve(import.meta.dirname, '..'), require = createRequire(import.meta.url)
 const userData = await mkdtemp(resolve(tmpdir(), 'debby-layered-'))
@@ -65,8 +66,9 @@ try {
   await page.mouse.move(pet.x + pet.width / 2, pet.y + pet.height / 2)
   await page.mouse.down(); await page.mouse.move(pet.x + pet.width / 2 - 30, pet.y + pet.height / 2 - 20)
   await page.waitForFunction(() => document.querySelector('.pet-wrap .layered-pet-host').dataset.behavior === 'lifted')
-  await page.mouse.up(); await page.waitForFunction(() => window.screenX === 270 && window.screenY === 160)
-  await page.waitForFunction(() => document.querySelector('.pet-wrap .layered-pet-host').dataset.behavior === 'land')
+  const landed = page.waitForFunction(() => document.querySelector('.pet-wrap .layered-pet-host').dataset.behavior === 'land')
+  await page.mouse.up(); await landed
+  await waitForNativePosition(app, 270, 160)
   assert.equal((await page.evaluate(() => window.finpet.getVoiceState())).active, false)
   await page.evaluate(() => window.finpet.enableShell(true))
   harness = new DebbyClient(resolve(userData, 'agent-bridge.json'), 'Layered renderer E2E')
@@ -112,4 +114,7 @@ try {
   await page.screenshot({ path: resolve(root, 'work/avatar-studio-narrow.png') })
   assert.deepEqual(errors, [])
   console.log('Layered avatar E2E passed: worker validation, pixels, mouth, gestures, persistence, 3D fallback/dance, removal, narrow UI, no devices.')
+} catch (error) {
+  if (page) console.error(await page.evaluate(() => ({ hidden: document.hidden, hosts: [...document.querySelectorAll('.layered-pet-host')].map(host => ({ ...host.dataset })) })).catch(() => ({})))
+  throw error
 } finally { await harness?.release().catch(() => {}); await app?.close(); await rm(userData, { recursive: true, force: true }) }

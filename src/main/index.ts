@@ -19,10 +19,12 @@ import { ReadAloudRuntime } from './companion/read-aloud'
 import { DanceLibrary } from './dance-library'
 import { createDanceToolsPlugin } from './agent/dance-plugin'
 import { createCompanionToolsPlugin } from './agent/companion-plugin'
+import type { CursorPosition } from '../shared/avatar-gaze'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
 const expandedSize = { width: 880, height: 620 }
+const backgroundTest = Boolean(process.env.FINPET_E2E_USER_DATA && process.env.FINPET_E2E_BACKGROUND === '1')
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let store: SettingsStore
@@ -35,6 +37,8 @@ let dances: DanceLibrary
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
 let pointerTimer: NodeJS.Timeout | undefined
+let lastCursor = ''
+let lastCursorAt = 0
 let interactiveRegions: InteractiveRegion[] = []
 let ignoringMouse = false
 let windowDrag: { pointer: { x: number; y: number }; bounds: Electron.Rectangle } | undefined
@@ -78,10 +82,13 @@ function createWindow(): BrowserWindow {
     maximizable: false,
     minimizable: false,
     skipTaskbar: true,
-    alwaysOnTop: settings.alwaysOnTop,
+    alwaysOnTop: backgroundTest ? false : settings.alwaysOnTop,
+    focusable: !backgroundTest,
     hasShadow: false,
     icon: iconPath,
     webPreferences: {
+      backgroundThrottling: !process.env.FINPET_E2E_USER_DATA,
+      offscreen: backgroundTest,
       preload: join(currentDir, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -91,7 +98,9 @@ function createWindow(): BrowserWindow {
 
   window.setMenu(null)
   // Electron 43's Windows taskbar placement can drop the default floating level.
-  window.setAlwaysOnTop(settings.alwaysOnTop, 'pop-up-menu')
+  window.setAlwaysOnTop(backgroundTest ? false : settings.alwaysOnTop, 'pop-up-menu')
+  window.webContents.setAudioMuted(backgroundTest)
+  if (backgroundTest) window.webContents.setFrameRate(30)
   ignoringMouse = settings.clickThrough && !settings.panelOpen
   window.setIgnoreMouseEvents(ignoringMouse)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -99,8 +108,13 @@ function createWindow(): BrowserWindow {
   window.webContents.on('render-process-gone', () => { companion?.stop(); stopReadAloud(); stopDancing() })
   window.on('hide', () => { companion?.stop(); stopReadAloud(); stopDancing() })
   window.on('minimize', () => { companion?.stop(); stopReadAloud(); stopDancing() })
+  window.on('show', updatePointerTracking)
+  window.on('hide', updatePointerTracking)
+  window.on('minimize', updatePointerTracking)
+  window.on('restore', updatePointerTracking)
+  window.webContents.on('did-finish-load', () => { lastCursor = ''; syncPointerMode() })
   window.once('ready-to-show', () => {
-    if (!process.argv.includes('--hidden')) window.showInactive()
+    if (!backgroundTest && !process.argv.includes('--hidden')) window.showInactive()
   })
   window.on('move', () => {
     if (moveTimer) clearTimeout(moveTimer)
@@ -136,16 +150,25 @@ function updateWindowMode(panelOpen: boolean): void {
   mainWindow.setSkipTaskbar(!panelOpen)
   windowDrag = undefined
   syncPointerMode()
-  mainWindow.show()
+  if (!backgroundTest) mainWindow.show()
 }
 
 function syncPointerMode(): void {
-  if (!mainWindow || mainWindow.isDestroyed()) return
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return
   const settings = store.get()
   const bounds = mainWindow.getBounds()
   const cursor = screen.getCursorScreenPoint()
   const local = { x: cursor.x - bounds.x, y: cursor.y - bounds.y }
-  const overTools = interactiveRegions.some((region) => containsPoint(region, local))
+  const zoom = mainWindow.webContents.getZoomFactor()
+  const position: CursorPosition = { x: local.x / zoom, y: local.y / zoom, source: 'desktop' }
+  const signature = `${position.x}:${position.y}`
+  const now = Date.now()
+  if (signature !== lastCursor && now - lastCursorAt >= 32 && !mainWindow.webContents.isLoadingMainFrame()) {
+    lastCursor = signature
+    lastCursorAt = now
+    mainWindow.webContents.send('window:cursor-position', position)
+  }
+  const overTools = interactiveRegions.some((region) => containsPoint(region, position))
   const ignore = settings.clickThrough && !settings.panelOpen && !overTools
   if (ignore !== ignoringMouse) {
     ignoringMouse = ignore
@@ -156,9 +179,10 @@ function syncPointerMode(): void {
 function updatePointerTracking(): void {
   if (pointerTimer) clearInterval(pointerTimer)
   pointerTimer = undefined
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return
   syncPointerMode()
-  // Native cursor tracking keeps the toolbar reachable even while Chromium ignores clicks.
-  if (store.get().clickThrough) pointerTimer = setInterval(syncPointerMode, 16)
+  // Read-only desktop coordinates still arrive when the cursor leaves Chromium or clicks pass through.
+  if (mainWindow?.isVisible() && !mainWindow.isMinimized()) pointerTimer = setInterval(syncPointerMode, store.get().clickThrough ? 16 : 33)
 }
 
 function buildTrayMenu(): Menu {
@@ -348,10 +372,16 @@ function registerIpc(): void {
     return next
   })
   ipcMain.handle('window:toggle-panel', togglePanel)
+  ipcMain.handle('window:cursor', (): CursorPosition | null => {
+    if (!mainWindow || mainWindow.isDestroyed()) return null
+    const cursor = screen.getCursorScreenPoint(), bounds = mainWindow.getBounds(), zoom = mainWindow.webContents.getZoomFactor()
+    return { x: (cursor.x - bounds.x) / zoom, y: (cursor.y - bounds.y) / zoom, source: 'desktop' }
+  })
   ipcMain.handle('window:set-click-through', (_event, enabled: boolean) => setClickThrough(Boolean(enabled)))
   ipcMain.handle('window:set-interactive-regions', (_event, regions: unknown) => {
     if (!mainWindow) return
-    interactiveRegions = parseInteractiveRegions(regions, mainWindow.getBounds())
+    const bounds = mainWindow.getBounds(), zoom = mainWindow.webContents.getZoomFactor()
+    interactiveRegions = parseInteractiveRegions(regions, { width: bounds.width / zoom, height: bounds.height / zoom })
     syncPointerMode()
   })
   ipcMain.handle('window:drag-start', (_event, x: number, y: number) => {

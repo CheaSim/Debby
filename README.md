@@ -14,7 +14,8 @@ Debby 是一位可爱、活泼的金融小助手：**陪你看懂行情，也陪
 
 ## 已实现
 
-- [鲸鱼娘与 StandRig](docs/standrig-whale-girl.md)：角色工坊一键使用蓝白长裙鲸鱼娘，八张不同立绘随对话、Agent 和指数心情切换；支持本机导入 StandRig `.srig`。内置鲸鱼娘目前为表情立绘，精细口型与独立五官尚未绑定。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
+- [鲸鱼娘与 StandRig](docs/standrig-whale-girl.md)：角色工坊一键使用蓝白长裙鲸鱼娘，八张立绘随对话、Agent 和指数心情切换；带轻量目光、头部和说话姿态，支持本机导入 StandRig `.srig`。精细口型与独立五官尚未绑定。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
+- [目光与自动动作](docs/avatar-motion.md)：桌面范围鼠标跟随、穿透模式、待机/说话姿态和控制优先级；可注入指针源，后台测试隐藏且静音。
 - [对话表情与舞蹈表演](docs/avatar-performance.md)：九种语义表情、同一回复内变脸、按实际语音分句同步；聊天时继续跳舞，舞台风格与 JSON 表情时间轴可扩展，MCP 发台词时一并控制表情
 - [2.5D 角色工坊](docs/layered-avatar-integration.md)：本机 PSD 自动绑定、上半身/全身预览、真实语音口型、眨眼/头发物理、行情情绪与 Agent 表情控制；See-through 单图分层提供独立 GPU 转换入口，与原有 VRM / 舞蹈模式共存
 - [发现金融日常与陪伴](docs/companion-experiences.md)：盘前清单、收盘手记、金融/情绪对话草稿、22 张大阿卡纳塔罗、今日签、一分钟放松、动作小剧场与舞蹈入口；本地小仪式无需模型 Key

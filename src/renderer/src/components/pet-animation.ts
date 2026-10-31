@@ -58,9 +58,13 @@ function poseAt(behavior: PetBehavior, time: number, duration: number): Pose {
   } else if (behavior === 'listening') {
     pose.head = [0.025 + breathe * 0.015, sway * 0.025, -0.1]
   } else if (behavior === 'talking') {
+    const emphasis = Math.sin(phase * Math.PI) ** 2
     pose.head = [breathe * 0.025, sway * 0.035, sway * 0.04]
-    pose.rightUpperArm = [-0.12, 0, -0.95]
-    pose.rightLowerArm = [0, 0.2, -0.48 + breathe * 0.12]
+    pose.rightUpperArm = [-0.12 * emphasis, 0, -1.18 + .23 * emphasis]
+    pose.rightLowerArm = [0, .2 * emphasis, -.08 - (.4 - breathe * .12) * emphasis]
+    pose.leftUpperArm = [-.04 * emphasis, 0, 1.18 - .1 * emphasis]
+    pose.leftLowerArm = [0, -.12, .08 + .2 * emphasis]
+    pose.rightHand = [0, 0, sway * .06 * emphasis]
   } else if (behavior === 'working') {
     pose.head = [0.08 + breathe * 0.015, sway * 0.025, -0.04]
     pose.rightUpperArm = [-0.18, -0.12, -1.0]

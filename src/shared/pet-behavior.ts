@@ -19,28 +19,33 @@ export class PetBehaviorController {
   private nextMarketGesture = 0
   private nextAmbient = 18
   private ambientIndex = 0
+  private source: 'user' | 'ambient' | 'market' = 'user'
 
   interact(behavior: AvatarAction | 'pat' | 'lifted' | 'land', now: number): void {
     this.current = behavior
+    this.source = 'user'
     this.until = now + behaviorDuration[behavior]
   }
 
-  update(mood: PetMood, now: number, ambient = false): PetBehavior {
+  update(mood: PetMood, now: number, ambient = false, autonomous = true): PetBehavior {
+    if ((!ambient && this.source === 'ambient') || (!autonomous && this.source === 'market')) this.current = 'idle'
     if (now >= this.until && this.current !== 'lifted') this.current = 'idle'
     if (mood !== this.mood) {
       this.mood = mood
-      if (this.current === 'idle' && now >= this.nextMarketGesture) {
+      if (autonomous && this.current === 'idle' && now >= this.nextMarketGesture) {
         const gesture = mood === 'bullish' ? 'celebrate' : mood === 'bearish' ? 'comfort' : mood === 'alert' ? 'notify' : 'idle'
         if (gesture !== 'idle') {
           this.current = gesture
+          this.source = 'market'
           this.until = now + behaviorDuration[gesture]
           this.nextMarketGesture = now + 8
         }
       }
     }
-    if (ambient && this.current === 'idle' && (mood === 'idle' || mood === 'bullish') && now >= this.nextAmbient) {
+    if (ambient && autonomous && this.current === 'idle' && (mood === 'idle' || mood === 'bullish') && now >= this.nextAmbient) {
       const actions = ['nod', 'think', 'stretch', 'shy'] as const
       this.interact(actions[this.ambientIndex++ % actions.length], now)
+      this.source = 'ambient'
       this.nextAmbient = now + 22 + this.ambientIndex % 3 * 4
     }
     return this.current

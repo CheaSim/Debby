@@ -1,13 +1,19 @@
 import type { LayeredRig } from './layered-avatar'
 
 export interface StandRigParameter { id: string; min: number; max: number; default: number }
+export interface PortraitEye { x: number; y: number; radiusX: number; radiusY: number }
+export interface PortraitMotion {
+  version: 1
+  head: PortraitEye & { pivotX: number; pivotY: number }
+  eyes: Record<string, PortraitEye[]>
+}
 export interface StandRigDocument {
   schemaVersion: string; name: string; stage: { width: number; height: number }
   assets: { id: string; src: string; width?: number; height?: number }[]
   parameters: StandRigParameter[]
   parts: { id: string; name: string; drawOrder: number; kind: string }[]
   facialPresets?: { expressions: { id: string }[] }
-  metadata?: { debby?: { mode?: string; face?: { x0: number; x1: number; y0: number; y1: number } } }
+  metadata?: { debby?: { mode?: string; face?: { x0: number; x1: number; y0: number; y1: number }; motion?: PortraitMotion } }
   [key: string]: unknown
 }
 export interface StandRigAvatarRig extends LayeredRig { engine: 'standrig'; document: StandRigDocument }
@@ -38,6 +44,11 @@ export function portableStandRig(value: unknown): StandRigDocument {
     if (!Array.isArray(list) || list.length > max) throw Error(`模型 ${key} 数量超出限制。`)
   }
   if (!rig.assets.length || !rig.parts.length) throw Error('模型没有可显示的部件。')
+  const motion = rig.metadata?.debby?.motion
+  if (motion !== undefined) {
+    const validRegion = (eye: PortraitEye): boolean => Boolean(eye) && [eye.x, eye.y, eye.radiusX, eye.radiusY].every(Number.isFinite) && eye.x >= 0 && eye.x <= w && eye.y >= 0 && eye.y <= h && eye.radiusX > 0 && eye.radiusX <= w / 2 && eye.radiusY > 0 && eye.radiusY <= h / 2
+    if (!motion || motion.version !== 1 || !validRegion(motion.head) || !Number.isFinite(motion.head.pivotX) || !Number.isFinite(motion.head.pivotY) || motion.head.pivotX < 0 || motion.head.pivotX > w || motion.head.pivotY < 0 || motion.head.pivotY > h || !motion.eyes || typeof motion.eyes !== 'object' || Array.isArray(motion.eyes) || Object.keys(motion.eyes).length > 32 || Object.values(motion.eyes).some(eyes => !Array.isArray(eyes) || eyes.length > 2 || !eyes.every(validRegion))) throw Error('立绘视线绑定无效，请检查头部和眼部锚点。')
+  }
   let pixels = 0
   for (const asset of rig.assets) {
     if (!asset || typeof asset.src !== 'string' || !/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/.test(asset.src)) throw Error('请导出内嵌 PNG 贴图的 .srig；不读取外部网址或本机路径。')

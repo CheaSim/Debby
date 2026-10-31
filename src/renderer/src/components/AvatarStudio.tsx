@@ -55,7 +55,7 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
     <p className="avatar-studio-intro">一张喜欢的立绘，也可以拥有呼吸、目光和表情。</p>
     <div className="avatar-studio-layout">
       <div className="avatar-preview">
-        {draft ? <LayeredPet performance={{ id: 'studio-preview', emotion: previewEmotion, intensity: .8, source: 'preview', expiresAt: Number.MAX_SAFE_INTEGER }} asset={draft} portrait={portrait} mouthLevel={mouth} cue={cue} onReady={() => setReady(true)} onError={message => { setReady(false); setError(message) }} /> : <div className="avatar-empty"><Sparkles size={34} /><strong>在这里，遇见新的 Debby</strong><span>导入 PSD 或 StandRig 角色，即可预览</span></div>}
+        {draft ? <LayeredPet performance={{ id: 'studio-preview', emotion: previewEmotion, intensity: .8, source: 'preview', expiresAt: Number.MAX_SAFE_INTEGER }} asset={draft} portrait={portrait} mouthLevel={mouth} activity={talking ? 'talking' : undefined} cue={cue} onReady={() => setReady(true)} onError={message => { setReady(false); setError(message) }} /> : <div className="avatar-empty"><Sparkles size={34} /><strong>在这里，遇见新的 Debby</strong><span>导入 PSD 或 StandRig 角色，即可预览</span></div>}
         <span className="avatar-preview-badge">{draft ? poseOnly ? '表情立绘 · 本地预览' : '2.5D · 本地预览' : '你的专属角色'}</span>
       </div>
       <div className="avatar-studio-controls">
@@ -65,12 +65,13 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
           <div className="avatar-preview-controls" role="group" aria-label="预览角色效果">
             <button disabled={!ready || busy} aria-pressed={portrait} onClick={() => setPortrait(!portrait)}>{portrait ? '查看全身' : '查看上半身'}</button>
             {!poseOnly && <button disabled={!ready || busy} aria-pressed={talking} onClick={() => setTalking(!talking)}>{talking ? '停止试口型' : '试试口型'}</button>}
+            {poseOnly && <button disabled={!ready || busy} aria-pressed={talking} onClick={() => setTalking(!talking)}>{talking ? '停止试动作' : '试试说话动作'}</button>}
             {!poseOnly && <button disabled={!ready || busy} onClick={() => setCue({ id: Date.now(), name: 'heart' })}><Heart size={13} />小心意</button>}
           </div>
           <label className="avatar-expression-select">试试表情<select aria-label="预览表情" value={previewEmotion} disabled={!ready || busy} onChange={e => setPreviewEmotion(e.target.value as AvatarEmotion)}>{avatarEmotions.map(emotion => <option key={emotion} value={emotion}>{emotionLabels[emotion]}</option>)}</select></label>
           <button className="primary-button avatar-apply" disabled={!ready || busy || avatar.loading} onClick={() => void change(draft)}><Check size={15} />用这个角色陪我</button>
           {(draft.rig.synth.eye || draft.rig.synth.mouth) && <p className="avatar-small-note">已补上通用闭眼或闭口差分，可在 PSD 中绘制专属差分以提升效果。</p>}
-          <p className="avatar-small-note">{poseOnly ? '此角色以立绘切换表情，暂不支持独立口型与目光。' : '2.5D 支持目光、表情与口型。'}播放骨骼舞蹈时会暂时使用 3D 角色。</p>
+          <p className="avatar-small-note">{poseOnly ? isStandRig(draft.rig) && draft.rig.document.metadata?.debby?.motion ? '目光随鼠标轻轻转动，也会呼吸和点头；立绘暂不支持独立口型。' : '此角色以立绘切换表情，暂不支持独立口型与目光。' : '2.5D 支持目光、表情与口型。'}播放骨骼舞蹈时会暂时使用 3D 角色。</p>
           {poseOnly && <details className="avatar-authoring"><summary>角色作者与许可</summary><p>上善 → ZipZipPipe → Small-tailqwq → JAdpp。Debby 清理边缘并适配表情。</p><p>美术按 CC BY-NC-SA 4.0 提供：署名、非商用、相同方式共享。</p></details>}
         </>}
         <details className="avatar-authoring"><summary>准备自己的角色</summary><p>已有分层 PSD 可以直接导入。精细绑定可用 StandRig 制作，再导出含贴图的 .srig。</p><p>只有单张插画时，可用 See-through 拆分图层；该流程需要单独准备 GPU 推理环境。</p></details>

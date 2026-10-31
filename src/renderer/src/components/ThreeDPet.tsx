@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { createAvatarGaze } from '../../../shared/avatar-gaze'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMHumanBoneName } from '@pixiv/three-vrm'
 import { RefreshCw } from 'lucide-react'
@@ -101,7 +102,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     const lookTarget = new THREE.Object3D()
     lookTarget.position.set(0, 1.45, 3)
     scene.add(lookTarget)
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     let vrm: VRM | undefined
     let animator: PetAnimator | undefined
     let dancer: DanceAnimator | undefined
@@ -228,10 +229,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       }
     })
 
+    const cursor = createAvatarGaze(platformApi)
     const pointerMove = (event: PointerEvent): void => {
-      const bounds = host.getBoundingClientRect()
-      targetX = THREE.MathUtils.clamp((event.clientX - bounds.left) / bounds.width * 2 - 1, -1, 1)
-      targetY = THREE.MathUtils.clamp((event.clientY - bounds.top) / bounds.height * 2 - 1, -1, 1)
       if (dragging) {
         const difference = event.screenX - downX
         if (!moved && Math.hypot(difference, event.screenY - downY) > 5) {
@@ -280,7 +279,6 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.style.cursor = ''
       void platformApi.endWindowDrag()
     }
-    const pointerLeave = (): void => { if (!dragging) { targetX = 0; targetY = 0 } }
     const wheel = (event: WheelEvent): void => {
       event.preventDefault()
       zoom = THREE.MathUtils.clamp(zoom - event.deltaY * 0.0005, 0.85, 1.08)
@@ -294,7 +292,6 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     host.addEventListener('pointercancel', pointerCancel)
     host.addEventListener('lostpointercapture', pointerCancel)
     window.addEventListener('blur', pointerCancel)
-    host.addEventListener('pointerleave', pointerLeave)
     host.addEventListener('wheel', wheel, { passive: false })
     host.addEventListener('dblclick', reset)
 
@@ -305,14 +302,20 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
     const animate = (now: number): void => {
       if (disposed) return
       frame = requestAnimationFrame(animate)
+      if (document.hidden) { last = now; return }
       if (last && now - last < 1000 / 30) return
-      const delta = last ? Math.min((now - last) / 1000, 0.05) : 1 / 30
+      const seconds = last ? Math.max(0, (now - last) / 1000) : 1 / 30
+      const delta = Math.min(seconds, .05)
       last = now
-      elapsed += delta
+      elapsed += seconds
       if (!vrm || !context) return
+      const reducedMotion = motionPreference.matches
+      const gaze = cursor.read(host.getBoundingClientRect(), portraitRef.current ? .3 : .18)
+      targetX = gaze.x; targetY = gaze.y
       const smoothing = 1 - Math.exp(-delta * 7)
       pointerX = THREE.MathUtils.lerp(pointerX, targetX, smoothing)
       pointerY = THREE.MathUtils.lerp(pointerY, targetY, smoothing)
+      host.dataset.gaze = `${pointerX.toFixed(3)}:${pointerY.toFixed(3)}`
       root.rotation.y = THREE.MathUtils.lerp(root.rotation.y, targetYaw, smoothing)
       host.dataset.yaw = root.rotation.y.toFixed(3)
       lookTarget.position.set(pointerX * 0.8, 1.4 - pointerY * 0.5, 3)
@@ -323,7 +326,8 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         behavior.interact(cue.name, elapsed)
         animator?.restart(); face.restart()
       }
-      const localBehavior = behavior.update(moodRef.current, elapsed, !reducedMotion && !external.controller && !activityRef.current && !danceRef.current.playback)
+      const autonomous = !external.controller && !activityRef.current && !danceRef.current.playback && !dragging
+      const localBehavior = behavior.update(moodRef.current, elapsed, !reducedMotion && autonomous, autonomous)
       if (!external.controller || external.task?.status === 'cancelled') { actionUntil = 0; agentBehavior = 'idle' }
       else if (external.action && external.action.id !== lastAction && localBehavior === 'idle') {
         lastAction = external.action.id
@@ -331,7 +335,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         actionUntil = elapsed + behaviorDuration[agentBehavior]
       }
       const taskPose = external.task?.status === 'working' ? 'working' : external.task?.status === 'waiting' ? 'waiting' : 'idle'
-      const currentBehavior = localBehavior !== 'idle' ? localBehavior : elapsed < actionUntil ? agentBehavior : taskPose !== 'idle' ? taskPose : activityRef.current ?? 'idle'
+      const currentBehavior = localBehavior !== 'idle' ? localBehavior : elapsed < actionUntil ? agentBehavior : activityRef.current ?? taskPose
       host.dataset.behavior = currentBehavior
       if (currentBehavior !== lastBehavior) {
         lastBehavior = currentBehavior
@@ -340,7 +344,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       const head = vrm.humanoid.getNormalizedBoneNode('head')
       // Remove the previous additive gaze before the mixer reapplies its cached pose.
       if (head) head.quaternion.multiply(inverseGaze.copy(gazeRotation).invert())
-      if (!dancer?.active) animator?.update(currentBehavior, delta, reducedMotion)
+      if (!dancer?.active) animator?.update(currentBehavior, Math.min(seconds, .25), reducedMotion)
       const dance = danceRef.current
       if (dance.asset?.entry.id !== danceId) {
         danceId = dance.asset?.entry.id
@@ -400,6 +404,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
 
     return () => {
       disposed = true
+      cursor.dispose()
       cancelAnimationFrame(frame)
       observer.disconnect()
       host.removeEventListener('pointermove', pointerMove)
@@ -408,7 +413,6 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       host.removeEventListener('pointercancel', pointerCancel)
       host.removeEventListener('lostpointercapture', pointerCancel)
       window.removeEventListener('blur', pointerCancel)
-      host.removeEventListener('pointerleave', pointerLeave)
       host.removeEventListener('wheel', wheel)
       host.removeEventListener('dblclick', reset)
       animator?.dispose()
