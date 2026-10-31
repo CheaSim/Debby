@@ -18,6 +18,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
   const playback = useRef<BrowserSpeechPlayback>(undefined), captureTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const audioSequence = useRef(0)
   const finishing = useRef(false)
+  const starting = useRef<Promise<void>>(undefined), sessionGeneration = useRef(0)
   const mounted = useRef(true), enabledRef = useRef(enabled)
   enabledRef.current = enabled
   const act = useCallback(async (action: () => Promise<unknown>) => {
@@ -51,11 +52,12 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     if (next.revision < stateRef.current.revision) return
     const previous = stateRef.current
     stateRef.current = next
-    if (!next.active || next.sessionId !== previous.sessionId) disposeMedia()
+    if (!next.active || (previous.active && next.sessionId !== previous.sessionId)) disposeMedia()
+    else if (!next.cameraAllowed && previous.cameraAllowed) stopCamera()
     else if (!next.turnId && previous.turnId) stopPlayback()
     else if (next.error || next.chat.error) stopPlayback()
     if (mounted.current) setState(next)
-  }, [disposeMedia, stopPlayback])
+  }, [disposeMedia, stopPlayback, stopCamera])
   useEffect(() => {
     mounted.current = true
     const removeState = api.onVoiceState(accept)
@@ -69,12 +71,12 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
       void playback.current.enqueue({ ...audio, format: audio.format ?? 'encoded' }).catch(() => { if (mounted.current && stateRef.current.turnId === turnId) { stopPlayback(); setError('音频播放失败，文字回复已保留。'); void api.interruptVoice().catch(() => {}) } })
     })
     void api.getVoiceState().then(accept).catch(() => setError('无法连接陪伴服务。'))
-    const leave = () => { disposeMedia(); void api.stopVoice().catch(() => {}) }
+    const leave = () => { sessionGeneration.current++; disposeMedia(); void api.stopVoice().catch(() => {}) }
     const visibility = () => { if (document.hidden) leave() }
     window.addEventListener('pagehide', leave); window.addEventListener('beforeunload', leave); document.addEventListener('visibilitychange', visibility)
-    return () => { mounted.current = false; removeState(); removeAudio(); disposeMedia(); void api.stopVoice().catch(() => {}); window.removeEventListener('pagehide', leave); window.removeEventListener('beforeunload', leave); document.removeEventListener('visibilitychange', visibility) }
+    return () => { mounted.current = false; sessionGeneration.current++; removeState(); removeAudio(); disposeMedia(); void api.stopVoice().catch(() => {}); window.removeEventListener('pagehide', leave); window.removeEventListener('beforeunload', leave); document.removeEventListener('visibilitychange', visibility) }
   }, [api, accept, disposeMedia])
-  useEffect(() => { if (!enabled) { disposeMedia(); if (stateRef.current.active) void api.stopVoice().catch(() => {}) } }, [enabled, api, disposeMedia])
+  useEffect(() => { if (!enabled) { sessionGeneration.current++; disposeMedia(); if (stateRef.current.active) void api.stopVoice().catch(() => {}) } }, [enabled, api, disposeMedia])
   const startCamera = async (): Promise<void> => {
     if (cameraRef.current) return
     if (!stateRef.current.active || !stateRef.current.cameraAllowed) throw new Error('本次会话尚未授权摄像头。')
@@ -88,19 +90,29 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
     cameraRef.current = stream; setCamera(stream)
     stream.getVideoTracks().forEach((track) => track.addEventListener('ended', () => { stopCamera(); setError('摄像头已断开；可继续语音或文字陪伴。') }, { once: true }))
   }
-  const start = async (useCamera: boolean): Promise<boolean> => act(async () => {
-    const next = await api.startVoice({ cloudConsent: true, camera: useCamera })
-    accept(next)
-    if (!enabledRef.current) { await api.stopVoice(); return }
-    playback.current = new BrowserSpeechPlayback(setMouth, setSpeaking, mark => { if (mounted.current) setCursor(mark) })
-    if (useCamera) {
-      try { await startCamera() } catch { stopCamera(); setError('摄像头不可用；可以继续语音或文字陪伴。') }
-    }
+  const ensureSession = async (): Promise<void> => {
+    if (!enabledRef.current) throw new Error('请先打开对话面板。')
+    if (starting.current) return starting.current
+    if (stateRef.current.active) return
+    const generation = sessionGeneration.current
+    const pending = (async () => {
+      // Preparing a session opens no devices and makes no model request.
+      const next = await api.startVoice({ cloudConsent: true, camera: false })
+      accept(next)
+      if (!mounted.current || !enabledRef.current || generation !== sessionGeneration.current) { await api.stopVoice(); throw new Error('Stopped') }
+      playback.current = new BrowserSpeechPlayback(setMouth, setSpeaking, mark => { if (mounted.current) setCursor(mark) })
+    })()
+    starting.current = pending
+    try { await pending } finally { if (starting.current === pending) starting.current = undefined }
+  }
+  const start = (useCamera = false): Promise<boolean> => act(async () => {
+    await ensureSession()
+    if (useCamera) { accept(await api.setVoiceCamera(true)); await startCamera() }
   })
   const interrupt = async (): Promise<boolean> => { stopRecording(); stopPlayback(); frameAbort.current?.abort(); return act(api.interruptVoice) }
   const send = async (text: string): Promise<boolean> => act(async () => {
     if (finishing.current) throw new Error('正在提交语音，请稍候。')
-    if (!stateRef.current.active || !enabledRef.current) throw new Error('请先开启陪伴会话。')
+    await ensureSession()
     stopPlayback()
     const controller = new AbortController(); frameAbort.current = controller
     const sessionId = stateRef.current.sessionId!
@@ -110,7 +122,7 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
   })
   const toggleRecording = async (): Promise<boolean> => act(async () => {
     if (finishing.current) return
-    if (recording === 'starting') { stopRecording(); return }
+    if (captureAbort.current && !capture.current) { stopRecording(); return }
     if (capture.current) {
       const current = capture.current, controller = captureAbort.current!
       const sessionId = stateRef.current.sessionId!
@@ -124,13 +136,15 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
       } finally { audio?.fill(0); controller.abort(); if (captureAbort.current === controller) { captureAbort.current = undefined; finishing.current = false; setRecording('off') } }
       return
     }
-    if (!stateRef.current.active || !enabledRef.current) throw new Error('请先开启陪伴会话。')
-    await api.interruptVoice(); stopPlayback()
     const controller = new AbortController(); captureAbort.current = controller
-    const sessionId = stateRef.current.sessionId
     setRecording('starting')
-    captureTimer.current = setTimeout(() => { stopRecording(); setError('录音达到时间限制，已丢弃，未上传。') }, voiceLimits.captureSeconds * 1000)
     try {
+      await ensureSession()
+      if (controller.signal.aborted || !enabledRef.current) return
+      await api.interruptVoice(); stopPlayback()
+      if (controller.signal.aborted || !enabledRef.current) return
+      const sessionId = stateRef.current.sessionId
+      captureTimer.current = setTimeout(() => { stopRecording(); setError('录音达到时间限制，已丢弃，未上传。') }, voiceLimits.captureSeconds * 1000)
       const opened = await openVoiceCapture(controller.signal, () => api.authorizeVoiceMedia('audio'), setInputLevel)
       if (controller.signal.aborted || sessionId !== stateRef.current.sessionId || !enabledRef.current) { opened.stop(); return }
       capture.current = opened; setRecording('on')
@@ -139,8 +153,13 @@ export function useVoiceCompanion(enabled: boolean, api: VoiceApi = platformApi)
   return { state, error: error ?? state.error ?? state.chat.error, recording, speaking, mouth, cursor, inputLevel, camera,
     busy: ['transcribing', 'thinking', 'synthesizing'].includes(state.phase),
     start, send, interrupt, toggleRecording,
-    stop: async () => { disposeMedia(); await act(api.stopVoice) },
-    toggleCamera: () => act(async () => { if (cameraRef.current) stopCamera(); else await startCamera() }),
+    stop: async () => { sessionGeneration.current++; disposeMedia(); await act(api.stopVoice) },
+    toggleCamera: () => act(async () => {
+      if (cameraRef.current) { stopCamera(); accept(await api.setVoiceCamera(false)); return }
+      await ensureSession()
+      accept(await api.setVoiceCamera(true))
+      try { await startCamera() } catch (failure) { stopCamera(); accept(await api.setVoiceCamera(false)); throw failure }
+    }),
     clear: async () => { stopRecording(); stopPlayback(); frameAbort.current?.abort(); await act(api.clearVoice) },
     configure: (input: VoiceConfigInput) => act(async () => accept(await api.configureVoice(input))) }
 }

@@ -119,6 +119,23 @@ describe('voice media bounds', () => {
 })
 
 describe('cascaded companion lifecycle', () => {
+  it('enables camera on demand in the same session and revokes capture grants on disable', async () => {
+    const { runtime, bodies } = fixture()
+    expect(() => runtime.setCamera(true)).toThrow(/开启/)
+    const first = await runtime.start({ cloudConsent: true, camera: false })
+    expect(bodies).toHaveLength(0)
+    expect(() => runtime.authorizeMedia('video')).toThrow(/授权/)
+    expect(runtime.setCamera(true).sessionId).toBe(first.sessionId)
+    runtime.authorizeMedia('video')
+    expect(runtime.permitsMedia(['video'], true)).toBe(true)
+    expect(runtime.checksMedia('video')).toBe(true)
+    runtime.setCamera(false)
+    expect(runtime.checksMedia('video')).toBe(false)
+    expect(runtime.permitsMedia(['video'])).toBe(false)
+    expect(runtime.getState().active).toBe(true)
+    expect(bodies).toHaveLength(0)
+    runtime.stop()
+  })
   it('uses an injected external conversation backend without pi or a text model call', async () => {
     const { gateway, bodies } = fixture()
     const runtime = new CompanionRuntime({ credentials: { publicConfig: () => config, getKey: () => key, configure: () => {} }, tools: [],

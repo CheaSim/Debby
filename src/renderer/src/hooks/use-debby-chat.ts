@@ -21,7 +21,11 @@ export function useDebbyChat(api: ChatApi = platformApi) {
     }
   }, [])
   return { state, error: error ?? state.error,
-    send: (text: string) => act(() => api.sendChat(text)),
+    send: (text: string) => act(async () => {
+      // Sending is the explicit intent to use the saved provider, including older profiles.
+      if (state.config.configured && !state.config.cloudConsent) accept(await api.configureChat({ modelId: state.config.modelId, cloudConsent: true }))
+      await api.sendChat(text)
+    }),
     cancel: () => act(api.cancelChat), clear: () => act(api.clearChat),
     configure: (input: ChatConfigInput) => act(async () => accept(await api.configureChat(input))),
     listModels: api.listChatModels, checkConnection: api.checkChatConnection, openKeyPage: api.openChatKeyPage }

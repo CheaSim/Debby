@@ -49,6 +49,7 @@ export interface VoiceApi {
   getVoiceState: () => Promise<VoiceState>
   configureVoice: (input: VoiceConfigInput) => Promise<VoiceState>
   startVoice: (input: { cloudConsent: boolean; camera: boolean }) => Promise<VoiceState>
+  setVoiceCamera: (allowed: boolean) => Promise<VoiceState>
   stopVoice: () => Promise<void>
   authorizeVoiceMedia: (kind: 'audio' | 'video') => Promise<void>
   releaseVoiceMedia: (kind: 'audio' | 'video') => Promise<void>

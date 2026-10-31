@@ -33,6 +33,7 @@ const api: FinPetApi = {
   getVoiceState: () => ipcRenderer.invoke('voice:state'),
   configureVoice: (input) => ipcRenderer.invoke('voice:configure', input),
   startVoice: (input) => ipcRenderer.invoke('voice:start', input),
+  setVoiceCamera: (allowed) => ipcRenderer.invoke('voice:set-camera', allowed),
   stopVoice: () => ipcRenderer.invoke('voice:stop'),
   authorizeVoiceMedia: (kind) => ipcRenderer.invoke('voice:authorize-media', kind),
   releaseVoiceMedia: (kind) => ipcRenderer.invoke('voice:release-media', kind),

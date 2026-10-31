@@ -31,7 +31,8 @@ const runtime = new CompanionRuntime({
   onState: (state) => yourBus.emit('voice:changed', state),
   onAudio: (audio) => yourBus.emit('voice:audio', audio)
 })
-// Only after explicit user consent. Starting does not call a model or open a device.
+// On the user's first send/microphone click with a configured provider.
+// Starting does not call a model or open a device. No per-session consent dialog.
 const session = await runtime.start({ cloudConsent: true, camera: false })
 await runtime.submit({ sessionId: session.sessionId!, text: '今天有点累。' })
 await runtime.waitForIdle()
@@ -92,9 +93,9 @@ const runtime = new CompanionRuntime({
 
 ## 设备与数据
 
-每次开始单独同意云端传输，摄像头默认不选中。IPC 验证主窗口、主框架和当前会话；设备初次授权需要用户动作产生的短时许可。Electron 后续缺少设备类型的检查只允许已获批准的活动采集，音频和视频授权独立，关闭设备或会话撤销许可。
+配置模型一次后直接聊天，首次主动发送或点击麦克风时由 `useVoiceCompanion` 自动准备会话，不弹出每次会话授权。准备会话不调用模型、不打开设备。摄像头收进“更多”，点击后通过 `setVoiceCamera(true)` / `CompanionRuntime.setCamera(true)` 启用当前会话的视觉输入，再单独请求设备；关闭时撤销视频许可，不重置对话。IPC 验证主窗口、主框架和当前会话；设备初次授权需要用户动作产生的短时许可。Electron 后续缺少设备类型的检查只允许已获批准的活动采集，音频和视频授权独立，关闭设备或会话撤销许可。
 
-录音最长 30 秒，超限丢弃；会话最长 15 分钟，无后台自动上传、自动重连或自动发言。离开对话、隐藏窗口、锁屏、休眠和退出都撤销授权并停止设备。当前轮次 ID 与取消代数屏蔽迟到的识别、模型回复和音频；停止同时清理 AudioContext、音频节点、Worklet、流和计时器。
+录音最长 30 秒，超限丢弃；会话最长 15 分钟，无后台自动上传、自动重连或自动发言。会话结束后，下一次主动发送新建会话。离开对话、隐藏窗口、锁屏、休眠和退出都撤销许可并停止设备。当前轮次 ID 与取消代数屏蔽迟到的识别、模型回复和音频；停止同时清理 AudioContext、音频节点、Worklet、流和计时器。
 
 画面只在用户发送时采样一张，本轮完成后移除，不在后续上下文重放。原始媒体不写磁盘，转写与回复仅存内存，结束清空；云端留存由供应商条款决定，不能承诺云端零留存。嘴型使用实际播放的 RMS，不以生成阶段冒充正在说话。
 

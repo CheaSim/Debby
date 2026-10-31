@@ -7,7 +7,16 @@ export interface ExpressionDirective { emotion: AvatarEmotion; intensity: number
 export interface DialogueExpressionCue extends ExpressionDirective { offset: number; source: 'model' | 'fallback' }
 export interface AvatarPerformance extends ExpressionDirective { id: string; source: 'conversation' | 'agent' | 'dance' | 'preview'; expiresAt: number }
 export const emotionLabels: Record<AvatarEmotion, string> = { neutral: '平静', happy: '开心', caring: '温柔安慰', sad: '低落', shy: '害羞', surprised: '惊讶', curious: '好奇', playful: '俏皮', proud: '为你骄傲' }
-export const expressionPrompt = `表情协议：自然回复开头使用一个隐藏标记 [[emotion:名称]]，名称只能为 neutral/happy/caring/sad/shy/surprised/curious/playful/proud。需要时可在语气转折处再用，整条最多 3 个；正文照常自然说话，不解释标记。安慰用户用 caring，用户难过时不要庆祝；受到夸奖可 shy，开玩笑可 playful，替用户肯定努力可 proud。标记只驱动脸部，不表示已执行身体动作或跳舞。`
+export const expressionProtocol = {
+  name: 'debby.expression', version: 1, syntax: '[[emotion:NAME|INTENSITY]]',
+  emotions: avatarEmotions, defaultIntensity: .75, maxCues: 12, offsetUnit: 'utf16',
+  agentDurationMs: 6500, typedExpressionPrecedence: true
+} as const
+export function formatExpressionTag({ emotion, intensity }: ExpressionDirective): string {
+  if (!avatarEmotions.includes(emotion) || !Number.isFinite(intensity) || intensity < 0 || intensity > 1) throw new Error('表情或强度无效。')
+  return `[[emotion:${emotion}|${Number(intensity.toFixed(2))}]]`
+}
+export const expressionPrompt = `Debby Expression v1 表情协议：自然回复开头使用一个隐藏标记 [[emotion:名称]] 或 [[emotion:名称|强度]]，强度为 0 到 1，最多两位小数，省略为 0.75。名称只能为 neutral/happy/caring/sad/shy/surprised/curious/playful/proud。需要时可在语气转折处再用，整条最多 3 个；正文照常自然说话，不解释标记。安慰用户用 caring，用户难过时不要庆祝；受到夸奖可 shy，开玩笑可 playful，替用户肯定努力可 proud。标记只驱动脸部，不表示已执行身体动作或跳舞。`
 
 const prefix = '[[emotion:'
 /** Reparse cumulative text so arbitrary token splits never expose control syntax to UI/TTS. */
@@ -28,8 +37,8 @@ export function parseExpressionText(raw: string, done = false): { text: string; 
     }
     const value = raw.slice(start + prefix.length, end)
     const match = /^([a-z]+)(?:\|([01](?:\.\d{1,2})?))?$/.exec(value)
-    if (match && avatarEmotions.includes(match[1] as AvatarEmotion) && cues.length < 12) {
-      const intensity = match[2] === undefined ? .75 : Number(match[2])
+    if (match && avatarEmotions.includes(match[1] as AvatarEmotion) && cues.length < expressionProtocol.maxCues) {
+      const intensity = match[2] === undefined ? expressionProtocol.defaultIntensity : Number(match[2])
       if (intensity <= 1) cues.push({ emotion: match[1] as AvatarEmotion, intensity, offset: text.length, source: 'model' })
     }
     at = end + 2

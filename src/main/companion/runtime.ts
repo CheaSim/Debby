@@ -106,6 +106,14 @@ export class CompanionRuntime {
     this.publish()
     return this.getState()
   }
+  setCamera(allowed: boolean): VoiceState {
+    if (!this.state.active || typeof allowed !== 'boolean') throw new Error('请先开启陪伴会话。')
+    if (allowed && !this.state.config.vision) throw new Error('当前模型未启用视觉能力。')
+    this.state.cameraAllowed = allowed
+    if (!allowed) this.releaseMedia('video')
+    this.publish()
+    return this.getState()
+  }
   authorizeMedia(kind: 'audio' | 'video'): void {
     if (!this.state.active || !['audio', 'video'].includes(kind) || (kind === 'video' && !this.state.cameraAllowed)) throw new Error('请先开启并授权陪伴会话。')
     this.grants.set(kind, Date.now() + 30_000)

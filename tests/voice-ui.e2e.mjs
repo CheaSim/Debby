@@ -42,7 +42,12 @@ try {
     }
   })
   // Replace only network inference inside this isolated main process. No real credentials or cloud calls.
-  await application.evaluate(({ net }) => {
+  await application.evaluate(({ net, BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    if (window.webContents.isOffscreen()) {
+      globalThis.voiceNativeVisible = window.isVisible.bind(window)
+      window.isVisible = () => true
+    }
     globalThis.testVoiceRequests = []
     net.fetch = async (url, init) => {
       if (!String(url).startsWith('https://token-plan.cn-beijing.maas.aliyuncs.com/')) throw Error('Unexpected external request blocked by test')
@@ -63,14 +68,40 @@ try {
   })
   await page.getByRole('tab', { name: '对话', exact: true }).click()
   await page.locator('[title="通义陪伴"]').click()
-  await page.getByRole('button', { name: '开始陪伴', exact: true }).click()
-  const consent = page.getByRole('dialog', { name: '陪你聊聊', exact: true })
-  assert.equal(await consent.getByRole('checkbox').first().isChecked(), false)
-  assert.equal(await consent.getByRole('checkbox').nth(1).isChecked(), false)
-  assert.equal(await consent.getByRole('button', { name: '开始陪伴' }).isEnabled(), false)
-  await consent.getByRole('checkbox').first().check()
-  await consent.getByRole('checkbox').nth(1).check()
-  await consent.getByRole('button', { name: '开始陪伴' }).click()
+  assert.equal(await page.locator('dialog[open]').count(), 0)
+  assert.equal((await page.evaluate(() => window.finpet.getVoiceState())).active, false)
+  assert.equal(await page.evaluate(() => window.testMediaTracks.length), 0)
+  const inputBox = page.getByRole('textbox', { name: '对 Debby 说' })
+  await inputBox.fill('直接开始聊聊')
+  await page.locator('[title="发送消息"]').click()
+  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('模拟服务'))
+  assert.equal(await page.locator('dialog[open]').count(), 0, 'First send must not open a consent dialog')
+  assert.equal(await page.evaluate(() => window.testMediaTracks.length), 0, 'Sending text must open no devices')
+  const firstSession = (await page.evaluate(() => window.finpet.getVoiceState())).sessionId
+  await page.locator('[title="停止回复"]').click()
+  await page.getByRole('tab', { name: '行情', exact: true }).click()
+  await page.waitForFunction(async () => !(await window.finpet.getVoiceState()).active)
+  await page.getByRole('tab', { name: '对话', exact: true }).click()
+  await inputBox.fill('再次直接聊聊')
+  await page.locator('[title="发送消息"]').click()
+  await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('模拟服务'))
+  assert.notEqual((await page.evaluate(() => window.finpet.getVoiceState())).sessionId, firstSession)
+  assert.equal(await page.locator('dialog[open]').count(), 0)
+  assert.equal(await page.evaluate(() => window.testMediaTracks.length), 0)
+  await page.locator('[title="停止回复"]').click()
+  await page.getByTitle('更多对话选项', { exact: true }).click()
+  await page.getByTitle('新会话', { exact: true }).click()
+  await application.evaluate(() => { globalThis.testVoiceRequests = [] })
+  await page.getByTitle('更多对话选项', { exact: true }).click()
+  await page.getByTitle('结束陪伴', { exact: true }).click()
+  await page.getByTitle('录音对话', { exact: true }).click()
+  await page.waitForSelector('[data-recording="on"]', { timeout: 15000 })
+  assert.equal(await application.evaluate(() => globalThis.testVoiceRequests.length), 0, 'Starting the first recording must not call a model')
+  await page.getByTitle('停止回复', { exact: true }).click()
+  await page.waitForSelector('[data-recording="off"]')
+  assert.equal(await page.evaluate(() => window.testMediaTracks.every(track => track.readyState === 'ended')), true)
+  await page.getByTitle('更多对话选项', { exact: true }).click()
+  await page.getByTitle('开启摄像头', { exact: true }).click()
   await page.waitForSelector('.companion-camera video')
   await page.waitForFunction(() => document.querySelector('.companion-camera video')?.videoWidth > 0)
   console.log('Voice UI step: camera ready')
@@ -122,6 +153,7 @@ try {
   })
   assert.ok(pixels > 1000, '3D canvas must remain nonblank at narrow width')
   await page.screenshot({ path: resolve(root, 'work', 'debby-voice-narrow-test.png') })
+  await page.getByTitle('更多对话选项', { exact: true }).click()
   await page.locator('[title="开启摄像头"]').click()
   await page.waitForSelector('.companion-camera')
   await page.getByRole('tab', { name: '行情', exact: true }).click()
@@ -129,7 +161,11 @@ try {
   assert.equal(await page.evaluate(() => window.testMediaTracks.every((track) => track.readyState === 'ended')), true)
   assert.equal((await page.evaluate(() => window.finpet.getVoiceState())).chat.messages.length, 0)
   assert.deepEqual(errors, [])
-  console.log('Voice UI E2E passed: permission gate, explicit consent, fake camera/microphone, WAV capture, pi chat, TTS playback, real amplitude lipsync, interruption, frame expiry, track cleanup, tab exit and desktop/narrow pixels. No real devices or cloud models used.')
+  if (process.env.FINPET_E2E_BACKGROUND === '1') assert.deepEqual(await application.evaluate(({ BrowserWindow }) => {
+    const window = BrowserWindow.getAllWindows()[0]
+    return { visible: globalThis.voiceNativeVisible(), focused: window.isFocused(), muted: window.webContents.isAudioMuted() }
+  }), { visible: false, focused: false, muted: true })
+  console.log('Voice UI E2E passed: direct first send, reopen without consent dialogs, no implicit devices, explicit fake camera/microphone, WAV, pi chat, TTS, real lipsync, cancellation, cleanup and narrow layout. No real devices or cloud models used.')
 } catch (error) {
   console.log('Electron diagnostics:', diagnostics)
   if (application) {

@@ -35,12 +35,16 @@ try {
   // Fixture IPC is isolated to this test process. No cloud calls, credentials or user data.
   await application.evaluate(({ ipcMain, BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]
-    const state = { revision: 10, config: { configured: true, cloudConsent: true, storage: 'none', modelId: '界面测试 · 非实盘' }, messages: [], busy: false }
+    const state = { revision: 10, config: { configured: true, cloudConsent: false, storage: 'none', modelId: '界面测试 · 非实盘' }, messages: [], busy: false }
+    globalThis.chatConsentUpgrades = 0
     let timer
     const emit = () => { state.revision++; window.webContents.send('chat:changed', state) }
-    for (const channel of ['chat:state', 'chat:send', 'chat:cancel', 'chat:clear']) ipcMain.removeHandler(channel)
+    for (const channel of ['chat:state', 'chat:send', 'chat:cancel', 'chat:clear', 'chat:configure']) ipcMain.removeHandler(channel)
+    ipcMain.handle('chat:configure', (_event, config) => { assertConfig(config); state.config.cloudConsent = true; globalThis.chatConsentUpgrades++; emit(); return state })
+    function assertConfig(config) { if (config.cloudConsent !== true || config.apiKey) throw Error('Legacy config upgrade must reuse the saved key') }
     ipcMain.handle('chat:state', () => state)
     ipcMain.handle('chat:send', (_event, text) => {
+      if (!state.config.cloudConsent) throw Error('Legacy consent was not upgraded on explicit send')
       if (text === '错误') throw new Error('测试服务暂时不可用')
       state.error = undefined
       state.busy = true
@@ -72,6 +76,10 @@ try {
   await page.waitForSelector('[title="发送消息"]')
   assert.match(await page.locator('.dialogue-question').innerText(), /当前自选/)
   assert.equal((await page.evaluate(() => window.finpet.getChatState())).messages.filter((line) => line.role === 'user').length, 2, 'A suggestion must send exactly one question')
+  assert.equal(await application.evaluate(() => globalThis.chatConsentUpgrades), 1, 'Legacy settings must work on explicit send without another dialog')
+  assert.equal(await page.locator('dialog[open]').count(), 0)
+  assert.equal(await page.locator('.dialogue-toolbar button:visible').count(), 3, 'Only mode and speaker buttons remain visible')
+  await page.getByTitle('更多对话选项', { exact: true }).click()
   await page.locator('[title="新会话"]').click()
   await page.getByRole('textbox', { name: '对 Debby 说' }).fill('保留我的草稿')
   await quickChat.click()
@@ -92,6 +100,7 @@ try {
   assert.ok(scroll.content > scroll.height && scroll.top > 0, 'Long replies did not scroll within the dialogue')
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth), true)
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'debby-dialogue-streaming-test.png') })
+  await page.getByTitle('更多对话选项', { exact: true }).click()
   await page.locator('[title="会话回看"]').click()
   assert.equal(await page.locator('.dialogue-history article').count(), 2)
   await page.locator('[title="关闭会话回看"]').click()
@@ -104,6 +113,7 @@ try {
   await page.locator('[title="发送消息"]').click()
   await page.waitForFunction(() => document.querySelector('.dialogue-feedback').textContent.includes('暂时不可用'))
   assert.equal(await page.getByRole('textbox', { name: '对 Debby 说' }).inputValue(), '错误', 'Failed sends should keep the draft')
+  await page.getByTitle('更多对话选项', { exact: true }).click()
   await page.locator('[title="新会话"]').click()
   await page.waitForFunction(() => document.querySelector('.dialogue-text').textContent.includes('嗨，我是 Debby'))
   await application.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; window.setResizable(true); window.setBounds({ width: 390, height: 740 }) })

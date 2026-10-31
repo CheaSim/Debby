@@ -7,7 +7,6 @@ export function ChatConfigDialog({ chat, onClose }: { chat: DebbyChatController;
   const dialog = useRef<HTMLDialogElement>(null)
   const [key, setKey] = useState('')
   const [modelId, setModelId] = useState(chat.state.config.modelId)
-  const [consent, setConsent] = useState(chat.state.config.cloudConsent)
   const [models, setModels] = useState<ChatModel[]>([{ id: defaultChatModel, name: 'Free Models Router', contextLength: 200000 }])
   const [busy, setBusy] = useState(false)
   const [status, setStatus] = useState('')
@@ -23,7 +22,7 @@ export function ChatConfigDialog({ chat, onClose }: { chat: DebbyChatController;
   }, [])
   const save = async (): Promise<void> => {
     setBusy(true)
-    const saved = await chat.configure({ apiKey: key || undefined, modelId, cloudConsent: consent })
+    const saved = await chat.configure({ apiKey: key || undefined, modelId, cloudConsent: true })
     setKey('')
     setBusy(false)
     if (saved) onClose()
@@ -37,10 +36,9 @@ export function ChatConfigDialog({ chat, onClose }: { chat: DebbyChatController;
         {!models.some((model) => model.id === modelId) && <option value={modelId}>{modelId} · 待验证</option>}
         {models.map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}
       </select></label><button type="button" className="ghost-icon" title="刷新免费模型" disabled={busy} onClick={() => void refresh()}><RefreshCw size={16} /></button></div>
-      <label className="cloud-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>允许将对话和查询的行情发送至 OpenRouter 与模型供应商。</span></label>
-      <p className="config-note">供应商可能记录或使用输入训练模型，请勿发送账户、持仓或其他敏感信息。Key 由系统加密；会话仅保留在内存。</p>
+      <p className="config-note">保存后即可对话，消息与查询行情将发送至所选模型。Key 由系统加密保存。</p>
       <div className="config-actions"><button type="button" className="menu-command" onClick={() => void chat.openKeyPage()}><ExternalLink size={15} />获取 Key</button>
-        <button type="button" className="ghost-icon" title="移除 API Key" disabled={busy || !chat.state.config.configured} onClick={async () => { if (await chat.configure({ modelId: defaultChatModel, cloudConsent: false, removeKey: true })) { setConsent(false); setModelId(defaultChatModel); setKey(''); setStatus('Key 已移除') } }}><Trash2 size={16} /></button>
+        <button type="button" className="ghost-icon" title="移除 API Key" disabled={busy || !chat.state.config.configured} onClick={async () => { if (await chat.configure({ modelId: defaultChatModel, cloudConsent: false, removeKey: true })) { setModelId(defaultChatModel); setKey(''); setStatus('Key 已移除') } }}><Trash2 size={16} /></button>
         <button type="button" className="menu-command" disabled={busy || !chat.state.config.configured} onClick={async () => { setBusy(true); try { setStatus(await chat.checkConnection()) } catch { setStatus('连接失败，请检查网络和 Key。') } finally { setBusy(false) } }}>验证连接</button>
         <button className="square-action" title="保存 BYOK" disabled={busy || (!key && !chat.state.config.configured)}>{busy ? <LoaderCircle size={17} className="spinning" /> : <Save size={17} />}</button></div>
       {(chat.error || status) && <p className="config-status" role="status">{chat.error || status}</p>}

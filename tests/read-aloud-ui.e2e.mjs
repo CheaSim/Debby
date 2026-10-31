@@ -32,6 +32,7 @@ try {
   await config.waitFor({ state: 'detached' })
   await application.evaluate(({ net, ipcMain, BrowserWindow }) => {
     const window = BrowserWindow.getAllWindows()[0]
+    if (window.webContents.isOffscreen()) window.isVisible = () => true
     const state = { revision: 100, config: { configured: true, cloudConsent: true, storage: 'none', modelId: 'TTS 界面测试' }, busy: false, messages: [] }
     globalThis.readAloudUpdate = (id, text, done) => {
       state.busy = !done

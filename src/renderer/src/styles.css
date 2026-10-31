@@ -349,7 +349,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .dialogue-workspace { position: relative; padding: 0; }
 #chat-view, .dialogue-panel { height: 100%; min-height: 0; }
 .dialogue-panel { position: relative; background: #f9f9fc; }
-.dialogue-toolbar { position: absolute; z-index: 7; top: 12px; left: 22px; right: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dialogue-toolbar { position: absolute; z-index: 10; top: 12px; left: 22px; right: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dialogue-toolbar > span { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #8e909b; overflow-wrap: anywhere; min-width: 0; }
 .dialogue-toolbar i { width: 5px; height: 5px; border-radius: 50%; background: #69b49c; flex-shrink: 0; }
 .dialogue-toolbar i.busy { background: #e6ae47; }
@@ -359,8 +359,17 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .dialogue-mode { border: 1px solid #e4e5eb; border-radius: 6px; padding: 2px; background: #eff0f4; }
 .dialogue-mode .ghost-icon { width: 28px; height: 25px; }
 .dialogue-mode .ghost-icon[aria-pressed="true"] { color: #bd5f88; background: #fff; box-shadow: 0 1px 3px #25273612; }
+.dialogue-more { position: relative; }
+.dialogue-more summary { list-style: none; cursor: pointer; display: grid; place-items: center; }
+.dialogue-more summary::-webkit-details-marker { display: none; }
+.dialogue-more[open] summary { background: #f1f0f5; border-radius: 8px; }
+.dialogue-menu { position: absolute; top: 34px; right: 0; min-width: 156px; padding: 5px; border: 1px solid #e9e6ec; border-radius: 12px; background: #fffefef5; backdrop-filter: blur(20px); box-shadow: 0 8px 28px #34283e20; }
+.dialogue-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: #605768; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.dialogue-menu button:hover { background: #f3eef6; }
+.dialogue-menu button:disabled { opacity: .4; cursor: default; }
+.config-advanced { margin: 12px 0; font-size: 12px; color: #827786; }
+.config-advanced summary { cursor: pointer; padding: 6px 0; }
 .dialogue-input.companion-input { grid-template-columns: minmax(0,1fr) 32px 36px; }
-.dialogue-input.companion-input.with-camera { grid-template-columns: minmax(0,1fr) 32px 32px 36px; }
 .companion-input > .ghost-icon { width: 32px; height: 36px; border: 1px solid #e5e6ec; background: #f6f7fa; }
 .companion-input > .ghost-icon[aria-pressed="true"] { color: #b95179; border-color: #e6b9cc; background: #fceaf2; }
 .companion-mic { position: relative; }
@@ -389,7 +398,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .quick-chat-button { position: relative; }
 .quick-chat-button .quick-chat-hint { position: absolute; display: block; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); padding: 8px 10px; border: 1px solid #ecd8e3; border-radius: 10px; background: #fff6fb; box-shadow: 0 4px 14px #54354812; color: #a85b7e; font-size: 10px; font-weight: 500; white-space: nowrap; pointer-events: none; }
 .quick-chat-hint::after { content: ''; position: absolute; width: 7px; height: 7px; background: #fff6fb; border-right: 1px solid #ecd8e3; border-bottom: 1px solid #ecd8e3; bottom: -5px; left: calc(50% - 4px); transform: rotate(45deg); }
-.dialogue-input textarea { width: 100%; min-height: 36px; max-height: 64px; resize: vertical; padding: 9px 10px; border: 1px solid #e6e5ed; border-radius: 5px; font: inherit; font-size: 12px; color: #4b4655; background: #fafafe; -webkit-app-region: no-drag; }
+.dialogue-input textarea { width: 100%; min-height: 36px; max-height: 64px; resize: none; padding: 9px 10px; border: 1px solid #e6e5ed; border-radius: 8px; font: inherit; font-size: 12px; line-height: 16px; scrollbar-width: thin; color: #4b4655; background: #fafafe; -webkit-app-region: no-drag; }
 .dialogue-input textarea:focus-visible { outline: 2px solid #007aff; outline-offset: 2px; }
 .dialogue-input .square-action, .byok-command { background: #bf6489; }
 .stop-reply { background: #77717f !important; }

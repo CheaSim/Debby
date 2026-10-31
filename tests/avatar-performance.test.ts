@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { avatarEmotions, conversationExpression, danceExpressionAt, inferDialogueExpression, parseExpressionText, validateDanceExpressions } from '../src/shared/avatar-performance'
+import { avatarEmotions, conversationExpression, danceExpressionAt, formatExpressionTag, inferDialogueExpression, parseExpressionText, validateDanceExpressions } from '../src/shared/avatar-performance'
 import { emptyChatState, type ChatState } from '../src/shared/chat'
 import { applyPerformanceFace, PetExpressionController } from '../src/shared/pet-expression'
 import { applyLayeredPerformance, layeredParameters } from '../src/shared/layered-avatar'
@@ -11,6 +11,13 @@ const dialogue = (raw: string): ChatState => ({ ...emptyChatState(), messages: [
 ] })
 
 describe('semantic expressions without another model round trip', () => {
+  it('round trips formatted directives and rejects invalid programmatic input', () => {
+    for (const emotion of avatarEmotions) {
+      const raw = formatExpressionTag({ emotion, intensity: .678 }) + '你好'
+      expect(parseExpressionText(raw, true)).toMatchObject({ text: '你好', cues: [{ emotion, intensity: .68, offset: 0 }] })
+    }
+    for (const intensity of [-1, 1.1, Infinity, NaN]) expect(() => formatExpressionTag({ emotion: 'happy', intensity })).toThrow()
+  })
   it('strips arbitrary token splits without rewriting already displayed or spoken text', () => {
     const raw = '[[emotion:caring]]辛苦啦。[普通文字] [[emotion:shy|0.6]]谢谢你喜欢我。'
     let previous = ''

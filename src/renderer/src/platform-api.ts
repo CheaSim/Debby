@@ -67,6 +67,7 @@ const browserApi: FinPetApi = {
   configureVoice: async () => { throw new Error('请在桌面版配置百炼 BYOK。') },
   startVoice: async () => { throw new Error('浏览器仅供预览，请在桌面版开启陪伴。') },
   stopVoice: async () => {},
+  setVoiceCamera: async () => { throw new Error('请在桌面版使用摄像头。') },
   authorizeVoiceMedia: async () => { throw new Error('请在桌面版使用摄像头与麦克风。') },
   releaseVoiceMedia: async () => {},
   sendVoiceTurn: async () => { throw new Error('请在桌面版开启陪伴会话。') },

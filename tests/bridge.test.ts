@@ -14,7 +14,7 @@ function fixture() {
   let seq = 0
   const event = (fields: Record<string, unknown>) => runtime.event({ sessionId, seq: ++seq, taskId: 'task-1', ...fields })
   const task = (fields = {}) => event({ type: 'task', title: '整理项目', status: 'working', ...fields })
-  return { runtime, sessionId, task, event, advance: () => { now += 120_001 } }
+  return { runtime, sessionId, task, event, advance: (ms = 120_001) => { now += ms } }
 }
 describe('avatar controller lifecycle', () => {
   it('requires explicit enable and prevents a second controller from stealing control', () => {
@@ -78,6 +78,46 @@ describe('avatar controller lifecycle', () => {
     expect(() => f.event({ type: 'animate', name: 'execute-command' })).toThrow()
     expect(f.runtime.snapshot()).toEqual(before)
   })
+  it('parses every stream boundary, preserves whitespace and never renews an old inline cue', () => {
+    const raw = '[[emotion:shy|0.7]]谢谢你呀。 [[emotion:playful|0.8]]Hi there!\n继续聊'
+    const f = fixture(); f.task()
+    for (let index = 0; index < raw.length; index++) {
+      f.event({ type: 'say', turnId: 'stream', text: raw[index], append: index > 0, done: index === raw.length - 1 })
+      const caption = f.runtime.snapshot().caption!
+      expect(caption.text).not.toMatch(/\[\[|emotion:|\|0\./)
+      f.advance(20)
+    }
+    const caption = f.runtime.snapshot().caption!
+    expect(caption.text).toBe('谢谢你呀。 Hi there!\n继续聊')
+    expect(caption.expression).toEqual({ emotion: 'playful', intensity: .8 })
+    const cueIndex = raw.indexOf(']]Hi') + 1
+    expect(caption.expressionExpiresAt).toBe(6600 + cueIndex * 20)
+  })
+  it('honors explicit JSON precedence, new inline cues, replacements and task buffer cleanup', () => {
+    const f = fixture(); f.task()
+    f.event({ type: 'say', turnId: 'a', text: '[[emotion:shy]]你好', done: false, expression: { emotion: 'caring', intensity: .6 } })
+    f.advance(7000)
+    f.event({ type: 'say', turnId: 'a', text: ' 呀', append: true, done: false })
+    expect(f.runtime.snapshot().caption).toMatchObject({ expression: { emotion: 'caring' }, expressionExpiresAt: 6600 })
+    f.event({ type: 'say', turnId: 'a', text: '[[emotion:happy]]开心', append: true, done: false })
+    expect(f.runtime.snapshot().caption).toMatchObject({ expression: { emotion: 'happy' }, expressionExpiresAt: 13600 })
+    f.event({ type: 'say', turnId: 'a', text: '替换掉标记', done: false })
+    expect(f.runtime.snapshot().caption?.expression).toBeUndefined()
+    f.event({ type: 'say', turnId: 'a', text: '[[emo', append: true, done: false })
+    f.runtime.cancel(); f.task({ taskId: 'task-2' })
+    f.event({ taskId: 'task-2', type: 'say', turnId: 'a', text: 'tion:shy]]普通文字' })
+    expect(f.runtime.snapshot().caption).toMatchObject({ text: 'tion:shy]]普通文字' })
+    expect(f.runtime.snapshot().caption?.expression).toBeUndefined()
+  })
+  it('limits raw metadata as well as visible text without corrupting stream state', () => {
+    const f = fixture(); f.task()
+    f.event({ type: 'say', turnId: 'a', text: '[[emotion:happy]]'.repeat(100), done: false })
+    const before = f.runtime.snapshot()
+    expect(() => f.event({ type: 'say', turnId: 'a', text: '[[emotion:happy]]'.repeat(100), append: true })).toThrow(/2000/)
+    expect(f.runtime.snapshot()).toEqual(before)
+    f.event({ type: 'say', turnId: 'a', text: '[[emotion:execute]]继续', append: true })
+    expect(f.runtime.snapshot().caption?.text).toBe('继续')
+  })
   it('requires new IDs after completion and clears all session content on release', () => {
     const f = fixture(); f.task({ status: 'completed', progress: 1 })
     expect(() => f.task()).toThrow(/任务已结束/)
@@ -120,6 +160,7 @@ describe('authenticated loopback bridge', () => {
       })
       expect(hostileHostStatus).toBe(403)
       expect(JSON.stringify(await (await request('/v1/state')).json())).not.toContain(config.token)
+      expect((await (await request('/v1/state')).json()).expressionProtocol).toMatchObject({ name: 'debby.expression', version: 1, offsetUnit: 'utf16' })
       expect((await request('/v1/events', { command: 'execute' })).status).toBe(400)
       expect((await request('/v1/sessions', { name: 'x'.repeat(20_000) })).status).toBe(413)
       const session = await (await request('/v1/sessions', { name: 'MCP' })).json()

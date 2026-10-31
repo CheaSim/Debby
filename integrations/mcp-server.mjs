@@ -20,8 +20,8 @@ export function createDebbyMcp(client) {
   register('debby_set_task', 'Present task progress: working, waiting for user input, completed or error. A cancelled task cannot be resumed.', z.object({
     ...task, title: z.string().trim().min(1).max(100), status: z.enum(['working', 'waiting', 'completed', 'error']), progress: z.number().min(0).max(1).optional()
   }).strict(), ({ taskId, title, status, progress }) => client.setTask(taskId, title, status, progress))
-  register('debby_say', 'Display plain text in Debby with an optional semantic facial expression. Faces overlay a playing dance without changing its bones. No cloud TTS. For streaming, keep turnId fixed, append=true for later chunks, done=true for the last chunk. Maximum assembled text 2000 characters.', z.object({
-    ...task, turnId: id, text: z.string().trim().min(1).max(2000), append: z.boolean().default(false), done: z.boolean().default(true),
+  register('debby_say', 'Display text with Debby Expression v1 markers, e.g. [[emotion:happy|0.8]]Hello! Markers are hidden and may cross stream chunks. Supported names: neutral/happy/caring/sad/shy/surprised/curious/playful/proud. Optional typed expression overrides markers in that event. Faces overlay a dance without changing its bones. No cloud TTS. For streaming, keep turnId fixed, append=true for later chunks, done=true for the last chunk. Maximum assembled raw text 2000 characters.', z.object({
+    ...task, turnId: id, text: z.string().min(1).max(2000), append: z.boolean().default(false), done: z.boolean().default(true),
     expression: z.object({ emotion: z.enum(['neutral', 'happy', 'caring', 'sad', 'shy', 'surprised', 'curious', 'playful', 'proud']), intensity: z.number().min(0).max(1).default(.75) }).strict().optional()
   }).strict(), ({ taskId, turnId, text, append, done, expression }) => client.say(taskId, turnId, text, { append, done, expression }))
   register('debby_animate', 'Play a curated 3D avatar gesture. User interactions take priority. Does not change the financial mood.', z.object({

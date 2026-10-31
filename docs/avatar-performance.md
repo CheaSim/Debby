@@ -11,6 +11,8 @@ Debby 用三条独立通道表现：台词里的语义控制表情，动作片�
 
 ## 对话协议与扩展点
 
+完整的 [Debby Expression v1 协议](expression-protocol.md) 定义标记语法、流式拼接、JSON 优先级与外部 Agent 接入示例。
+
 `src/shared/avatar-performance.ts` 是无 React / Electron / 模型 SDK 依赖的契约，支持 `neutral / happy / caring / sad / shy / surprised / curious / playful / proud` 九种语义，强度 0–1。
 
 内置 pi 在已有那次生成里输出隐藏标记，例如：

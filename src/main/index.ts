@@ -338,6 +338,7 @@ function registerIpc(): void {
     return companion.start(input)
   })
   handleChat('voice:stop', () => companion.stop())
+  handleChat('voice:set-camera', (allowed) => companion.setCamera(allowed))
   handleChat('voice:authorize-media', (kind) => companion.authorizeMedia(kind))
   handleChat('voice:release-media', (kind) => companion.releaseMedia(kind))
   handleChat('voice:turn', (turn) => companion.submit(turn))
