@@ -95,6 +95,8 @@ export function LayeredPet(props: Props): React.JSX.Element {
         driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton, hiddenLayers: p.hiddenLayers, pose: p.pose })
         host.dataset.expressionPose = source.dataset.expressionPose ?? ''
         host.dataset.expressionTextures = source.dataset.expressionTextures ?? ''
+        host.dataset.expressionTransitioning = source.dataset.expressionTransitioning ?? ''
+        host.dataset.expressionBlend = source.dataset.expressionBlend ?? ''
         host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
         host.dataset.portraitMotion = source.dataset.portraitMotion ?? ''
         host.dataset.skeletonJoints = source.dataset.skeletonJoints ?? ''

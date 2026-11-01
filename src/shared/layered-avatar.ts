@@ -35,6 +35,7 @@ export interface LayeredAvatarDriver {
   dispose(): void
 }
 export interface LayeredAvatarSurface extends LayeredAvatarDriver { canvas: HTMLCanvasElement; visible(): boolean; viewRig?(): LayeredRig }
+export interface LayeredSurfaceOptions { expressionTransitionMs?: number }
 /** Portable mapping: expressions/head/arm deformation, not VRM skeletal dance. */
 export function layeredParameters({ time: t, mood, behavior, mouth, gaze, reducedMotion, motionScale }: LayeredFrameInput): Record<string, number> {
   const clamp = (n: number): number => Number.isFinite(n) ? Math.max(-1, Math.min(1, n)) : 0

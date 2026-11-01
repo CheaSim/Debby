@@ -48,7 +48,10 @@ try {
   await page.waitForSelector('.avatar-preview [data-rendered-view=full]')
   for (const [index, pose] of bundle.poses.entries()) {
     await page.getByLabel('预览立绘', { exact: true }).selectOption(pose.id)
-    await page.waitForFunction(id => document.querySelector('.avatar-preview .layered-pet-host').dataset.expressionPose === id, pose.id)
+    await page.waitForFunction(id => {
+      const host = document.querySelector('.avatar-preview .layered-pet-host')
+      return host.dataset.expressionPose === id && host.dataset.expressionTransitioning === 'false'
+    }, pose.id)
     const image = Buffer.from((await page.locator('.avatar-preview canvas').evaluate(canvas => canvas.toDataURL())).split(',')[1], 'base64')
     fingerprints.add(createHash('sha256').update(image).digest('hex'))
     await sharp(image).toFile(resolve(evidence, pose.id + '.png'))

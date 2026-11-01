@@ -1,12 +1,12 @@
 import { PortableAvatarBackend, createLayeredSurface } from '../../src/renderer/src/avatar/layered-runtime'
-import { applyLayeredPerformance, layeredParameters, type LayeredFrameInput } from '../../src/shared/layered-avatar'
+import { applyLayeredPerformance, layeredParameters, type LayeredFrameInput, type LayeredSurfaceOptions } from '../../src/shared/layered-avatar'
 import type { ExpressionDirective } from '../../src/shared/avatar-performance'
 
 /** Vite/browser host: PSD, srig or multi-illustration .debby. Serve public/vendor/anime25d/ for PSD. No React/Electron required. */
-export async function mountLayeredAvatar(canvas: HTMLCanvasElement, file: Blob, signal: AbortSignal) {
+export async function mountLayeredAvatar(canvas: HTMLCanvasElement, file: Blob, signal: AbortSignal, options: LayeredSurfaceOptions = {}) {
   const rig = await new PortableAvatarBackend().parse(file, { signal })
   signal.throwIfAborted()
-  const driver = await createLayeredSurface(canvas, rig)
+  const driver = await createLayeredSurface(canvas, rig, options)
   let frame = 0, disposed = false, previous = performance.now()
   let input: LayeredFrameInput = { time: 0, mood: 'idle', behavior: 'idle', mouth: 0, gaze: { x: 0, y: 0 } }
   let expression: ExpressionDirective | undefined

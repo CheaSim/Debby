@@ -36,6 +36,7 @@
     "test:layered-avatar": "npm run build && node tests/layered-avatar.e2e.mjs",
     "test:decomposed-avatar": "npm run build && node tests/decomposed-avatar.e2e.mjs",
     "test:expression-avatar": "npm run build && node tests/expression-avatar.e2e.mjs",
+    "test:expression-transition": "npm run build && node tests/expression-transition.e2e.mjs",
     "test:performance-ui": "npm run build && node tests/performance-ui.e2e.mjs",
     "test:standrig-avatar": "npm run build && node tests/standrig-avatar.e2e.mjs",
     "test:avatar-motion": "npm run build && node tests/avatar-motion.e2e.mjs",

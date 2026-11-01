@@ -50,11 +50,25 @@ npm.cmd run avatar:pack-expressions -- D:/art/poses.json D:/art/character.debby
 - `LayeredAvatarSurface.viewRig()`：返回当前立绘的画布、部件范围和脸部锚点，供全身取景或手动近景使用。
 - `LayeredAvatarDriver.frame` 的 `context.pose`：宿主可显式预览某张立绘，平时省略。
 
-运行时仅使用一个 WebGL 上下文，共用一套着色器与眼部遮罩，最多缓存两组立绘贴图，淘汰时释放旧资源。切换保留动画时钟、鼠标坐标、口型输入和控制者归属；新贴图准备好前保留当前画面，不叠加两张人物。解析、播放、图片制作、LLM 和摄像头互相独立。
+表情默认使用 220 ms 的缓入缓出。各立绘归一到同一舞台，取景使用整组部件与脸部范围，切换时不改变相机。过渡前后的立绘继续响应同一时钟、目光和口型；短时间收到下一条表情时，从已经显示的合成画面接着过渡，避免回跳。透明画面按预乘 alpha 加权合成，不透明的重叠区域保持不透明。不同原画手势之间仍是短时淡入淡出，未生成新的中间姿势。
+
+运行时仅使用一个 WebGL 上下文，共用一套着色器与眼部遮罩，最多保留两组立绘贴图，并串行准备下一组，淘汰时释放旧资源。新贴图准备好前保留当前画面；失败时继续显示已有角色。减少动态效果设置会直接完成切换。解析、播放、图片制作、LLM 和摄像头互相独立。
+
+宿主可注入过渡时长（0–600 ms，0 为直接切换），无需修改角色文件或 Agent 协议。选项只作用于多立绘后端；PSD 与 StandRig 接口保持兼容：
+
+```ts
+const surface = await createLayeredSurface(canvas, rig, { expressionTransitionMs: 220 })
+// 浏览器示例也接受同一选项作为第四个参数。
+const avatar = await mountLayeredAvatar(canvas, file, signal, { expressionTransitionMs: 220 })
+```
+
+给新宿主传入未创建渲染上下文的 Canvas；多立绘表面使用 Canvas2D 合成，并在内部保留一个 WebGL 网格画布。控制者归属仍由原有 Agent 层管理。
 
 ## 验证
 
 `npm.cmd run test:expression-avatar` 使用隐藏、不可聚焦、静音的独立 Electron 目录，验证真实角色包的逐张渲染、表情协议 / MCP 切换、有限贴图缓存、连续口型与时钟、幅度保存/恢复，以及舞蹈后恢复立绘。截图保存在忽略的 `work/expression-avatar/`，不请求摄像头、麦克风或云模型。
+
+`npm.cmd run test:expression-transition` 额外检查真实像素的起点连续性、半程 alpha / 颜色、不透明重叠区域、连续打断与反向切换、过渡中的口型输入、最新流式表情优先、减少动态效果和宿主禁用过渡。证据保存在 `work/expression-transition/`，同样隐藏、静音且不采集设备。
 
 单张生成结果可用 `tests/decomposed-avatar.e2e.mjs` 的 `DEBBY_DECOMPOSED_PSD`、`DEBBY_DECOMPOSED_SOURCE`、`DEBBY_DECOMPOSED_EVIDENCE` 指定测试输入与证据目录；闭眼图设置 `DEBBY_DECOMPOSED_CLOSED_EYES=1`。验收包含左右虹膜各自的可见像素响应、原图轮廓覆盖和较大动作下的身体像素变化；拆层深度排序把虹膜放在眼白后面时应先修整再复核。闭眼图不要求不存在的虹膜移动。批量复核资产时可用 `DEBBY_DECOMPOSED_PIXELS_ONLY=1` 仅执行像素验收，完整桌面流程由默认模式及多立绘 E2E 覆盖。
 

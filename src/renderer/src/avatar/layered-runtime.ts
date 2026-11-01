@@ -1,4 +1,4 @@
-import { layeredAvatarLimits, type LayeredAvatarDriver, type LayeredAvatarSurface, type LayeredRig } from '../../../shared/layered-avatar'
+import { layeredAvatarLimits, type LayeredAvatarDriver, type LayeredAvatarSurface, type LayeredRig, type LayeredSurfaceOptions } from '../../../shared/layered-avatar'
 import { isStandRig } from '../../../shared/standrig-avatar'
 import { isExpressionRig, portableExpressionBundle, type ExpressionAvatarRig } from '../../../shared/expression-avatar'
 
@@ -17,8 +17,8 @@ export async function createLayeredDriver(gl: WebGLRenderingContext, rig: Layere
   if (gl.isContextLost()) throw Error('角色画布已关闭。')
   return (window as unknown as RigGlobals).DebbyRig.create(gl, rig)
 }
-export async function createLayeredSurface(canvas: HTMLCanvasElement, rig: LayeredRig): Promise<LayeredAvatarSurface> {
-  if (isExpressionRig(rig)) return (await import('./expression-runtime')).createExpressionSurface(canvas, rig)
+export async function createLayeredSurface(canvas: HTMLCanvasElement, rig: LayeredRig, options: LayeredSurfaceOptions = {}): Promise<LayeredAvatarSurface> {
+  if (isExpressionRig(rig)) return (await import('./expression-runtime')).createExpressionSurface(canvas, rig, options)
   if (isStandRig(rig)) return (await import('./standrig-runtime')).createStandRigSurface(rig, canvas)
   const gl = canvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: true })
   if (!gl) throw Error('这台设备无法创建透明角色画布。')
