@@ -12,6 +12,7 @@ import { createAvatarGaze } from '../../../shared/avatar-gaze'
 
 interface Props {
   performance?: AvatarPerformance
+  showSkeleton?: boolean
   asset: LayeredAvatarAsset; portrait?: boolean; mouthLevel?: number; mood?: PetMood; cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'; agentShell?: AgentShellState; draggable?: boolean
   onBehavior?: (behavior: PetBehavior) => void; onReady?: () => void; onError: (message: string) => void
@@ -88,9 +89,11 @@ export function LayeredPet(props: Props): React.JSX.Element {
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
       try {
-        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches })
+        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton })
         host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
         host.dataset.portraitMotion = source.dataset.portraitMotion ?? ''
+        host.dataset.skeletonJoints = source.dataset.skeletonJoints ?? ''
+        host.dataset.skeletonPose = source.dataset.skeletonPose ?? ''
         const { w, h } = p.asset.rig.canvas, face = p.asset.rig.anchors.face
         const cropW = p.portrait ? Math.min(w, (face.x1 - face.x0) * 2.25) : w
         const cropH = p.portrait ? Math.min(h, (face.y1 - face.y0) * 2.8) : h

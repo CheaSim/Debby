@@ -10,6 +10,7 @@ export async function mountLayeredAvatar(canvas: HTMLCanvasElement, file: Blob, 
   let frame = 0, disposed = false, previous = performance.now()
   let input: LayeredFrameInput = { time: 0, mood: 'idle', behavior: 'idle', mouth: 0, gaze: { x: 0, y: 0 } }
   let expression: ExpressionDirective | undefined
+  let showSkeleton = false
   const dispose = (): void => {
     if (disposed) return
     disposed = true; cancelAnimationFrame(frame); driver.dispose()
@@ -20,9 +21,9 @@ export async function mountLayeredAvatar(canvas: HTMLCanvasElement, file: Blob, 
     if (disposed) return
     const dt = Math.min(.05, Math.max(0, (now - previous) / 1000)); previous = now
     input.time += dt
-    driver.frame(applyLayeredPerformance(layeredParameters(input), expression, input.reducedMotion), dt, input.time, expression, { behavior: input.behavior, reducedMotion: Boolean(input.reducedMotion) })
+    driver.frame(applyLayeredPerformance(layeredParameters(input), expression, input.reducedMotion), dt, input.time, expression, { behavior: input.behavior, reducedMotion: Boolean(input.reducedMotion), showSkeleton })
     frame = requestAnimationFrame(tick)
   }
   signal.addEventListener('abort', dispose, { once: true }); frame = requestAnimationFrame(tick)
-  return { setInput(patch: Partial<Omit<LayeredFrameInput, 'time'>>) { input = { ...input, ...patch } }, setExpression(next?: ExpressionDirective) { expression = next }, dispose }
+  return { setInput(patch: Partial<Omit<LayeredFrameInput, 'time'>>) { input = { ...input, ...patch } }, setExpression(next?: ExpressionDirective) { expression = next }, setSkeletonPreview(show: boolean) { showSkeleton = show }, dispose }
 }

@@ -1,4 +1,5 @@
 import type { LayeredRig } from './layered-avatar'
+import type { SkeletonBinding } from './avatar-skeleton'
 
 export interface StandRigParameter { id: string; min: number; max: number; default: number }
 export interface PortraitEye { x: number; y: number; radiusX: number; radiusY: number }
@@ -12,8 +13,9 @@ export interface StandRigDocument {
   assets: { id: string; src: string; width?: number; height?: number }[]
   parameters: StandRigParameter[]
   parts: { id: string; name: string; drawOrder: number; kind: string }[]
+  deformers?: { id: string; parentId: string | null; origin: { x: number; y: number } }[]
   facialPresets?: { expressions: { id: string }[] }
-  metadata?: { debby?: { mode?: string; face?: { x0: number; x1: number; y0: number; y1: number }; motion?: PortraitMotion } }
+  metadata?: { debby?: { mode?: string; face?: { x0: number; x1: number; y0: number; y1: number }; motion?: PortraitMotion; skeleton?: SkeletonBinding } }
   [key: string]: unknown
 }
 export interface StandRigAvatarRig extends LayeredRig { engine: 'standrig'; document: StandRigDocument }
@@ -44,6 +46,11 @@ export function portableStandRig(value: unknown): StandRigDocument {
     if (!Array.isArray(list) || list.length > max) throw Error(`模型 ${key} 数量超出限制。`)
   }
   if (!rig.assets.length || !rig.parts.length) throw Error('模型没有可显示的部件。')
+  const skeleton = rig.metadata?.debby?.skeleton
+  if (skeleton !== undefined) {
+    const ids = new Set(rig.deformers?.map(bone => bone.id)), partIds = new Set(rig.parts.map(part => part.id))
+    if (!skeleton || skeleton.version !== 1 || !Array.isArray(skeleton.jointIds) || !skeleton.jointIds.length || skeleton.jointIds.length > 64 || new Set(skeleton.jointIds).size !== skeleton.jointIds.length || skeleton.jointIds.some(id => typeof id !== 'string' || !ids.has(id)) || !skeleton.poseParts || typeof skeleton.poseParts !== 'object' || Array.isArray(skeleton.poseParts) || Object.keys(skeleton.poseParts).length > 32 || Object.values(skeleton.poseParts).some(parts => !Array.isArray(parts) || parts.length > 32 || parts.some(id => !partIds.has(id)))) throw Error('角色骨架绑定无效，请检查关节与网格引用。')
+  }
   const motion = rig.metadata?.debby?.motion
   if (motion !== undefined) {
     const validRegion = (eye: PortraitEye): boolean => Boolean(eye) && [eye.x, eye.y, eye.radiusX, eye.radiusY].every(Number.isFinite) && eye.x >= 0 && eye.x <= w && eye.y >= 0 && eye.y <= h && eye.radiusX > 0 && eye.radiusX <= w / 2 && eye.radiusY > 0 && eye.radiusY <= h / 2

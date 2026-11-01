@@ -39,16 +39,19 @@ try {
       const expected = document.createElement('canvas'); expected.width = output.width; expected.height = output.height
       const context = expected.getContext('2d'), image = new Image()
       image.src = src; await image.decode()
+      // Match the production canvas-to-canvas scaling path, including premultiplied alpha.
+      const texture = document.createElement('canvas'); texture.width = 800; texture.height = 1280
+      texture.getContext('2d').drawImage(image, 0, 0)
       const scale = Math.min(output.width / 800, output.height / 1280), w = 800 * scale, h = 1280 * scale
-      context.drawImage(image, (output.width - w) / 2, output.height - h, w, h)
+      context.drawImage(texture, (output.width - w) / 2, output.height - h, w, h)
       const a = output.getContext('2d').getImageData(0, 0, output.width, output.height).data
       const b = context.getImageData(0, 0, output.width, output.height).data
       let diff = 0, visible = 0
       for (let i = 0; i < a.length; i++) { diff += Math.abs(a[i] - b[i]); if (i % 4 === 3 && a[i] > 10) visible++ }
-      return { mean: diff / a.length, visible }
+      return { mean: diff / a.length, visible, canvas: [output.width, output.height], dataset: { ...output.parentElement.dataset } }
     }, { src: original.assets.find(a => a.id === assetId).src })
     assert.ok(difference.visible > 1000, 'Actual avatar pixels exist')
-    assert.ok(difference.mean < 1.5, `${emotion}: should render one illustration, pixel delta ${difference.mean}`)
+    assert.ok(difference.mean < 1.5, `${emotion}: should render one illustration, ${JSON.stringify(difference)}`)
   }
   await page.getByLabel('预览表情').selectOption('shy')
   await page.getByRole('button', { name: '查看上半身', exact: true }).click()

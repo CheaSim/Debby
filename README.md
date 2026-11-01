@@ -14,7 +14,7 @@ Debby 是一位可爱、活泼的金融小助手：**陪你看懂行情，也陪
 
 ## 已实现
 
-- [鲸鱼娘与 StandRig](docs/standrig-whale-girl.md)：角色工坊一键使用蓝白长裙鲸鱼娘，八张立绘随对话、Agent 和指数心情切换；带轻量目光、头部和说话姿态，支持本机导入 StandRig `.srig`。精细口型与独立五官尚未绑定。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
+- [鲸鱼娘与 StandRig](docs/standrig-whale-girl.md)：蓝白长裙鲸鱼娘以原生旋转关节和网格蒙皮跟随鼠标，头颈、头发、尾巴与呼吸分别驱动；工坊可显示骨架。八张立绘随对话、Agent 和指数心情切换，支持导入 StandRig `.srig`。独立口型与眼睑尚未绘制。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
 - [目光与自动动作](docs/avatar-motion.md)：桌面范围鼠标跟随、穿透模式、待机/说话姿态和控制优先级；可注入指针源，后台测试隐藏且静音。
 - [对话表情与舞蹈表演](docs/avatar-performance.md)：九种语义表情、同一回复内变脸、按实际语音分句同步；聊天时继续跳舞，舞台风格与 JSON 表情时间轴可扩展，MCP 发台词时一并控制表情
 - [Debby Expression v1](docs/expression-protocol.md)：AI 在回答中输出 `[[emotion:shy|0.7]]` 即可变脸，内置对话与外部 Agent / MCP 都支持跨块流式标记，正文和朗读不会显示标记

@@ -1,0 +1,12 @@
+{
+  "source": "debby-whale-girl.srig",
+  "sourceSha256": "f896b2ef1a925917445044f1067dbbc832f721f63419c3b04efa04eb828f8783",
+  "modelSha256": "d85f81c13f4409e365fc1dde93374ce1535704881515405b542af59ffc0ccb41",
+  "license": "CC-BY-NC-SA-4.0",
+  "authoring": "integrations/portrait-skeleton.mjs",
+  "engine": "StandRig 0.2.0 native rotation deformers and three-joint ArtMesh patches",
+  "joints": 21,
+  "parts": 60,
+  "nodes": 116546,
+  "changes": "Added a rotation hierarchy, normalized shared-edge mesh skinning, authored eye-patch, hair and tail weights. Original pose textures and attribution unchanged; no inferred hidden artwork or facial segmentation."
+}

@@ -9,6 +9,11 @@ function shippedV1(): Blob {
   return new Blob([JSON.stringify(document)])
 }
 describe('bundled portrait refresh', () => {
+  it('upgrades the exact shipped shader pack to the skeleton pack', async () => {
+    const file = new Blob([readFileSync(new URL('../src/renderer/public/models/whale-girl/debby-whale-girl.srig', import.meta.url))])
+    const next = new Blob(['rigged']), load = vi.fn(async () => next)
+    expect(await refreshBuiltinAvatar(file, load, new AbortController().signal)).toBe(next)
+  })
   it('recognizes the exact previous release and refreshes it without rewriting the user store', async () => {
     const file = shippedV1(), next = new Blob(['new bundled pack']), load = vi.fn(async () => next)
     expect(file.size).toBe(2_970_016)

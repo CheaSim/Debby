@@ -3,7 +3,7 @@
   "commit": "d639ea5b123c37c1c3b7981b01b2cf64d3bd9e91",
   "license": "Apache-2.0",
   "sources": {
-    "integrations/standrig-browser.entry.ts": "f748bb03be3d126e3d96b7c32cfbadfcbbf15126e7e1b128bcb0a1e3018c130a",
+    "integrations/standrig-browser.entry.ts": "0e15ea3466860ee52544fdd2a820f8ed3a8e5bd5b003186833e9d22b29547fbc",
     "packages/core/src/alphaReveal.ts": "2bf5e70f1c49dc393bf28342bca8357f6cbd834609a7fc4ec99d085445bc521f",
     "packages/core/src/artMesh.ts": "54b9eec5e4674380580f0728efb4dc670cd2f237d50c6f38795ffc60b4a61759",
     "packages/core/src/artMeshBlendShape.ts": "b90d23b3e90dc9a4cb3492313d66cc1e1a35b5af5fefb689554405a3719d8ab0",

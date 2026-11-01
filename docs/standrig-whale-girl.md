@@ -1,12 +1,12 @@
 # 鲸鱼娘角色与 StandRig 接入
 
-来源核查：2026-10-31。角色外观仍由 Debby 的金融陪伴人格驱动，外观不绑定底层 LLM。
+来源核查：2026-11-01。角色外观仍由 Debby 的金融陪伴人格驱动，外观不绑定底层 LLM。
 
 ## 现在可以用的内容
 
 桌宠选项 → 角色工坊 →「遇见鲸鱼娘」→ 预览表情 →「用这个角色陪我」。默认上半身，可切全身；保存到本机后重启恢复。对话、语音、Agent 的同一套 `AvatarPerformance` 驱动表情，指数上涨触发开心，下跌使用关心表情。控制取消/表情到期后恢复当前心情。舞蹈继续使用现有 VRM，停止后恢复鲸鱼娘。
 
-素材来自 [JAdpp/dsh-whale-galgame](https://github.com/JAdpp/dsh-whale-galgame/tree/046b848f244450e6e636335766276bf3343fe84b)，采用八张不同姿态的透明立绘，映射到九个语义表情（俏皮复用开心）。这不是新生成的原画，也不是分层五官模型。当前支持立绘表情切换、呼吸、轻量目光与头部形变，以及待机/说话姿态；眼部形变按每张立绘单独标注，闭眼立绘保持闭眼。没有独立眨眼或语音口型，也不是 3D。具体能力与接入方式见 [目光与自动动作](avatar-motion.md)。后续有真正分层 PSD 后再做精细绑定；现有 PSD 后端不受影响。
+素材来自 [JAdpp/dsh-whale-galgame](https://github.com/JAdpp/dsh-whale-galgame/tree/046b848f244450e6e636335766276bf3343fe84b)，采用八张不同姿态的透明立绘，映射到九个语义表情（俏皮复用开心）。内置包现已绑定 StandRig 旋转层级和原生 ArtMesh 蒙皮：7 个共享关节、14 个表情专属眼部关节，驱动头颈跟随、躯干呼吸、头发与尾巴弹性待机；工坊可显示实际计算后的骨架。闭眼立绘保持闭眼。它没有分离出的虹膜、眼睑或嘴部绘画，因而没有独立眨眼和语音口型，也不是 3D。具体结构与接入方式见 [目光与自动动作](avatar-motion.md)。已有分层 PSD 后端继续可用。
 
 ## 技术判断与复用范围
 
@@ -14,7 +14,7 @@
 
 它是作者工具与独立播放器，不负责画原画、自动拆分图片或生成 VRM/Cubism moc3。浏览器编辑器导入分层 PSD（至少两层图像），模型可导出内嵌 PNG 的 `.srig`，也可导出 `standrig-bundle`。原生 motion JSON 与 VRMA、Live2D motion3 格式不同，不能互换。`exp3` 仅交换表情参数，不能转换角色模型。
 
-Debby 固定版本复用 `RigRuntime`、`FacialController`、参数定义、迁移与模型验证。浏览器构建不包含服务、MCP、摄像头、OBS 或 PSD 编辑器；无须后台编辑器进程。上游完整工程已在本机 `work/upstream-standrig` 通过 `npm ci --ignore-scripts` 和 `npm run build`。编辑器需 Node 22.12+ 或 24+，服务默认本机 5180；Debby 的正常播放不依赖该端口。
+Debby 固定版本复用 `RigRuntime`、`FacialController`、参数定义、迁移与模型验证，并导出原生 `resolveRigFrame`、`applySkinningToVertices` 用于骨架预览与数值 QA。浏览器构建不包含服务、MCP、摄像头、OBS 或 PSD 编辑器；无须后台编辑器进程。上游完整工程已在本机 `work/upstream-standrig` 通过 `npm ci --ignore-scripts` 和 `npm run build`。编辑器需 Node 22.12+ 或 24+，服务默认本机 5180；Debby 的正常播放不依赖该端口。
 
 ## 集成边界
 
@@ -42,11 +42,13 @@ Debby 固定版本复用 `RigRuntime`、`FacialController`、参数定义、迁�
 ```powershell
 node scripts/vendor-standrig.mjs work/upstream-standrig
 node scripts/prepare-whale-girl.mjs work/upstream-whale-galgame
+npm.cmd run avatar:rig
 npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
 node tests/standrig-avatar.e2e.mjs
 node tests/layered-avatar.e2e.mjs
+node tests/avatar-skeleton.e2e.mjs
 ```
 
 图片准备仅进行机械格式转换与边缘残留清理，并记录像素修改数量。`work/whale-girl/expressions.png` 是实际素材拼图；发布前需要检查透明边缘、服饰细节及取景。E2E 直接使用打包的真实角色，验证导入、可见像素、表情像素变化、重载、拖拽、MCP 表情、取消、舞蹈回退与停止恢复。它不能证明尚不存在的精细口型/3D 绑定已经完成。
