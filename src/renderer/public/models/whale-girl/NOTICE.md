@@ -14,4 +14,6 @@
 本角色为社区二创外观，不表示上游作者或 DeepSeek 官方认可 Debby。
 Debby 程序代码仍按项目 MIT 许可；本目录美术素材不适用代码的 MIT 许可。
 debby-whale-girl.psd 包含独立五官、前后发、衣服、手臂、腿脚与尾巴，供 Anime2.5DRig 语义网格驱动；它是 2.5D 插画，不是完整 3D 人体或舞蹈骨骼。生成与新增美术同样按 CC BY-NC-SA 4.0 提供。
+
+debby-whale-girl.debby 为同一个 DeepSeek 社区二创鲸鱼娘的多立绘包：各张原画分别经 See-through 生成分层 PSD，保留独立五官与身体部件，再按对话/动作切换。原本闭眼的开心立绘保留其闭眼睫毛，未添加不存在的眼白或虹膜。逐张原始图片与 PSD 的 SHA-256、模型版本、实际修整及渲染验收见 expressions-provenance.json。该包中的全部美术仍为 CC BY-NC-SA 4.0。
 debby-whale-girl-rigged.srig 使用 StandRig 原生旋转层级和共享边界的 ArtMesh 蒙皮，驱动头颈、躯干、头发、尾巴与每张立绘的眼部区域。旧包保留图像空间形变的兼容元数据。闭眼差分保持闭眼，不生成缺失五官。

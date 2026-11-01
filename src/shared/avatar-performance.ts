@@ -16,7 +16,7 @@ export function formatExpressionTag({ emotion, intensity }: ExpressionDirective)
   if (!avatarEmotions.includes(emotion) || !Number.isFinite(intensity) || intensity < 0 || intensity > 1) throw new Error('表情或强度无效。')
   return `[[emotion:${emotion}|${Number(intensity.toFixed(2))}]]`
 }
-export const expressionPrompt = `Debby Expression v1 表情协议：自然回复开头使用一个隐藏标记 [[emotion:名称]] 或 [[emotion:名称|强度]]，强度为 0 到 1，最多两位小数，省略为 0.75。名称只能为 neutral/happy/caring/sad/shy/surprised/curious/playful/proud。需要时可在语气转折处再用，整条最多 3 个；正文照常自然说话，不解释标记。安慰用户用 caring，用户难过时不要庆祝；受到夸奖可 shy，开玩笑可 playful，替用户肯定努力可 proud。标记只驱动脸部，不表示已执行身体动作或跳舞。`
+export const expressionPrompt = `Debby Expression v1 表情协议：自然回复开头使用一个隐藏标记 [[emotion:名称]] 或 [[emotion:名称|强度]]，强度为 0 到 1，最多两位小数，省略为 0.75。名称只能为 neutral/happy/caring/sad/shy/surprised/curious/playful/proud。需要时可在语气转折处再用，整条最多 3 个；正文照常自然说话，不解释标记。安慰用户用 caring，用户难过时不要庆祝；受到夸奖可 shy，开玩笑可 playful，替用户肯定努力可 proud。标记驱动角色表情或对应立绘，不表示已执行身体动作或跳舞。`
 
 const prefix = '[[emotion:'
 /** Reparse cumulative text so arbitrary token splits never expose control syntax to UI/TTS. */

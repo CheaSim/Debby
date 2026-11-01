@@ -1,5 +1,6 @@
 import { layeredAvatarLimits, type LayeredAvatarDriver, type LayeredAvatarSurface, type LayeredRig } from '../../../shared/layered-avatar'
 import { isStandRig } from '../../../shared/standrig-avatar'
+import { isExpressionRig, portableExpressionBundle, type ExpressionAvatarRig } from '../../../shared/expression-avatar'
 
 const assetUrl = (name: string): URL => new URL(`vendor/anime25d/${name}`, document.baseURI)
 interface RigGlobals { DebbyRig: { create(gl: WebGLRenderingContext, rig: LayeredRig): LayeredAvatarDriver } }
@@ -17,6 +18,7 @@ export async function createLayeredDriver(gl: WebGLRenderingContext, rig: Layere
   return (window as unknown as RigGlobals).DebbyRig.create(gl, rig)
 }
 export async function createLayeredSurface(canvas: HTMLCanvasElement, rig: LayeredRig): Promise<LayeredAvatarSurface> {
+  if (isExpressionRig(rig)) return (await import('./expression-runtime')).createExpressionSurface(canvas, rig)
   if (isStandRig(rig)) return (await import('./standrig-runtime')).createStandRigSurface(rig, canvas)
   const gl = canvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: true })
   if (!gl) throw Error('这台设备无法创建透明角色画布。')
@@ -44,6 +46,21 @@ export class PortableAvatarBackend implements LayeredAvatarBackend {
     options.signal.throwIfAborted()
     const header = await file.slice(0, 128).text(); options.signal.throwIfAborted()
     if (!header.trimStart().startsWith('{')) return this.psd.parse(file, options)
+    const document = JSON.parse(await file.text()); options.signal.throwIfAborted()
+    if (document?.format === 'debby-expression-bundle') {
+      const bundle = portableExpressionBundle(document), poses: ExpressionAvatarRig['expressionSet']['poses'] = []
+      for (const [index, pose] of bundle.poses.entries()) {
+        options.signal.throwIfAborted(); options.progress?.(`正在绑定 ${pose.label}（${index + 1}/${bundle.poses.length}）…`)
+        const bytes = Uint8Array.from(atob(pose.psd), c => c.charCodeAt(0))
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+        options.signal.throwIfAborted()
+        if ([...digest].map(n => n.toString(16).padStart(2, '0')).join('') !== pose.sha256) throw Error(`${pose.label} 的 PSD 校验失败，请重新导出。`)
+        const rig = await this.psd.parse(new Blob([bytes]), { signal: options.signal })
+        poses.push({ id: pose.id, label: pose.label, eyes: pose.eyes, mouthRest: pose.mouthRest, freeArm: pose.freeArm, rig })
+      }
+      const neutral = poses.find(pose => pose.id === bundle.defaultPose)!.rig
+      return { ...neutral, engine: 'anime25d-expressions', expressionSet: { name: bundle.name, defaultPose: bundle.defaultPose, expressions: bundle.expressions, behaviors: bundle.behaviors, poses } } as ExpressionAvatarRig
+    }
     options.progress?.('正在校验 StandRig 模型…')
     const bytes = await file.arrayBuffer(); options.signal.throwIfAborted()
     return new Promise((resolve, reject) => {

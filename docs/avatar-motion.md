@@ -10,10 +10,10 @@ Debby 在桌面窗口外也会继续看向鼠标，移出角色后不再回正�
 | --- | --- | --- | --- |
 | VRM / Zome | 原生 LookAt、眼球与头骨 | 骨骼待机、说话手势、倾听与工作姿态 | 具体表情取决于模型通道 |
 | 分层 PSD / 普通 StandRig | 已绑定的头部和眼部参数 | 已绑定部件形变、真实音频口型 | 效果取决于图层及绑定 |
-| 内置鲸鱼娘 PSD | 真实独立虹膜、眼白裁剪、脸部与头发形变 | 独立眨眼/口型、眉眼与闭口表情、发丝物理、手臂与呼吸 | 2.5D 插画形变，VRMA 舞蹈仍切换 3D |
+| 内置鲸鱼娘多立绘包 | 各张 PSD 的独立虹膜、眼白裁剪、脸部与头发形变；原本闭眼的插画保持闭眼 | 随语义切换原画、独立口型、发丝物理、身体与手臂；可调 0.6–2.4× 幅度 | 2.5D 插画形变，VRMA 舞蹈仍切换 3D |
 | 旧鲸鱼娘 StandRig 包 | 旋转层级和 ArtMesh 蒙皮，眼部区域独立关节 | 头颈、躯干、头发与尾巴弹性跟随、待机/说话姿态 | 旧包没有独立五官贴图；闭眼立绘保持闭眼 |
 
-角色工坊提供分层 PSD 的「试试口型」「查看拆分图层」，以及旧骨架包的「试试说话动作」「显示骨架」。系统开启“减少动态效果”后停止待机、身体和发丝物理，保留表情与实际语音口型。原封未改的三版内置立绘/骨架包会在恢复时加载新 PSD；通过 SHA-256 精确识别，改过的文件不会替换，原存储也不会被自动覆盖。
+角色工坊提供分层 PSD 的「试试口型」「查看拆分图层」，多立绘的逐张预览和「动作与幅度」，以及旧骨架包的「试试说话动作」「显示骨架」。动作默认 1.9×，放大摆头、身体摆动、抬手与远端手臂转动；拎裙子的手可保持连接。系统开启“减少动态效果”后停止待机、身体和发丝物理，保留表情与实际语音口型。原封未改的内置立绘/骨架包与单张 PSD 会在恢复时加载新角色包；通过 SHA-256 精确识别，改过的文件不会替换，原存储也不会被自动覆盖。多立绘文档见 [同角色表情组](expression-characters.md)。
 
 ## 旧包的骨架与蒙皮
 
@@ -39,7 +39,7 @@ avatar.setInput({ gaze: direction, behavior: 'talking', mouth: speechAmplitude }
 // 卸载宿主时：gaze.dispose(); avatar.dispose()
 ```
 
-渲染仍使用统一 `LayeredAvatarDriver.frame`。可选第五个参数 `{ behavior, reducedMotion, showSkeleton, hiddenLayers }` 允许适配器消费动作语义、骨架与部件预览；旧的四参宿主继续可用。浏览器示例 [mount-layered-avatar.ts](../examples/avatar/mount-layered-avatar.ts) 额外暴露 `setSkeletonPreview(true)`。适配器不访问模型供应商、设备或 Electron。
+渲染仍使用统一 `LayeredAvatarDriver.frame`。可选第五个参数 `{ behavior, reducedMotion, showSkeleton, hiddenLayers, pose }` 允许适配器消费动作语义、骨架、部件和立绘预览；旧的四参宿主继续可用。浏览器示例 [mount-layered-avatar.ts](../examples/avatar/mount-layered-avatar.ts) 额外暴露 `setSkeletonPreview(true)`。适配器不访问模型供应商、设备或 Electron。
 
 可选 `metadata.debby.skeleton` version 1 包含 `jointIds`（至多 64 个原生 deformer ID）及 `poseParts`（表情 ID → 蒙皮部件 ID 数组）；导入时验证引用、数量和版本。运动参数与关节的具体绑定保存在标准 `.srig` 内，宿主不需要了解网格拓扑。作者适配器 `integrations/portrait-skeleton.mjs` 是无 IO 的纯函数，可复用或为其他人物编写独立 profile；`npm run avatar:rig` 可重现内置角色与哈希记录。
 

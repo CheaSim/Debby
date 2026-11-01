@@ -9,15 +9,31 @@ const root = resolve(import.meta.dirname, '..'), input = resolve(process.argv[2]
 if (!process.argv[2] || !output) throw Error('Usage: node scripts/prepare-decomposed-whale.mjs INPUT.psd OUTPUT-DIRECTORY [INFERENCE-METADATA.json]')
 const source = readFileSync(input), hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const metadata = process.argv[4] ? JSON.parse(readFileSync(resolve(process.argv[4]), 'utf8')) : undefined
+const original = metadata?.original ?? { repository: 'https://github.com/JAdpp/dsh-whale-galgame', commit: '046b848f244450e6e636335766276bf3343fe84b', file: 'assets/default/maid-left.webp' }
+// Do not embed local workstation paths in a distributable character asset.
+const run = metadata ? Object.fromEntries(Object.entries(metadata).filter(([key]) => !['sourcePsd', 'original'].includes(key))) : undefined
 if (metadata?.sourcePsdSha256 && metadata.sourcePsdSha256 !== hash(source)) throw Error('Inference metadata belongs to a different source PSD.')
 const context = vm.createContext({ console, Uint8Array, Uint8ClampedArray, ArrayBuffer, DataView, TextEncoder, TextDecoder })
 for (const name of ['ag-psd.min.js', 'rigger.js', 'debby-parts.js']) vm.runInContext(readFileSync(resolve(root, 'src/renderer/public/vendor/anime25d', name), 'utf8'), context)
 context.agPsd.initializeCanvas(undefined, (width, height) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }))
 const psd = context.agPsd.readPsd(new Uint8Array(source), { useImageData: true, skipThumbnail: true, skipCompositeImageData: true })
-const baseRig = context.Rigger.buildRig(context.DebbyParts.normalizeLayerNames(psd))
+context.DebbyParts.normalizeLayerNames(psd)
+const closedOnly = original.file.endsWith('whale-cheerful.webp')
+if (closedOnly) for (const layer of psd.children) if (context.Rigger.normName(layer.name) === 'eyelash') layer.name = 'eye_close'
+const baseRig = context.DebbyParts.completeClosedEyes(context.Rigger.buildRig(psd))
 const A = baseRig.anchors, F = A.face, M = A.mouth
-if (!A.eyeL || !A.eyeR || !baseRig.layers.some(l => l.name === 'tail') || !baseRig.layers.some(l => l.name === 'bottomwear')) throw Error('Missing key semantic parts; do not publish this generation.')
+if (!A.eyeL || !A.eyeR || !baseRig.layers.some(l => l.name === 'face') || !baseRig.layers.some(l => l.name === 'topwear') || !baseRig.layers.some(l => l.name === 'bottomwear') || (original.file.endsWith('maid-left.webp') && !baseRig.layers.some(l => l.name === 'tail'))) throw Error('Missing key semantic parts; do not publish this generation.')
 const changes = []
+// Depth inference can put an iris behind its opaque eye white. Keep the real
+// generated pixels, correcting only painter order for the semantic eye stack.
+const role = layer => context.Rigger.normName(layer.name)
+const lastWhite = psd.children.findLastIndex(layer => role(layer) === 'eyewhite')
+if (lastWhite >= 0 && psd.children.some((layer, index) => role(layer) === 'irides' && index < lastWhite)) {
+  const irises = psd.children.filter(layer => role(layer) === 'irides')
+  psd.children = psd.children.filter(layer => role(layer) !== 'irides')
+  psd.children.splice(psd.children.findLastIndex(layer => role(layer) === 'eyewhite') + 1, 0, ...irises)
+  changes.push('Corrected inferred painter order so both original iris pixel layers appear above eye whites; no iris pixels were redrawn.')
+}
 // The experimental head checkpoint sometimes paints an entire face in its nose
 // channel. Constrain only that erroneous channel; keep the inpainted face below.
 for (const layer of psd.children.filter(l => l.name === 'nose' && l.imageData)) {
@@ -42,22 +58,22 @@ async function strokeLayer(name, x, y, width, height, path, color, lineWidth) {
 // Original companion-friendly blink and closed lip accents. Slant follows the
 // actual eyes in this portrait, rather than horizontal generic placeholder art.
 const eyeSlope = (A.eyeR.icy - A.eyeL.icy) / (A.eyeR.icx - A.eyeL.icx)
-for (const side of ['L', 'R']) {
+const accents = []
+if (!closedOnly) for (const side of ['L', 'R']) {
   const E = A['eye' + side], w = Math.max(14, Math.ceil((E.x1 - E.x0) * 1.18)), h = Math.max(14, Math.ceil(w * .7))
   const mid = h * .4, rise = eyeSlope * w * .42, thickness = Math.max(1.8, w * .065)
   const eye = await strokeLayer('eye_close', (E.x0 + E.x1 - w) / 2, E.closeY - mid, w, h, `M 2 ${mid - rise} Q ${w * .5} ${mid + w * .28} ${w - 2} ${mid + rise} M 3 ${mid - rise + 1} L 1 ${mid - rise + 3}`, '#3e3548', thickness)
-  psd.children.push(eye)
+  accents.push(eye)
 }
 const mw = Math.max(12, Math.ceil((M.x1 - M.x0) * 1.12)), mh = Math.max(12, Math.ceil(mw * .65)), my = mh * .4
 const lip = await strokeLayer('mouth_close', M.cx - mw / 2, M.y0 + (M.y1 - M.y0) * .3 - my, mw, mh, `M 2 ${my - eyeSlope * mw * .35} Q ${mw * .5} ${my + mw * .2} ${mw - 2} ${my + eyeSlope * mw * .35}`, '#9a5d72', Math.max(1.8, mw * .055))
-psd.children.push(lip)
+accents.push(lip)
 // Painter order matters: closed features must sit under front hair/headwear.
-const accents = psd.children.splice(-3)
 let at = psd.children.findIndex(l => context.Rigger.normName(l.name) === 'front hair'); if (at < 0) at = psd.children.length
 psd.children.splice(at, 0, ...accents)
-changes.push('Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained.')
+changes.push(closedOnly ? 'Preserved the original model-generated closed lashes as eye_close parts, inferred closed-line anchors without adding open-eye pixels; authored an independent closed-mouth stroke.' : 'Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained.')
 context.Rigger.cleanPsdLayers(psd)
-const rig = context.Rigger.buildRig(psd)
+const rig = context.DebbyParts.completeClosedEyes(context.Rigger.buildRig(psd))
 if (rig.layers.filter(l => l.name.startsWith('eye_close')).length < 2 || !rig.layers.some(l => l.name === 'mouth_close')) throw Error('Authored close accents did not survive pixel cleanup.')
 const visible = []
 for (const layer of psd.children) if (!layer.hidden && layer.imageData) {
@@ -66,7 +82,7 @@ for (const layer of psd.children) if (!layer.hidden && layer.imageData) {
 }
 // Authored closed variants are hidden in PSD's neutral composite; the runtime
 // independently activates them through its semantic fade channels.
-const neutralLayers = visible.filter((_, i) => !['eye_close', 'mouth_close'].includes(psd.children.filter(l => !l.hidden && l.imageData)[i].name))
+const neutralLayers = visible.filter((_, i) => !(closedOnly ? ['mouth_close'] : ['eye_close', 'mouth_close']).includes(psd.children.filter(l => !l.hidden && l.imageData)[i].name))
 const neutral = await sharp({ create: { width: psd.width, height: psd.height, channels: 4, background: '#00000000' } }).composite(neutralLayers).png().toBuffer()
 // Keep all close variants visible as source layers so the runtime imports them.
 psd.imageData = { width: psd.width, height: psd.height, data: new Uint8ClampedArray(await sharp(neutral).raw().toBuffer()) }
@@ -79,5 +95,5 @@ if (output === resolve(root, 'src/renderer/public/models/whale-girl')) {
 mkdirSync(output, { recursive: true })
 writeFileSync(resolve(output, 'debby-whale-girl.psd'), bytes)
 writeFileSync(resolve(output, 'decomposed-preview.png'), neutral)
-writeFileSync(resolve(output, 'layered-provenance.json'), JSON.stringify({ license: 'CC-BY-NC-SA-4.0', original: { repository: 'https://github.com/JAdpp/dsh-whale-galgame', commit: '046b848f244450e6e636335766276bf3343fe84b', file: 'assets/default/maid-left.webp' }, inference: { engine: 'See-through', repository: 'https://github.com/shitagaki-lab/see-through', commit: 'df019de5129d6c4b406587a14c3501669441a783', sourcePsd: basename(input), sourceSha256: hash(source), run: metadata }, changes, modelSha256: hash(bytes), canvas: rig.canvas, parts: rig.layers.map(l => ({ name: l.name, z: l.z, x: l.x, y: l.y, width: l.w, height: l.h })), warnings: rig.warnings }, null, 2) + '\n')
+writeFileSync(resolve(output, 'layered-provenance.json'), JSON.stringify({ license: 'CC-BY-NC-SA-4.0', original, inference: { engine: 'See-through', repository: 'https://github.com/shitagaki-lab/see-through', commit: 'df019de5129d6c4b406587a14c3501669441a783', sourcePsd: basename(input), sourceSha256: hash(source), run }, changes, modelSha256: hash(bytes), canvas: rig.canvas, parts: rig.layers.map(l => ({ name: l.name, z: l.z, x: l.x, y: l.y, width: l.w, height: l.h })), warnings: rig.warnings }, null, 2) + '\n')
 console.log(JSON.stringify({ psd: resolve(output, 'debby-whale-girl.psd'), parts: rig.layers.length, bytes: bytes.length, warnings: rig.warnings }))

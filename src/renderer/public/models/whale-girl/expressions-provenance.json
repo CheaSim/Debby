@@ -1,0 +1,2248 @@
+{
+  "license": "CC-BY-NC-SA-4.0",
+  "poses": [
+    {
+      "id": "neutral",
+      "label": "日常陪伴",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/maid-left.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "debby.psd",
+        "sourceSha256": "72dc24bda70588251905ea05e36a1d486ab68f877dc2922a7d589d87b8f0c2f2",
+        "run": {
+          "completed": "2026-11-01T05:15:05.119Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "platform": "Windows",
+          "environment": {
+            "python": "3.12.9",
+            "torch": "2.9.1+rocm7.2.1",
+            "diffusers": "0.37.0",
+            "transformers": "5.0.0",
+            "miopenFindMode": "FAST"
+          },
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ],
+          "input": {
+            "file": "maid-left.webp",
+            "preparation": "Original licensed portrait flattened over white; square padding by the upstream pipeline",
+            "originalSha256": "af7bfd2e18505fc9d6f94cefd9febc92b31c1b2b66c756982d91fc7b93fb184c",
+            "preparedSha256": "8f4f94af321776166c042af05ab41f7f8747950eff11529688bfb8313aeffb19"
+          },
+          "sourcePsdSha256": "72dc24bda70588251905ea05e36a1d486ab68f877dc2922a7d589d87b8f0c2f2"
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "2c0fe63b725b7f4a2164bf82a7e2cd8c9e0ebde48520b6b9e170a97b1203c308",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "tail",
+          "z": 0,
+          "x": 570,
+          "y": 488,
+          "width": 226,
+          "height": 300
+        },
+        {
+          "name": "back hair",
+          "z": 1,
+          "x": 232,
+          "y": 84,
+          "width": 439,
+          "height": 457
+        },
+        {
+          "name": "legwear",
+          "z": 2,
+          "x": 446,
+          "y": 797,
+          "width": 132,
+          "height": 131
+        },
+        {
+          "name": "footwear",
+          "z": 3,
+          "x": 431,
+          "y": 804,
+          "width": 143,
+          "height": 220
+        },
+        {
+          "name": "bottomwear",
+          "z": 4,
+          "x": 229,
+          "y": 369,
+          "width": 501,
+          "height": 541
+        },
+        {
+          "name": "neck",
+          "z": 5,
+          "x": 493,
+          "y": 157,
+          "width": 46,
+          "height": 56
+        },
+        {
+          "name": "topwear",
+          "z": 6,
+          "x": 411,
+          "y": 187,
+          "width": 241,
+          "height": 451
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 7,
+          "x": 499,
+          "y": 95,
+          "width": 33,
+          "height": 10
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 8,
+          "x": 449,
+          "y": 107,
+          "width": 24,
+          "height": 19
+        },
+        {
+          "name": "headwear",
+          "z": 9,
+          "x": 415,
+          "y": 20,
+          "width": 164,
+          "height": 138
+        },
+        {
+          "name": "ears",
+          "z": 10,
+          "x": 443,
+          "y": 144,
+          "width": 32,
+          "height": 36
+        },
+        {
+          "name": "handwear",
+          "z": 11,
+          "x": 299,
+          "y": 228,
+          "width": 189,
+          "height": 232
+        },
+        {
+          "name": "ears",
+          "z": 12,
+          "x": 539,
+          "y": 115,
+          "width": 25,
+          "height": 41
+        },
+        {
+          "name": "face",
+          "z": 13,
+          "x": 437,
+          "y": 53,
+          "width": 116,
+          "height": 141
+        },
+        {
+          "name": "nose",
+          "z": 14,
+          "x": 490,
+          "y": 139,
+          "width": 11,
+          "height": 14
+        },
+        {
+          "name": "mouth_open",
+          "z": 15,
+          "x": 490,
+          "y": 155,
+          "width": 28,
+          "height": 22
+        },
+        {
+          "name": "eyelash_l",
+          "z": 16,
+          "x": 450,
+          "y": 124,
+          "width": 36,
+          "height": 30
+        },
+        {
+          "name": "eyelash_r",
+          "z": 17,
+          "x": 502,
+          "y": 108,
+          "width": 45,
+          "height": 25
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 18,
+          "x": 456,
+          "y": 130,
+          "width": 29,
+          "height": 24
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 19,
+          "x": 509,
+          "y": 113,
+          "width": 32,
+          "height": 24
+        },
+        {
+          "name": "irides_l",
+          "z": 20,
+          "x": 462,
+          "y": 129,
+          "width": 22,
+          "height": 24
+        },
+        {
+          "name": "irides_r",
+          "z": 21,
+          "x": 511,
+          "y": 113,
+          "width": 24,
+          "height": 24
+        },
+        {
+          "name": "handwear",
+          "z": 22,
+          "x": 557,
+          "y": 211,
+          "width": 193,
+          "height": 148
+        },
+        {
+          "name": "eye_close_l",
+          "z": 23,
+          "x": 454,
+          "y": 136,
+          "width": 32,
+          "height": 17
+        },
+        {
+          "name": "eye_close_r",
+          "z": 24,
+          "x": 507,
+          "y": 120,
+          "width": 35,
+          "height": 18
+        },
+        {
+          "name": "mouth_close",
+          "z": 25,
+          "x": 490,
+          "y": 156,
+          "width": 28,
+          "height": 13
+        },
+        {
+          "name": "front hair",
+          "z": 26,
+          "x": 393,
+          "y": 0,
+          "width": 188,
+          "height": 237
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 36.07620614035088,
+        "eyeRight": 33.80994152046784,
+        "eyeFace": 2.2469693958664547,
+        "eyeBody": 0,
+        "mouthFace": 1.4603537360890302,
+        "blinkFace": 5.576642819289878,
+        "faceLayer": 27.559618441971384,
+        "tailLayer": 2.4471302559705284,
+        "gentleMotion": 2.1791861185213413,
+        "livelyMotion": 3.7206872459349594,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9932244132447532,
+        "foregroundRatio": 1.0073765403563457,
+        "modelSha256": "2c0fe63b725b7f4a2164bf82a7e2cd8c9e0ebde48520b6b9e170a97b1203c308"
+      }
+    },
+    {
+      "id": "shy",
+      "label": "害羞贴贴",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-shy.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-shy.psd",
+        "sourceSha256": "21901cdb52d59e514ec355ecebfff91a146722857a36016e93b9dfd1000874bc",
+        "run": {
+          "completed": "2026-11-01T07:14:48.874Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "87dea8920f550d75e68d189a816856fcc77379532a79c169cc766f02aeeb80f4",
+            "preparedSha256": "c7d042333c450f3bde7abd600a61ff99c72d7def21ae31244a1b9809ed1d5fc5"
+          },
+          "sourcePsdSha256": "21901cdb52d59e514ec355ecebfff91a146722857a36016e93b9dfd1000874bc",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "4384eeb9419e0464bbecaddcf0bc3dadb8c43a615ff8eabf6fbc1df71891ce13",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "handwear",
+          "z": 0,
+          "x": 620,
+          "y": 310,
+          "width": 5,
+          "height": 6
+        },
+        {
+          "name": "tail",
+          "z": 1,
+          "x": 570,
+          "y": 491,
+          "width": 223,
+          "height": 297
+        },
+        {
+          "name": "back hair",
+          "z": 2,
+          "x": 242,
+          "y": 43,
+          "width": 428,
+          "height": 481
+        },
+        {
+          "name": "handwear",
+          "z": 3,
+          "x": 438,
+          "y": 195,
+          "width": 193,
+          "height": 177
+        },
+        {
+          "name": "footwear",
+          "z": 4,
+          "x": 449,
+          "y": 820,
+          "width": 123,
+          "height": 201
+        },
+        {
+          "name": "legwear",
+          "z": 5,
+          "x": 447,
+          "y": 667,
+          "width": 139,
+          "height": 253
+        },
+        {
+          "name": "neck",
+          "z": 6,
+          "x": 500,
+          "y": 154,
+          "width": 49,
+          "height": 60
+        },
+        {
+          "name": "bottomwear",
+          "z": 7,
+          "x": 257,
+          "y": 356,
+          "width": 469,
+          "height": 549
+        },
+        {
+          "name": "topwear",
+          "z": 8,
+          "x": 418,
+          "y": 184,
+          "width": 228,
+          "height": 454
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 9,
+          "x": 455,
+          "y": 129,
+          "width": 24,
+          "height": 19
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 10,
+          "x": 495,
+          "y": 117,
+          "width": 41,
+          "height": 11
+        },
+        {
+          "name": "headwear",
+          "z": 11,
+          "x": 430,
+          "y": 38,
+          "width": 145,
+          "height": 115
+        },
+        {
+          "name": "face",
+          "z": 12,
+          "x": 449,
+          "y": 84,
+          "width": 111,
+          "height": 117
+        },
+        {
+          "name": "nose",
+          "z": 13,
+          "x": 493,
+          "y": 157,
+          "width": 12,
+          "height": 15
+        },
+        {
+          "name": "mouth_open",
+          "z": 14,
+          "x": 500,
+          "y": 173,
+          "width": 22,
+          "height": 13
+        },
+        {
+          "name": "ears",
+          "z": 15,
+          "x": 549,
+          "y": 125,
+          "width": 19,
+          "height": 33
+        },
+        {
+          "name": "ears",
+          "z": 16,
+          "x": 451,
+          "y": 146,
+          "width": 31,
+          "height": 35
+        },
+        {
+          "name": "eyelash_l",
+          "z": 17,
+          "x": 459,
+          "y": 145,
+          "width": 32,
+          "height": 24
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 18,
+          "x": 466,
+          "y": 150,
+          "width": 26,
+          "height": 20
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 19,
+          "x": 510,
+          "y": 132,
+          "width": 32,
+          "height": 21
+        },
+        {
+          "name": "eyelash_r",
+          "z": 20,
+          "x": 506,
+          "y": 128,
+          "width": 42,
+          "height": 21
+        },
+        {
+          "name": "irides_l",
+          "z": 21,
+          "x": 469,
+          "y": 150,
+          "width": 22,
+          "height": 19
+        },
+        {
+          "name": "irides_r",
+          "z": 22,
+          "x": 513,
+          "y": 133,
+          "width": 22,
+          "height": 20
+        },
+        {
+          "name": "eye_close_l",
+          "z": 23,
+          "x": 464,
+          "y": 154,
+          "width": 28,
+          "height": 17
+        },
+        {
+          "name": "eye_close_r",
+          "z": 24,
+          "x": 508,
+          "y": 136,
+          "width": 35,
+          "height": 19
+        },
+        {
+          "name": "mouth_close",
+          "z": 25,
+          "x": 500,
+          "y": 171,
+          "width": 22,
+          "height": 12
+        },
+        {
+          "name": "front hair",
+          "z": 26,
+          "x": 412,
+          "y": 12,
+          "width": 176,
+          "height": 228
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 32.481746031746034,
+        "eyeRight": 25.588541666666668,
+        "eyeFace": 1.797927897574124,
+        "eyeBody": 0,
+        "mouthFace": 1.3719044811320755,
+        "blinkFace": 5.5569828167115904,
+        "faceLayer": 24.10124663072776,
+        "tailLayer": 2.0401311610772357,
+        "gentleMotion": 2.039306640625,
+        "livelyMotion": 3.635720750762195,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9950829995533328,
+        "foregroundRatio": 1.007915528641619,
+        "modelSha256": "4384eeb9419e0464bbecaddcf0bc3dadb8c43a615ff8eabf6fbc1df71891ce13"
+      }
+    },
+    {
+      "id": "cheerful",
+      "label": "开心招手",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-cheerful.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-cheerful.psd",
+        "sourceSha256": "8dce54e598924431bc737e5cf8ae98e014b1d3f0e311eb379cfab67f905ae2dc",
+        "run": {
+          "completed": "2026-11-01T07:24:17.992Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "117ed691623da550075056963764cee7a4cd14318d5ab87ce63d11926b83aa4b",
+            "preparedSha256": "619b829218ee797c7e84255e72d0f8a3b57f8c3495ef440f7057fd28e79f0472"
+          },
+          "sourcePsdSha256": "8dce54e598924431bc737e5cf8ae98e014b1d3f0e311eb379cfab67f905ae2dc",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Preserved the original model-generated closed lashes as eye_close parts, inferred closed-line anchors without adding open-eye pixels; authored an independent closed-mouth stroke."
+      ],
+      "modelSha256": "8b736ca5a7a594ee921f03af7ca325b0a198da9a54df61318cfaea56b7f84730",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "back hair",
+          "z": 0,
+          "x": 228,
+          "y": 59,
+          "width": 454,
+          "height": 465
+        },
+        {
+          "name": "footwear",
+          "z": 1,
+          "x": 452,
+          "y": 829,
+          "width": 139,
+          "height": 182
+        },
+        {
+          "name": "legwear",
+          "z": 2,
+          "x": 450,
+          "y": 822,
+          "width": 139,
+          "height": 107
+        },
+        {
+          "name": "handwear",
+          "z": 3,
+          "x": 558,
+          "y": 208,
+          "width": 159,
+          "height": 196
+        },
+        {
+          "name": "bottomwear",
+          "z": 4,
+          "x": 233,
+          "y": 342,
+          "width": 564,
+          "height": 558
+        },
+        {
+          "name": "topwear",
+          "z": 5,
+          "x": 383,
+          "y": 184,
+          "width": 257,
+          "height": 459
+        },
+        {
+          "name": "neck",
+          "z": 6,
+          "x": 499,
+          "y": 156,
+          "width": 46,
+          "height": 60
+        },
+        {
+          "name": "headwear",
+          "z": 7,
+          "x": 392,
+          "y": 36,
+          "width": 255,
+          "height": 157
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 8,
+          "x": 507,
+          "y": 108,
+          "width": 38,
+          "height": 10
+        },
+        {
+          "name": "face",
+          "z": 9,
+          "x": 448,
+          "y": 70,
+          "width": 113,
+          "height": 132
+        },
+        {
+          "name": "nose",
+          "z": 10,
+          "x": 502,
+          "y": 150,
+          "width": 9,
+          "height": 12
+        },
+        {
+          "name": "mouth_open",
+          "z": 11,
+          "x": 498,
+          "y": 163,
+          "width": 32,
+          "height": 27
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 12,
+          "x": 458,
+          "y": 119,
+          "width": 28,
+          "height": 21
+        },
+        {
+          "name": "eye_close_r",
+          "z": 13,
+          "x": 517,
+          "y": 129,
+          "width": 37,
+          "height": 17
+        },
+        {
+          "name": "eye_close_l",
+          "z": 14,
+          "x": 463,
+          "y": 141,
+          "width": 33,
+          "height": 22
+        },
+        {
+          "name": "mouth_close",
+          "z": 15,
+          "x": 497,
+          "y": 165,
+          "width": 33,
+          "height": 13
+        },
+        {
+          "name": "front hair",
+          "z": 16,
+          "x": 410,
+          "y": 10,
+          "width": 184,
+          "height": 254
+        },
+        {
+          "name": "handwear",
+          "z": 17,
+          "x": 325,
+          "y": 142,
+          "width": 161,
+          "height": 196
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 0,
+        "eyeRight": 0,
+        "eyeFace": 0,
+        "eyeBody": 0,
+        "mouthFace": 1.9510243511227763,
+        "blinkFace": 0,
+        "faceLayer": 34.97331583552056,
+        "tailLayer": 0.00007661648882113822,
+        "gentleMotion": 2.0525259622713414,
+        "livelyMotion": 3.7077593051321136,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9996561660881524,
+        "foregroundRatio": 1.0112057109175454,
+        "modelSha256": "8b736ca5a7a594ee921f03af7ca325b0a198da9a54df61318cfaea56b7f84730"
+      }
+    },
+    {
+      "id": "confused",
+      "label": "好奇思考",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-confused.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-confused.psd",
+        "sourceSha256": "b21b0918e3dd6e7232e6e601eb70e031978ec76c3f91c0562cace0ead57595b9",
+        "run": {
+          "completed": "2026-11-01T07:34:15.191Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "f879656eeec7d02e07543774efcf93a62f03d5b73e577a4c5440d855b942d436",
+            "preparedSha256": "053fa773bf127299735d6adc9620cbf295c4f388ae13d4bc627c9ec584aafbaa"
+          },
+          "sourcePsdSha256": "b21b0918e3dd6e7232e6e601eb70e031978ec76c3f91c0562cace0ead57595b9",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "52563a34de5f02fe183b9f02a549e2c9a5afc32d099dfd33e464c3147370cfc5",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "handwear",
+          "z": 0,
+          "x": 632,
+          "y": 300,
+          "width": 5,
+          "height": 7
+        },
+        {
+          "name": "tail",
+          "z": 1,
+          "x": 570,
+          "y": 473,
+          "width": 224,
+          "height": 315
+        },
+        {
+          "name": "back hair",
+          "z": 2,
+          "x": 257,
+          "y": 59,
+          "width": 420,
+          "height": 485
+        },
+        {
+          "name": "handwear",
+          "z": 3,
+          "x": 453,
+          "y": 178,
+          "width": 191,
+          "height": 189
+        },
+        {
+          "name": "footwear",
+          "z": 4,
+          "x": 436,
+          "y": 822,
+          "width": 149,
+          "height": 198
+        },
+        {
+          "name": "legwear",
+          "z": 5,
+          "x": 453,
+          "y": 800,
+          "width": 136,
+          "height": 110
+        },
+        {
+          "name": "bottomwear",
+          "z": 6,
+          "x": 271,
+          "y": 341,
+          "width": 454,
+          "height": 569
+        },
+        {
+          "name": "neck",
+          "z": 7,
+          "x": 505,
+          "y": 142,
+          "width": 50,
+          "height": 66
+        },
+        {
+          "name": "topwear",
+          "z": 8,
+          "x": 423,
+          "y": 188,
+          "width": 229,
+          "height": 447
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 9,
+          "x": 520,
+          "y": 102,
+          "width": 31,
+          "height": 9
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 10,
+          "x": 474,
+          "y": 114,
+          "width": 26,
+          "height": 20
+        },
+        {
+          "name": "face",
+          "z": 11,
+          "x": 462,
+          "y": 75,
+          "width": 108,
+          "height": 117
+        },
+        {
+          "name": "ears",
+          "z": 12,
+          "x": 466,
+          "y": 145,
+          "width": 34,
+          "height": 36
+        },
+        {
+          "name": "nose",
+          "z": 13,
+          "x": 519,
+          "y": 140,
+          "width": 11,
+          "height": 13
+        },
+        {
+          "name": "mouth_open",
+          "z": 14,
+          "x": 522,
+          "y": 161,
+          "width": 17,
+          "height": 12
+        },
+        {
+          "name": "ears",
+          "z": 15,
+          "x": 557,
+          "y": 113,
+          "width": 24,
+          "height": 41
+        },
+        {
+          "name": "eyelash_l",
+          "z": 16,
+          "x": 475,
+          "y": 125,
+          "width": 35,
+          "height": 32
+        },
+        {
+          "name": "eyelash_r",
+          "z": 17,
+          "x": 526,
+          "y": 111,
+          "width": 41,
+          "height": 21
+        },
+        {
+          "name": "headwear",
+          "z": 18,
+          "x": 433,
+          "y": 33,
+          "width": 167,
+          "height": 125
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 19,
+          "x": 480,
+          "y": 132,
+          "width": 31,
+          "height": 26
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 20,
+          "x": 531,
+          "y": 115,
+          "width": 31,
+          "height": 22
+        },
+        {
+          "name": "irides_l",
+          "z": 21,
+          "x": 489,
+          "y": 133,
+          "width": 20,
+          "height": 20
+        },
+        {
+          "name": "irides_r",
+          "z": 22,
+          "x": 538,
+          "y": 116,
+          "width": 20,
+          "height": 19
+        },
+        {
+          "name": "eye_close_l",
+          "z": 23,
+          "x": 478,
+          "y": 139,
+          "width": 34,
+          "height": 19
+        },
+        {
+          "name": "eye_close_r",
+          "z": 24,
+          "x": 529,
+          "y": 120,
+          "width": 34,
+          "height": 19
+        },
+        {
+          "name": "mouth_close",
+          "z": 25,
+          "x": 522,
+          "y": 160,
+          "width": 16,
+          "height": 10
+        },
+        {
+          "name": "front hair",
+          "z": 26,
+          "x": 423,
+          "y": 3,
+          "width": 174,
+          "height": 259
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 23.723443223443223,
+        "eyeRight": 31.224547511312217,
+        "eyeFace": 2.3222954230235784,
+        "eyeBody": 0,
+        "mouthFace": 1.0649271844660195,
+        "blinkFace": 6.232597954230235,
+        "faceLayer": 28.82578450069348,
+        "tailLayer": 2.258720385543699,
+        "gentleMotion": 1.9594567771849594,
+        "livelyMotion": 3.555048748729675,
+        "reduced": 0,
+        "silhouetteCoverage": 0.993911611453523,
+        "foregroundRatio": 1.004377787697929,
+        "modelSha256": "52563a34de5f02fe183b9f02a549e2c9a5afc32d099dfd33e464c3147370cfc5"
+      }
+    },
+    {
+      "id": "serious",
+      "label": "认真分析",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-serious.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-serious.psd",
+        "sourceSha256": "07bc2f921646a4f13f61e5c0f5bd506bb84d04c96d22f8594f0d6e9704644e80",
+        "run": {
+          "completed": "2026-11-01T07:43:55.429Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "2974cc4a814f6b1f95d907d22f62d9e0094dd7e538b6145e7c8a1dbb6154de34",
+            "preparedSha256": "c54c606531a5b407ddc937a18dfd938b523ddc488a71c726dc386c9720b459bf"
+          },
+          "sourcePsdSha256": "07bc2f921646a4f13f61e5c0f5bd506bb84d04c96d22f8594f0d6e9704644e80",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "30253a1e2febf5883e71059b70e3687cd15404dbc514f6330762fa9211ad98b3",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "tail",
+          "z": 0,
+          "x": 570,
+          "y": 481,
+          "width": 213,
+          "height": 260
+        },
+        {
+          "name": "back hair",
+          "z": 1,
+          "x": 259,
+          "y": 45,
+          "width": 425,
+          "height": 483
+        },
+        {
+          "name": "footwear",
+          "z": 2,
+          "x": 431,
+          "y": 820,
+          "width": 132,
+          "height": 197
+        },
+        {
+          "name": "handwear",
+          "z": 3,
+          "x": 348,
+          "y": 219,
+          "width": 136,
+          "height": 338
+        },
+        {
+          "name": "legwear",
+          "z": 4,
+          "x": 438,
+          "y": 794,
+          "width": 132,
+          "height": 133
+        },
+        {
+          "name": "bottomwear",
+          "z": 5,
+          "x": 285,
+          "y": 351,
+          "width": 426,
+          "height": 544
+        },
+        {
+          "name": "neck",
+          "z": 6,
+          "x": 500,
+          "y": 145,
+          "width": 44,
+          "height": 61
+        },
+        {
+          "name": "topwear",
+          "z": 7,
+          "x": 397,
+          "y": 185,
+          "width": 218,
+          "height": 445
+        },
+        {
+          "name": "face",
+          "z": 8,
+          "x": 455,
+          "y": 77,
+          "width": 108,
+          "height": 114
+        },
+        {
+          "name": "nose",
+          "z": 9,
+          "x": 502,
+          "y": 143,
+          "width": 11,
+          "height": 13
+        },
+        {
+          "name": "mouth_open",
+          "z": 10,
+          "x": 504,
+          "y": 160,
+          "width": 18,
+          "height": 16
+        },
+        {
+          "name": "ears",
+          "z": 11,
+          "x": 457,
+          "y": 138,
+          "width": 30,
+          "height": 33
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 12,
+          "x": 463,
+          "y": 111,
+          "width": 28,
+          "height": 14
+        },
+        {
+          "name": "ears",
+          "z": 13,
+          "x": 546,
+          "y": 119,
+          "width": 23,
+          "height": 37
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 14,
+          "x": 512,
+          "y": 103,
+          "width": 30,
+          "height": 9
+        },
+        {
+          "name": "eyelash_r",
+          "z": 15,
+          "x": 515,
+          "y": 114,
+          "width": 41,
+          "height": 24
+        },
+        {
+          "name": "headwear",
+          "z": 16,
+          "x": 433,
+          "y": 32,
+          "width": 149,
+          "height": 100
+        },
+        {
+          "name": "eyelash_l",
+          "z": 17,
+          "x": 464,
+          "y": 124,
+          "width": 35,
+          "height": 28
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 18,
+          "x": 470,
+          "y": 131,
+          "width": 29,
+          "height": 22
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 19,
+          "x": 520,
+          "y": 120,
+          "width": 31,
+          "height": 22
+        },
+        {
+          "name": "irides_r",
+          "z": 20,
+          "x": 524,
+          "y": 120,
+          "width": 21,
+          "height": 21
+        },
+        {
+          "name": "irides_l",
+          "z": 21,
+          "x": 477,
+          "y": 131,
+          "width": 21,
+          "height": 21
+        },
+        {
+          "name": "eye_close_l",
+          "z": 22,
+          "x": 468,
+          "y": 137,
+          "width": 32,
+          "height": 15
+        },
+        {
+          "name": "eye_close_r",
+          "z": 23,
+          "x": 518,
+          "y": 127,
+          "width": 34,
+          "height": 15
+        },
+        {
+          "name": "mouth_close",
+          "z": 24,
+          "x": 504,
+          "y": 161,
+          "width": 17,
+          "height": 10
+        },
+        {
+          "name": "front hair",
+          "z": 25,
+          "x": 428,
+          "y": 5,
+          "width": 152,
+          "height": 232
+        },
+        {
+          "name": "handwear",
+          "z": 26,
+          "x": 553,
+          "y": 159,
+          "width": 88,
+          "height": 200
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 32.9577205882353,
+        "eyeRight": 33.52205882352941,
+        "eyeFace": 2.5220005344259375,
+        "eyeBody": 0,
+        "mouthFace": 1.3347733143315221,
+        "blinkFace": 7.028680858644339,
+        "faceLayer": 29.341698583771265,
+        "tailLayer": 2.0066668254573172,
+        "gentleMotion": 2.074174685594512,
+        "livelyMotion": 3.765377683561992,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9920378288722858,
+        "foregroundRatio": 1.0042188474823865,
+        "modelSha256": "30253a1e2febf5883e71059b70e3687cd15404dbc514f6330762fa9211ad98b3"
+      }
+    },
+    {
+      "id": "frightened",
+      "label": "惊讶",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-frightened.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-frightened.psd",
+        "sourceSha256": "e841e85eaac1be3db42dc01eaab83543c8896492a5df181deb06ab7cab6f1ce4",
+        "run": {
+          "completed": "2026-11-01T07:52:57.430Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "a74c7b1afd6b6deaa60d3bbceeaf079dd2379b6b8be3da6265c492921522867b",
+            "preparedSha256": "3b17623b0666fa829d75e980be5e36ede12d98d6eff3082d331a7f4de43db7f8"
+          },
+          "sourcePsdSha256": "e841e85eaac1be3db42dc01eaab83543c8896492a5df181deb06ab7cab6f1ce4",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "0206519045a8d99dd9afd99ddb0b14cb9d60eacef367348ae7f82c1bace2d254",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "back hair",
+          "z": 0,
+          "x": 234,
+          "y": 69,
+          "width": 448,
+          "height": 449
+        },
+        {
+          "name": "footwear",
+          "z": 1,
+          "x": 342,
+          "y": 878,
+          "width": 300,
+          "height": 121
+        },
+        {
+          "name": "legwear",
+          "z": 2,
+          "x": 354,
+          "y": 768,
+          "width": 256,
+          "height": 142
+        },
+        {
+          "name": "bottomwear",
+          "z": 3,
+          "x": 231,
+          "y": 368,
+          "width": 564,
+          "height": 522
+        },
+        {
+          "name": "neck",
+          "z": 4,
+          "x": 495,
+          "y": 170,
+          "width": 47,
+          "height": 56
+        },
+        {
+          "name": "topwear",
+          "z": 5,
+          "x": 392,
+          "y": 185,
+          "width": 263,
+          "height": 440
+        },
+        {
+          "name": "handwear",
+          "z": 6,
+          "x": 385,
+          "y": 211,
+          "width": 101,
+          "height": 182
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 7,
+          "x": 457,
+          "y": 115,
+          "width": 27,
+          "height": 17
+        },
+        {
+          "name": "face",
+          "z": 8,
+          "x": 449,
+          "y": 69,
+          "width": 111,
+          "height": 136
+        },
+        {
+          "name": "nose",
+          "z": 9,
+          "x": 494,
+          "y": 152,
+          "width": 12,
+          "height": 16
+        },
+        {
+          "name": "mouth_open",
+          "z": 10,
+          "x": 494,
+          "y": 171,
+          "width": 30,
+          "height": 20
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 11,
+          "x": 508,
+          "y": 109,
+          "width": 32,
+          "height": 8
+        },
+        {
+          "name": "headwear",
+          "z": 12,
+          "x": 426,
+          "y": 38,
+          "width": 162,
+          "height": 109
+        },
+        {
+          "name": "ears",
+          "z": 13,
+          "x": 449,
+          "y": 147,
+          "width": 31,
+          "height": 36
+        },
+        {
+          "name": "ears",
+          "z": 14,
+          "x": 543,
+          "y": 130,
+          "width": 27,
+          "height": 41
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 15,
+          "x": 462,
+          "y": 139,
+          "width": 30,
+          "height": 26
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 16,
+          "x": 515,
+          "y": 127,
+          "width": 33,
+          "height": 28
+        },
+        {
+          "name": "irides_l",
+          "z": 17,
+          "x": 473,
+          "y": 142,
+          "width": 16,
+          "height": 18
+        },
+        {
+          "name": "eyelash_r",
+          "z": 18,
+          "x": 511,
+          "y": 123,
+          "width": 43,
+          "height": 25
+        },
+        {
+          "name": "irides_r",
+          "z": 19,
+          "x": 520,
+          "y": 133,
+          "width": 16,
+          "height": 19
+        },
+        {
+          "name": "eyelash_l",
+          "z": 20,
+          "x": 455,
+          "y": 133,
+          "width": 34,
+          "height": 29
+        },
+        {
+          "name": "eye_close_l",
+          "z": 21,
+          "x": 460,
+          "y": 149,
+          "width": 33,
+          "height": 14
+        },
+        {
+          "name": "eye_close_r",
+          "z": 22,
+          "x": 512,
+          "y": 137,
+          "width": 38,
+          "height": 16
+        },
+        {
+          "name": "mouth_close",
+          "z": 23,
+          "x": 493,
+          "y": 172,
+          "width": 31,
+          "height": 12
+        },
+        {
+          "name": "front hair",
+          "z": 24,
+          "x": 417,
+          "y": 12,
+          "width": 161,
+          "height": 256
+        },
+        {
+          "name": "handwear",
+          "z": 25,
+          "x": 552,
+          "y": 218,
+          "width": 104,
+          "height": 153
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 29.96904761904762,
+        "eyeRight": 28.147127329192546,
+        "eyeFace": 2.4395974362667436,
+        "eyeBody": 0,
+        "mouthFace": 1.7064129338902492,
+        "blinkFace": 5.785089298574103,
+        "faceLayer": 26.950057611983294,
+        "tailLayer": 0.00009765625,
+        "gentleMotion": 1.9637171303353658,
+        "livelyMotion": 3.5678810181656506,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9929304542611224,
+        "foregroundRatio": 1.004696722428597,
+        "modelSha256": "0206519045a8d99dd9afd99ddb0b14cb9d60eacef367348ae7f82c1bace2d254"
+      }
+    },
+    {
+      "id": "starry",
+      "label": "为你喝彩",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-starry.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-starry.psd",
+        "sourceSha256": "d45a7d928ae07d19c9d5598ae9dbbd3fab51b7e2d3fbda1af96ec3dda20d1801",
+        "run": {
+          "completed": "2026-11-01T08:02:11.066Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "65a3bd1eb9ad4f8cb357af4825311f84e91be4f7f57deb5357fb79116bcad774",
+            "preparedSha256": "d785571415708f3520c637f4c4e6fe6672c7559cb3f6b02a2cf23fe4cc392da4"
+          },
+          "sourcePsdSha256": "d45a7d928ae07d19c9d5598ae9dbbd3fab51b7e2d3fbda1af96ec3dda20d1801",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Corrected inferred painter order so both original iris pixel layers appear above eye whites; no iris pixels were redrawn.",
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "5e8210a684f3ba56cae6c4ca970c14e6a854df3a23abe1dc0ebd0613e3380b25",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "tail",
+          "z": 0,
+          "x": 611,
+          "y": 475,
+          "width": 178,
+          "height": 304
+        },
+        {
+          "name": "back hair",
+          "z": 1,
+          "x": 249,
+          "y": 53,
+          "width": 445,
+          "height": 483
+        },
+        {
+          "name": "legwear",
+          "z": 2,
+          "x": 433,
+          "y": 790,
+          "width": 145,
+          "height": 169
+        },
+        {
+          "name": "footwear",
+          "z": 3,
+          "x": 418,
+          "y": 812,
+          "width": 154,
+          "height": 212
+        },
+        {
+          "name": "bottomwear",
+          "z": 4,
+          "x": 226,
+          "y": 368,
+          "width": 519,
+          "height": 555
+        },
+        {
+          "name": "topwear",
+          "z": 5,
+          "x": 413,
+          "y": 186,
+          "width": 235,
+          "height": 469
+        },
+        {
+          "name": "neck",
+          "z": 6,
+          "x": 522,
+          "y": 170,
+          "width": 47,
+          "height": 59
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 7,
+          "x": 534,
+          "y": 113,
+          "width": 34,
+          "height": 11
+        },
+        {
+          "name": "face",
+          "z": 8,
+          "x": 476,
+          "y": 92,
+          "width": 111,
+          "height": 117
+        },
+        {
+          "name": "nose",
+          "z": 9,
+          "x": 522,
+          "y": 155,
+          "width": 12,
+          "height": 14
+        },
+        {
+          "name": "ears",
+          "z": 10,
+          "x": 478,
+          "y": 162,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "name": "mouth_open",
+          "z": 11,
+          "x": 520,
+          "y": 170,
+          "width": 31,
+          "height": 26
+        },
+        {
+          "name": "ears",
+          "z": 12,
+          "x": 571,
+          "y": 142,
+          "width": 25,
+          "height": 34
+        },
+        {
+          "name": "headwear",
+          "z": 13,
+          "x": 453,
+          "y": 48,
+          "width": 163,
+          "height": 147
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 14,
+          "x": 485,
+          "y": 123,
+          "width": 24,
+          "height": 16
+        },
+        {
+          "name": "eyelash_r",
+          "z": 15,
+          "x": 537,
+          "y": 125,
+          "width": 43,
+          "height": 24
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 16,
+          "x": 491,
+          "y": 144,
+          "width": 28,
+          "height": 25
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 17,
+          "x": 541,
+          "y": 130,
+          "width": 32,
+          "height": 24
+        },
+        {
+          "name": "irides_l",
+          "z": 18,
+          "x": 496,
+          "y": 144,
+          "width": 22,
+          "height": 23
+        },
+        {
+          "name": "irides_r",
+          "z": 19,
+          "x": 544,
+          "y": 130,
+          "width": 23,
+          "height": 24
+        },
+        {
+          "name": "eyelash_l",
+          "z": 20,
+          "x": 485,
+          "y": 139,
+          "width": 33,
+          "height": 29
+        },
+        {
+          "name": "eye_close_l",
+          "z": 21,
+          "x": 489,
+          "y": 152,
+          "width": 31,
+          "height": 15
+        },
+        {
+          "name": "eye_close_r",
+          "z": 22,
+          "x": 539,
+          "y": 137,
+          "width": 35,
+          "height": 17
+        },
+        {
+          "name": "mouth_close",
+          "z": 23,
+          "x": 519,
+          "y": 172,
+          "width": 32,
+          "height": 13
+        },
+        {
+          "name": "front hair",
+          "z": 24,
+          "x": 447,
+          "y": 20,
+          "width": 161,
+          "height": 223
+        },
+        {
+          "name": "handwear",
+          "z": 25,
+          "x": 348,
+          "y": 0,
+          "width": 173,
+          "height": 305
+        },
+        {
+          "name": "handwear",
+          "z": 26,
+          "x": 583,
+          "y": 225,
+          "width": 90,
+          "height": 159
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 37.216847826086955,
+        "eyeRight": 40.51218323586745,
+        "eyeFace": 3.2028512466307277,
+        "eyeBody": 0,
+        "mouthFace": 2.020931603773585,
+        "blinkFace": 6.9287609501347704,
+        "faceLayer": 31.099646226415093,
+        "tailLayer": 2.468032266260163,
+        "gentleMotion": 2.1899036934705283,
+        "livelyMotion": 3.8880545763465446,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9958787253845072,
+        "foregroundRatio": 1.009126396914568,
+        "modelSha256": "5e8210a684f3ba56cae6c4ca970c14e6a854df3a23abe1dc0ebd0613e3380b25"
+      }
+    },
+    {
+      "id": "exasperated",
+      "label": "小小无奈",
+      "license": "CC-BY-NC-SA-4.0",
+      "original": {
+        "repository": "https://github.com/JAdpp/dsh-whale-galgame",
+        "commit": "046b848f244450e6e636335766276bf3343fe84b",
+        "file": "assets/default/whale-exasperated.webp"
+      },
+      "inference": {
+        "engine": "See-through",
+        "repository": "https://github.com/shitagaki-lab/see-through",
+        "commit": "df019de5129d6c4b406587a14c3501669441a783",
+        "sourcePsd": "whale-exasperated.psd",
+        "sourceSha256": "45b3a85b06e9e06f517903b75d91bbedc218775e8ab82cb9d31af437b406b89f",
+        "run": {
+          "completed": "2026-11-01T08:11:33.081Z",
+          "device": "AMD Radeon RX 9070 XT (16 GB)",
+          "parameters": {
+            "resolution": 1024,
+            "steps": 30,
+            "depthResolution": 768,
+            "depthSteps": 4,
+            "seed": 42,
+            "dtype": "bfloat16",
+            "groupOffload": true,
+            "releaseBetweenPasses": true,
+            "tblrSplit": true
+          },
+          "input": {
+            "originalSha256": "c627bea1c000d304a538f1d63a2cf244f73824496ca585e0bda91a91450b67aa",
+            "preparedSha256": "44a2fee98c6401acce0f5b630ed72ed5fbafb99aa444f7732a4d7074d02f4a26"
+          },
+          "sourcePsdSha256": "45b3a85b06e9e06f517903b75d91bbedc218775e8ab82cb9d31af437b406b89f",
+          "weights": [
+            {
+              "repository": "layerdifforg/seethroughv0.0.2_layerdiff3d",
+              "revision": "4477e6ce529bc6a141732e1a55a4932176db3b89"
+            },
+            {
+              "repository": "24yearsold/seethroughv0.0.1_marigold",
+              "revision": "4f4ffc46050b6feb764b628859968a26e76e6b6a"
+            }
+          ]
+        }
+      },
+      "changes": [
+        "Authored independent slanted closed-eye and closed-mouth RGBA strokes, aligned to detected eye/mouth anchors; original model-generated open features retained."
+      ],
+      "modelSha256": "869f975ec62e8ef4307e6f1b9c8e1ab63a6a00d14c8ae8fea8a4cfab0c90a677",
+      "canvas": {
+        "w": 1024,
+        "h": 1024
+      },
+      "parts": [
+        {
+          "name": "tail",
+          "z": 0,
+          "x": 570,
+          "y": 480,
+          "width": 221,
+          "height": 308
+        },
+        {
+          "name": "back hair",
+          "z": 1,
+          "x": 242,
+          "y": 43,
+          "width": 427,
+          "height": 484
+        },
+        {
+          "name": "footwear",
+          "z": 2,
+          "x": 441,
+          "y": 822,
+          "width": 136,
+          "height": 202
+        },
+        {
+          "name": "legwear",
+          "z": 3,
+          "x": 454,
+          "y": 802,
+          "width": 123,
+          "height": 100
+        },
+        {
+          "name": "bottomwear",
+          "z": 4,
+          "x": 255,
+          "y": 356,
+          "width": 474,
+          "height": 558
+        },
+        {
+          "name": "neck",
+          "z": 5,
+          "x": 493,
+          "y": 147,
+          "width": 49,
+          "height": 65
+        },
+        {
+          "name": "topwear",
+          "z": 6,
+          "x": 417,
+          "y": 183,
+          "width": 234,
+          "height": 453
+        },
+        {
+          "name": "eyebrow_r",
+          "z": 7,
+          "x": 516,
+          "y": 96,
+          "width": 30,
+          "height": 8
+        },
+        {
+          "name": "face",
+          "z": 8,
+          "x": 455,
+          "y": 72,
+          "width": 105,
+          "height": 114
+        },
+        {
+          "name": "nose",
+          "z": 9,
+          "x": 510,
+          "y": 133,
+          "width": 11,
+          "height": 13
+        },
+        {
+          "name": "mouth_open",
+          "z": 10,
+          "x": 510,
+          "y": 153,
+          "width": 17,
+          "height": 13
+        },
+        {
+          "name": "ears",
+          "z": 11,
+          "x": 551,
+          "y": 125,
+          "width": 13,
+          "height": 28
+        },
+        {
+          "name": "eyelash_l",
+          "z": 12,
+          "x": 464,
+          "y": 121,
+          "width": 37,
+          "height": 26
+        },
+        {
+          "name": "eyebrow_l",
+          "z": 13,
+          "x": 463,
+          "y": 104,
+          "width": 30,
+          "height": 20
+        },
+        {
+          "name": "eyelash_r",
+          "z": 14,
+          "x": 520,
+          "y": 111,
+          "width": 37,
+          "height": 21
+        },
+        {
+          "name": "ears",
+          "z": 15,
+          "x": 452,
+          "y": 141,
+          "width": 33,
+          "height": 32
+        },
+        {
+          "name": "eyewhite_l",
+          "z": 16,
+          "x": 469,
+          "y": 126,
+          "width": 31,
+          "height": 21
+        },
+        {
+          "name": "eyewhite_r",
+          "z": 17,
+          "x": 521,
+          "y": 115,
+          "width": 30,
+          "height": 17
+        },
+        {
+          "name": "irides_r",
+          "z": 18,
+          "x": 522,
+          "y": 115,
+          "width": 19,
+          "height": 15
+        },
+        {
+          "name": "irides_l",
+          "z": 19,
+          "x": 471,
+          "y": 127,
+          "width": 20,
+          "height": 16
+        },
+        {
+          "name": "headwear",
+          "z": 20,
+          "x": 433,
+          "y": 30,
+          "width": 148,
+          "height": 124
+        },
+        {
+          "name": "handwear",
+          "z": 21,
+          "x": 435,
+          "y": 185,
+          "width": 207,
+          "height": 173
+        },
+        {
+          "name": "eye_close_l",
+          "z": 22,
+          "x": 467,
+          "y": 131,
+          "width": 34,
+          "height": 16
+        },
+        {
+          "name": "eye_close_r",
+          "z": 23,
+          "x": 519,
+          "y": 118,
+          "width": 33,
+          "height": 16
+        },
+        {
+          "name": "mouth_close",
+          "z": 24,
+          "x": 510,
+          "y": 153,
+          "width": 16,
+          "height": 10
+        },
+        {
+          "name": "front hair",
+          "z": 25,
+          "x": 424,
+          "y": 6,
+          "width": 159,
+          "height": 226
+        }
+      ],
+      "warnings": [],
+      "qa": {
+        "eyeLeft": 18.131009615384617,
+        "eyeRight": 19.545833333333334,
+        "eyeFace": 1.2299311926605505,
+        "eyeBody": 0,
+        "mouthFace": 1.0586926605504587,
+        "blinkFace": 5.430550458715596,
+        "faceLayer": 30.185,
+        "tailLayer": 2.1495954808180895,
+        "gentleMotion": 1.9463803671239837,
+        "livelyMotion": 3.514799288617886,
+        "reduced": 0,
+        "silhouetteCoverage": 0.9948395270871444,
+        "foregroundRatio": 1.0051533550191827,
+        "modelSha256": "869f975ec62e8ef4307e6f1b9c8e1ab63a6a00d14c8ae8fea8a4cfab0c90a677"
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { layeredParameters, type LayeredFrameInput } from '../src/shared/layered-avatar'
+import { layeredMotionScale, layeredParameters, type LayeredFrameInput } from '../src/shared/layered-avatar'
 import { Anime25DBackend } from '../src/renderer/src/avatar/layered-runtime'
 
 const input: LayeredFrameInput = { time: 1, mood: 'idle', behavior: 'idle', mouth: 0, gaze: { x: 0, y: 0 } }
@@ -29,5 +29,15 @@ describe('portable layered avatar boundary', () => {
     await expect(backend.parse(new Blob([header]), { signal })).rejects.toThrow('8 bit')
     const abort = new AbortController(); abort.abort()
     await expect(backend.parse(new Blob(['valid-size']), { signal: abort.signal })).rejects.toHaveProperty('name', 'AbortError')
+  })
+  it('amplifies body gestures without multiplying lip sync or eye travel, and respects reduced motion', () => {
+    const gentle = layeredParameters({ ...input, behavior: 'greet', mouth: .72, gaze: { x: .8, y: -.3 }, motionScale: 1 })
+    const lively = layeredParameters({ ...input, behavior: 'greet', mouth: .72, gaze: { x: .8, y: -.3 }, motionScale: 2 })
+    for (const channel of ['angleX', 'angleY', 'angleZ', 'body', 'armY', 'armR']) expect(lively[channel]).toBeCloseTo(gentle[channel] * 2)
+    expect(lively.mouthOpen).toBe(gentle.mouthOpen); expect(lively.eyeX).toBe(gentle.eyeX)
+    const reduced = layeredParameters({ ...input, behavior: 'greet', mouth: .72, motionScale: 2.4, reducedMotion: true })
+    for (const channel of ['angleX', 'angleY', 'angleZ', 'body', 'armY', 'armL', 'armR']) expect(reduced[channel]).toBe(0)
+    expect(reduced.mouthOpen).toBe(.72)
+    expect(layeredMotionScale(Infinity)).toBe(1.9); expect(layeredMotionScale(-9)).toBe(.6); expect(layeredMotionScale(50)).toBe(2.4)
   })
 })

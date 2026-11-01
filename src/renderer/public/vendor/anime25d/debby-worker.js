@@ -30,7 +30,7 @@ self.onmessage = ({ data: buffer }) => {
       return ctx.getImageData(0, 0, 160, 48);
     };
     const eye = stroke(false);
-    const rig = Rigger.buildRig(psd, { generic: { eyeL: eye, eyeR: eye, mouth: stroke(true) } });
+    const rig = DebbyParts.completeClosedEyes(Rigger.buildRig(psd, { generic: { eyeL: eye, eyeR: eye, mouth: stroke(true) } }));
     if (!rig.layers.length || !rig.layers.some(l => Rigger.baseName(l.name) === 'face')) throw Error('需要包含 face（脸）图层的分层角色 PSD。');
     const transfers = new Set();
     for (const layer of rig.layers) transfers.add(layer.img.data.buffer);

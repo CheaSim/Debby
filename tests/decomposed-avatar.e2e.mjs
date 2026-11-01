@@ -7,10 +7,12 @@ import { createHash } from 'node:crypto'
 import { _electron as electron } from 'playwright'
 import sharp from 'sharp'
 import { DebbyClient } from '../integrations/client.mjs'
+import { layeredParameters } from '../src/shared/layered-avatar.ts'
 
 const root = resolve(import.meta.dirname, '..'), require = createRequire(import.meta.url)
 const input = resolve(root, process.env.DEBBY_DECOMPOSED_PSD || 'src/renderer/public/models/whale-girl/debby-whale-girl.psd')
-const bytes = await readFile(input), evidence = resolve(root, 'work/decomposed-avatar')
+const bytes = await readFile(input), evidence = resolve(root, process.env.DEBBY_DECOMPOSED_EVIDENCE || 'work/decomposed-avatar')
+const closedEyes = process.env.DEBBY_DECOMPOSED_CLOSED_EYES === '1'
 const userData = await mkdtemp(resolve(tmpdir(), 'debby-parts-'))
 await mkdir(evidence, { recursive: true })
 let app, harness
@@ -20,7 +22,7 @@ try {
   page.on('pageerror', e => errors.push(e.message))
   await page.waitForSelector('[data-3d-ready=true]', { timeout: 30000 })
   for (const name of ['runtime.js', 'rigger.js', 'renderer.js', 'debby-rig.js']) await page.addScriptTag({ url: await page.evaluate(name => new URL('vendor/anime25d/' + name, document.baseURI).href, name) })
-  const result = await page.evaluate(async base64 => {
+  const result = await page.evaluate(async ({ base64, closedEyes, gentle, lively }) => {
     const rig = await new Promise((resolve, reject) => {
       const worker = new Worker(new URL('vendor/anime25d/debby-worker.js', document.baseURI))
       worker.onerror = e => { worker.terminate(); reject(Error(e.message)) }
@@ -30,9 +32,9 @@ try {
     const canvas = document.createElement('canvas'); canvas.width = rig.canvas.w; canvas.height = rig.canvas.h
     const output = document.createElement('canvas'); output.width = canvas.width; output.height = canvas.height
     const ctx = output.getContext('2d'), driver = DebbyRig.create(canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true }), rig)
-    const params = { eyeOpenL: 1, eyeOpenR: 1, physAmp: 0, fhAmp: 0, accAmp: 0, soft: 0, breath: 0, breathHead: 0 }
-    function shot(extra = {}, hiddenLayers = [], time = 1) {
-      driver.frame({ ...params, ...extra }, 0, time, undefined, { hiddenLayers, reducedMotion: true })
+    const params = { eyeOpenL: closedEyes ? 0 : 1, eyeOpenR: closedEyes ? 0 : 1, physAmp: 0, fhAmp: 0, accAmp: 0, soft: 0, breath: 0, breathHead: 0 }
+    function shot(extra = {}, hiddenLayers = [], time = 1, reducedMotion = true) {
+      driver.frame({ ...params, ...extra }, 0, time, undefined, { hiddenLayers, reducedMotion })
       ctx.clearRect(0, 0, output.width, output.height); ctx.drawImage(canvas, 0, 0)
       return { data: ctx.getImageData(0, 0, output.width, output.height).data, png: output.toDataURL() }
     }
@@ -50,13 +52,15 @@ try {
     const tilt = shot({ angleX: .65, angleY: .4, angleZ: -.4 })
     const reducedA = shot({}, [], 1), reducedB = shot({}, [], 20)
     const greet = shot({ armY: .8, breath: 1 })
+    const quietGreet = shot({ ...gentle, ...(closedEyes ? { eyeOpenL: 0, eyeOpenR: 0 } : {}) }, [], 1, false)
+    const livelyGreet = shot({ ...lively, ...(closedEyes ? { eyeOpenL: 0, eyeOpenR: 0 } : {}) }, [], 1, false)
     driver.dispose()
     return { canvas: rig.canvas, layers: rig.layers.map(l => ({ name: l.name, z: l.z })), synth: rig.synth, warnings: rig.warnings,
-      anchors: rig.anchors, metrics: { eyeFace: delta(left.data, right.data, face), eyeBody: delta(left.data, right.data, body), mouthFace: delta(base.data, open.data, face), blinkFace: delta(base.data, blink.data, face), faceLayer: delta(base.data, noFace.data, face), tailLayer: delta(base.data, noTail.data, body), reduced: delta(reducedA.data, reducedB.data, { x0: 0, y0: 0, x1: canvas.width, y1: canvas.height }) },
-      images: { base: base.png, left: left.png, right: right.png, open: open.png, blink: blink.png, noHair: noHair.png, tilt: tilt.png, greet: greet.png } }
-  }, bytes.toString('base64'))
+      anchors: rig.anchors, metrics: { eyeLeft: delta(left.data, right.data, rig.anchors.eyeL), eyeRight: delta(left.data, right.data, rig.anchors.eyeR), eyeFace: delta(left.data, right.data, face), eyeBody: delta(left.data, right.data, body), mouthFace: delta(base.data, open.data, face), blinkFace: delta(base.data, blink.data, face), faceLayer: delta(base.data, noFace.data, face), tailLayer: delta(base.data, noTail.data, body), gentleMotion: delta(base.data, quietGreet.data, body), livelyMotion: delta(base.data, livelyGreet.data, body), reduced: delta(reducedA.data, reducedB.data, { x0: 0, y0: 0, x1: canvas.width, y1: canvas.height }) },
+      images: { base: base.png, left: left.png, right: right.png, open: open.png, blink: blink.png, noHair: noHair.png, tilt: tilt.png, greet: greet.png, quietGreet: quietGreet.png, livelyGreet: livelyGreet.png } }
+  }, { base64: bytes.toString('base64'), closedEyes, ...Object.fromEntries([['gentle', 1], ['lively', 2.4]].map(([name, motionScale]) => [name, layeredParameters({ time: .224, mood: 'idle', behavior: 'greet', mouth: 0, gaze: { x: .7, y: -.2 }, motionScale })])) })
   const original = JSON.parse(await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl.srig'), 'utf8'))
-  const portrait = Buffer.from(original.assets.find(a => a.id === 'maid-left').src.split(',')[1], 'base64')
+  const portrait = Buffer.from(original.assets.find(a => a.id === (process.env.DEBBY_DECOMPOSED_SOURCE || 'maid-left')).src.split(',')[1], 'base64')
   const { w, h } = result.canvas
   const sourceAlpha = await sharp(portrait).resize(w, h, { fit: 'contain', background: '#00000000' }).ensureAlpha().raw().toBuffer()
   const rendered = await sharp(Buffer.from(result.images.base.split(',')[1], 'base64')).ensureAlpha().raw().toBuffer()
@@ -77,7 +81,7 @@ try {
     await writeFile(resolve(evidence, name + '.png'), png)
     tiles.push({ input: await sharp(png).resize(384, 384).flatten({ background: '#f1edf6' }).png().toBuffer(), left: (i % 4) * 384, top: Math.floor(i / 4) * 384 })
   }
-  await sharp({ create: { width: 1536, height: 768, channels: 4, background: '#f1edf6' } }).composite(tiles).png().toFile(resolve(evidence, 'contact.png'))
+  await sharp({ create: { width: 1536, height: Math.ceil(tiles.length / 4) * 384, channels: 4, background: '#f1edf6' } }).composite(tiles).png().toFile(resolve(evidence, 'contact.png'))
   const faceTiles = [], face = result.anchors.face
   const crop = { left: Math.max(0, Math.floor(face.x0 - 35)), top: Math.max(0, Math.floor(face.y0 - 35)), width: Math.ceil(face.x1 - face.x0 + 70), height: Math.ceil(face.y1 - face.y0 + 70) }
   crop.width = Math.min(crop.width, w - crop.left); crop.height = Math.min(crop.height, h - crop.top)
@@ -89,15 +93,20 @@ try {
   console.log(JSON.stringify(result.metrics))
   assert.ok(result.layers.length >= 16, 'Many genuinely separate semantic parts')
   assert.ok(result.anchors.eyeL && result.anchors.eyeR, 'Independent eye anchors')
-  assert.ok(result.metrics.eyeFace > .1, 'Iris pixels respond to gaze')
+  if (!closedEyes) assert.ok(result.metrics.eyeFace > .1, 'Iris pixels respond to gaze')
+  if (!closedEyes) assert.ok(result.metrics.eyeLeft > .1 && result.metrics.eyeRight > .1, 'Both irises remain visible above their eye whites and independently respond to gaze')
   assert.ok(result.metrics.eyeBody < .001, 'Eye movement leaves body untouched')
   assert.ok(result.metrics.mouthFace > .1, 'Independent mouth movement')
-  assert.ok(result.metrics.blinkFace > .1, 'Independent eyelids')
+  if (!closedEyes) assert.ok(result.metrics.blinkFace > .1, 'Independent eyelids')
   assert.ok(result.metrics.faceLayer > 1, 'Face is an actual separate RGBA layer')
-  assert.ok(result.metrics.tailLayer > .1, 'Tail is an actual separate RGBA layer')
+  if (result.layers.some(layer => layer.name === 'tail')) assert.ok(result.metrics.tailLayer > .1, 'Tail is an actual separate RGBA layer')
+  assert.ok(result.metrics.livelyMotion > result.metrics.gentleMotion * 1.2, 'Stronger gestures move actual body pixels further')
   assert.ok(result.metrics.reduced < .001, 'Reduced motion stops hair wind as well')
   assert.ok(result.metrics.silhouetteCoverage >= .95, 'Reject missing clothing/body regions; see work/decomposed-avatar/contact.png')
   assert.ok(result.metrics.foregroundRatio <= 1.15, 'Reject opaque backgrounds and excessive extra foreground')
+  if (process.env.DEBBY_DECOMPOSED_PIXELS_ONLY === '1') {
+    assert.deepEqual(errors, []); console.log('Pixel QA passed for each eye, mouth, body motion and source silhouette.'); process.exitCode = 0
+  } else {
   // Verify the actual shipped card and ordinary user flow after pixel QA.
   await page.getByTitle('桌宠选项', { exact: true }).click(); await page.getByTitle('角色工坊', { exact: true }).click()
   if (process.env.DEBBY_DECOMPOSED_PSD) await page.getByLabel('导入角色 PSD', { exact: true }).setInputFiles(input)
@@ -127,4 +136,5 @@ try {
   assert.deepEqual(await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; return { visible: w.isVisible(), focused: w.isFocused(), muted: w.webContents.isAudioMuted() } }), { visible: false, focused: false, muted: true })
   assert.deepEqual(errors, [])
   console.log('Decomposed avatar: real PSD/parts, masked irises, independent mouth/blink, isolated body, reduced motion; no focus/audio/devices.')
+  }
 } finally { await harness?.release().catch(() => {}); await app?.close(); await rm(userData, { recursive: true, force: true }) }

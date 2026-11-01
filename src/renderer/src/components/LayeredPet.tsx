@@ -14,6 +14,7 @@ interface Props {
   performance?: AvatarPerformance
   showSkeleton?: boolean
   hiddenLayers?: readonly number[]
+  pose?: string
   asset: LayeredAvatarAsset; portrait?: boolean; mouthLevel?: number; mood?: PetMood; cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'; agentShell?: AgentShellState; draggable?: boolean
   onBehavior?: (behavior: PetBehavior) => void; onReady?: () => void; onError: (message: string) => void
@@ -84,18 +85,21 @@ export function LayeredPet(props: Props): React.JSX.Element {
       if (active === 'idle' && elapsed < actionUntil) active = agentBehavior
       if (active === 'idle') active = p.activity ?? (shell?.controller && shell.task?.status === 'working' ? 'working' : shell?.controller && shell.task?.status === 'waiting' ? 'waiting' : 'idle')
       const performance = p.performance && p.performance.expiresAt > Date.now() && !['pat', 'lifted', 'land'].includes(active) ? p.performance : undefined
-      const target = applyLayeredPerformance(layeredParameters({ time: elapsed, mood: p.mood ?? 'idle', behavior: active, mouth: p.mouthLevel ?? 0, gaze, reducedMotion: reduced.matches }), performance, reduced.matches)
+      const target = applyLayeredPerformance(layeredParameters({ time: elapsed, mood: p.mood ?? 'idle', behavior: active, mouth: p.mouthLevel ?? 0, gaze, reducedMotion: reduced.matches, motionScale: p.asset.motionScale }), performance, reduced.matches)
       host.dataset.emotion = performance?.emotion ?? ''; host.dataset.emotionSource = performance?.source ?? ''
       filtered ??= { ...target }
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
       try {
-        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton, hiddenLayers: p.hiddenLayers })
+        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton, hiddenLayers: p.hiddenLayers, pose: p.pose })
+        host.dataset.expressionPose = source.dataset.expressionPose ?? ''
+        host.dataset.expressionTextures = source.dataset.expressionTextures ?? ''
         host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
         host.dataset.portraitMotion = source.dataset.portraitMotion ?? ''
         host.dataset.skeletonJoints = source.dataset.skeletonJoints ?? ''
         host.dataset.skeletonPose = source.dataset.skeletonPose ?? ''
-        const { w, h } = p.asset.rig.canvas, face = p.asset.rig.anchors.face
+        const viewRig = driver!.viewRig?.() ?? p.asset.rig
+        const { w, h } = viewRig.canvas, face = viewRig.anchors.face
         const cropW = p.portrait ? Math.min(w, (face.x1 - face.x0) * 2.25) : w
         const cropH = p.portrait ? Math.min(h, (face.y1 - face.y0) * 2.8) : h
         const sx = Math.max(0, Math.min(w - cropW, (face.x0 + face.x1 - cropW) / 2))
@@ -126,7 +130,7 @@ export function LayeredPet(props: Props): React.JSX.Element {
       window.removeEventListener('blur', cancelDrag); source.removeEventListener('webglcontextlost', lost)
       driver?.dispose()
     }
-  }, [props.asset])
+  }, [props.asset.rig])
   return <div ref={hostRef} className="layered-pet-host" data-engine={isStandRig(props.asset.rig) ? 'standrig' : 'anime25d'} data-portrait-poses={isPortraitRig(props.asset.rig)} data-layered-ready={ready} data-mood={props.mood ?? 'idle'} data-view={props.portrait ? 'portrait' : 'full'} aria-label={`${props.asset.name} · 2D 角色`}>
     <canvas ref={canvasRef} className="layered-pet-canvas" />
     {!ready && <span className="layered-loading">正在唤醒角色…</span>}

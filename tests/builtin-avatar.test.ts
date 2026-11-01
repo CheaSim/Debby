@@ -19,6 +19,11 @@ describe('bundled portrait refresh', () => {
     const next = new Blob(['layered PSD'])
     expect(await refreshBuiltinAvatar(file, async () => next, new AbortController().signal)).toBe(next)
   })
+  it('upgrades the exact single-PSD whale to the current multi-illustration bundle', async () => {
+    const file = new Blob([readFileSync(new URL('../src/renderer/public/models/whale-girl/debby-whale-girl.psd', import.meta.url))])
+    const next = new Blob(['multi-expression whale'])
+    expect(await refreshBuiltinAvatar(file, async () => next, new AbortController().signal)).toBe(next)
+  })
   it('recognizes the exact previous release and refreshes it without rewriting the user store', async () => {
     const file = shippedV1(), next = new Blob(['new bundled pack']), load = vi.fn(async () => next)
     expect(file.size).toBe(2_970_016)

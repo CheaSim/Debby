@@ -1,4 +1,4 @@
-export interface SavedLayeredAvatar { name: string; file: Blob; selected: boolean }
+export interface SavedLayeredAvatar { name: string; file: Blob; selected: boolean; motionScale?: number }
 /** Host apps may inject a filesystem/cloud store without changing the renderer. */
 export interface LayeredAvatarStore { load(): Promise<SavedLayeredAvatar | undefined>; save(asset: SavedLayeredAvatar | undefined): Promise<void> }
 export class IndexedDbAvatarStore implements LayeredAvatarStore {

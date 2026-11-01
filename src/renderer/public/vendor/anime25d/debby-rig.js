@@ -3,8 +3,10 @@
  * Debby owns animation, lifecycle and input; no camera, microphone, OBS or network.
  */
 (function(root){'use strict';
+const renderers=new WeakMap();
 root.DebbyRig = {create(gl,rig){
-const RT=root.RigRuntime,Rigger=root.Rigger,renderer=root.RigRenderer.create(gl);
+const RT=root.RigRuntime,Rigger=root.Rigger;
+let renderer=renderers.get(gl);if(!renderer){renderer=root.RigRenderer.create(gl);renderers.set(gl,renderer);}
 const clamp=RT.clamp;function smooth(t){t=clamp(t,0,1);return t*t*(3-2*t);}
 const auto={phys:true},bounce={x:0,v:0,dy:0},blinkVariant=1;
 const A=rig.anchors,FS=A.faceScale,NP=A.neckPivot,BP=A.bodyPivot,FC={x:A.face.cx,y:A.face.cy};
@@ -163,8 +165,18 @@ function deform(L,e){
     }
     // --- arms ---
     if(bn==='handwear'){
+      const left=bcx<NP.cx,raised=L.y<A.face.y0-fh*0.4;
+      const rawTurn=clamp((left?e.armL:e.armR)||0,-2.4,2.4)*0.14*(left?1:-1);
+      const turn=raised?Math.abs(rawTurn)*(left?-1:1):rawTurn;
+      if(turn){
+        const px=NP.cx+(left?-1:1)*(A.face.x1-A.face.x0)*0.55,py=A.neckBottom+fh*0.28;
+        const weight=smooth(Math.hypot(b[k]-px,b[k+1]-py)/Math.max(1,fh*0.8));
+        const th=turn*weight,ct=Math.cos(th),st=Math.sin(th),rx=x-px,ry=y-py;
+        x=px+rx*ct-ry*st;y=py+rx*st+ry*ct;
+      }
       const w=smooth((y-L.y)/L.h*1.15);
-      y-=e.armY*30*FS*w;y+=e.armPos*40*FS;x+=e.armY*6*FS*w*(x<NP.cx?1:-1);
+      const lift=left?e.armYL:e.armYR,armY=raised?Math.min(0,Number.isFinite(lift)?lift:e.armY):(Number.isFinite(lift)?lift:e.armY);
+      y-=armY*30*FS*w;y+=e.armPos*40*FS;x+=armY*6*FS*w*(x<NP.cx?1:-1);
     }
     // --- bang blocks ---
     if(L.bw){const m=Math.pow(L.su[vi],1.4)*22*FS;x+=(e.bangL*L.bw[vi*3]+e.bangC*L.bw[vi*3+1]+e.bangR*L.bw[vi*3+2])*m;}
@@ -201,9 +213,12 @@ function updateSprings(e,t,dt,wind){
 }
 
 const layers=prepareLayers(rig);for(const L of layers)buildBangWeights(L);
+const openEyes={},closedEyes={};
+for(const L of layers)if(L.side){if(L.fade==='eyeOpen')openEyes[L.side]=true;if(L.fade==='eyeClose'||L.fade==='eyeClose2')closedEyes[L.side]=true;}
 return {frame(params,dt,time,expression,context){
  const reduced=!!(context&&context.reducedMotion);
- const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1},params,reduced?{physAmp:0,fhAmp:0,accAmp:0}:{});
+ const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1,armL:0,armR:0},params,reduced?{physAmp:0,fhAmp:0,accAmp:0,armL:0,armR:0,armYL:0,armYR:0}:{});
+ for(const side of ['L','R'])if(closedEyes[side]&&!openEyes[side])e['eyeOpen'+side]=0;
  updateSprings(e,time,dt,!reduced);
  const hidden=context&&context.hiddenLayers||[];
  const alt={L:false,R:false},items=[],masks=[];

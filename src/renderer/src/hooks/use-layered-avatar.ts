@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { LayeredAvatarAsset } from '../../../shared/layered-avatar'
+import { layeredMotionScale, type LayeredAvatarAsset } from '../../../shared/layered-avatar'
 import { PortableAvatarBackend, type LayeredAvatarBackend } from '../avatar/layered-runtime'
 import { IndexedDbAvatarStore, type LayeredAvatarStore } from '../avatar/layered-store'
 import { builtinWhalePath, refreshBuiltinAvatar } from '../avatar/builtin-avatar'
@@ -22,13 +22,13 @@ export function useLayeredAvatar(store: LayeredAvatarStore = defaultStore, backe
         return response.blob()
       }, controller.signal)
       const rig = await backend.parse(file, { signal: controller.signal })
-      if (!controller.signal.aborted) { setAsset({ name: saved.name, file, rig }); setSelected(saved.selected) }
+      if (!controller.signal.aborted) { setAsset({ name: saved.name, file, rig, motionScale: layeredMotionScale(saved.motionScale) }); setSelected(saved.selected) }
     })().catch(e => { if (!controller.signal.aborted) setError(`角色恢复失败，已使用 3D：${e.message}`) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => { active.current = false; controller.abort() }
   }, [backend, store])
   const save = async (next: LayeredAvatarAsset, use: boolean): Promise<void> => {
-    await store.save({ name: next.name, file: next.file, selected: use })
+    await store.save({ name: next.name, file: next.file, selected: use, motionScale: layeredMotionScale(next.motionScale) })
     if (active.current) { setAsset(next); setSelected(use); setError('') }
   }
   return { asset, selected, loading, error, backend,

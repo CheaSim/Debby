@@ -2,7 +2,7 @@
 
 调研与接入验证日期：2026-10-27。
 
-2026-11-01 更新：工坊的内置鲸鱼娘已改用 See-through 实际生成并修整的分层 PSD，具备独立虹膜、眼睑和口型。详细制作与验收见 [单图语义拆层](image-to-parts.md)。[旧 StandRig 表情与骨架包](standrig-whale-girl.md) 和自包含 `.srig` 导入继续保留。
+2026-11-01 更新：工坊的内置 DeepSeek 鲸鱼娘使用 See-through 逐张生成并修整的分层 PSD，通过 [多立绘 `.debby` 角色包](expression-characters.md) 随语义切换，具备独立五官、手臂与可调动作幅度。详细制作与验收见 [单图语义拆层](image-to-parts.md)。[旧 StandRig 表情与骨架包](standrig-whale-girl.md) 和自包含 `.srig` 导入继续保留。
 
 两者适合组成「单张插画 → 分层 PSD → 自动绑定 → 桌宠实时驱动」的流程。这是一条 **2.5D 插画角色** 路线；原有 Three.js / VRM 负责完整 3D 视角与骨骼舞蹈。单张图片分层不会自动生成完整 3D 人体或舞蹈骨骼。
 
