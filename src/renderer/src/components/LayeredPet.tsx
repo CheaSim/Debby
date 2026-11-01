@@ -9,6 +9,7 @@ import { createLayeredSurface } from '../avatar/layered-runtime'
 import { platformApi } from '../platform-api'
 import { isPortraitRig, isStandRig } from '../../../shared/standrig-avatar'
 import { createAvatarGaze } from '../../../shared/avatar-gaze'
+import { layeredViewBox } from '../../../shared/avatar-framing'
 
 interface Props {
   performance?: AvatarPerformance
@@ -99,11 +100,8 @@ export function LayeredPet(props: Props): React.JSX.Element {
         host.dataset.skeletonJoints = source.dataset.skeletonJoints ?? ''
         host.dataset.skeletonPose = source.dataset.skeletonPose ?? ''
         const viewRig = driver!.viewRig?.() ?? p.asset.rig
-        const { w, h } = viewRig.canvas, face = viewRig.anchors.face
-        const cropW = p.portrait ? Math.min(w, (face.x1 - face.x0) * 2.25) : w
-        const cropH = p.portrait ? Math.min(h, (face.y1 - face.y0) * 2.8) : h
-        const sx = Math.max(0, Math.min(w - cropW, (face.x0 + face.x1 - cropW) / 2))
-        const sy = p.portrait ? Math.max(0, Math.min(h - cropH, face.y0 - (face.y1 - face.y0) * .65)) : 0
+        const { w, h } = viewRig.canvas
+        const { x: sx, y: sy, w: cropW, h: cropH } = layeredViewBox(viewRig, p.portrait)
         const scale = Math.min(output.width / cropW, output.height / cropH), dw = cropW * scale, dh = cropH * scale
         context!.clearRect(0, 0, output.width, output.height)
         context!.drawImage(source, sx * source.width / w, sy * source.height / h, cropW * source.width / w, cropH * source.height / h, (output.width - dw) / 2, output.height - dh, dw, dh)

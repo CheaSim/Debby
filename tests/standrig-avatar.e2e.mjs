@@ -28,7 +28,6 @@ try {
   await file.setInputFiles({ name: 'legacy-whale.srig', mimeType: 'application/json', buffer: Buffer.concat([await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl-rigged.srig')), Buffer.from('\n')]) })
   await page.waitForSelector(ready, { timeout: 30000 })
   assert.equal(await page.getByRole('button', { name: '试试口型', exact: true }).count(), 0)
-  await page.getByRole('button', { name: '查看全身', exact: true }).click()
   await page.waitForSelector('.avatar-preview [data-rendered-view=full]')
   const original = JSON.parse(await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl.srig'), 'utf8'))
   // Compare real pixels with a single source illustration; catches opaque/ghosted idle layers.

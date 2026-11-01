@@ -45,7 +45,7 @@ try {
   await page.waitForSelector('.avatar-preview [data-layered-ready=true]', { timeout: 60000 })
   const host = page.locator('.avatar-preview .layered-pet-host')
   const startClock = Number(await host.getAttribute('data-elapsed')), fingerprints = new Set(), images = []
-  await page.getByRole('button', { name: '查看全身', exact: true }).click()
+  await page.waitForSelector('.avatar-preview [data-rendered-view=full]')
   for (const [index, pose] of bundle.poses.entries()) {
     await page.getByLabel('预览立绘', { exact: true }).selectOption(pose.id)
     await page.waitForFunction(id => document.querySelector('.avatar-preview .layered-pet-host').dataset.expressionPose === id, pose.id)
@@ -59,7 +59,6 @@ try {
   assert.equal(fingerprints.size, bundle.poses.length, 'Every authored pose produces a different real image')
   await sharp({ create: { width: 1120, height: Math.ceil(images.length / 4) * 400, channels: 4, background: '#f4f0fa' } }).composite(images).png().toFile(resolve(evidence, 'poses.png'))
   await page.getByLabel('预览立绘', { exact: true }).selectOption('')
-  await page.getByRole('button', { name: '查看上半身', exact: true }).click()
   for (const [emotion, id] of Object.entries(bundle.expressions)) {
     await page.getByLabel('预览表情', { exact: true }).selectOption(emotion)
     await page.waitForFunction(id => document.querySelector('.avatar-preview .layered-pet-host').dataset.expressionPose === id, id)
@@ -94,6 +93,11 @@ try {
     console.error('Avatar restore diagnostics:', JSON.stringify({ errors, text: await page.locator('body').innerText(), hosts: await page.locator('.layered-pet-host').evaluateAll(hosts => hosts.map(host => ({ ...host.dataset }))) }))
     await page.screenshot({ path: resolve(evidence, 'restore-failure.png') }); throw error
   })
+  await page.waitForSelector('.pet-wrap [data-view=full][data-rendered-view=full]')
+  await page.getByRole('button', { name: '快速对话', exact: true }).click()
+  await page.waitForSelector('.app-dialogue .pet-wrap [data-view=full][data-rendered-view=full]')
+  await page.screenshot({ path: resolve(evidence, 'dialogue-fullbody.png') })
+  await page.getByRole('tab', { name: '行情', exact: true }).click()
   await open(); await page.getByText('动作与幅度', { exact: true }).click()
   assert.equal(await page.getByLabel('动作幅度', { exact: true }).inputValue(), '2.3', 'Motion preference persists with the full expression bundle')
   await page.getByTitle('关闭角色工坊').click()
@@ -109,6 +113,7 @@ try {
   await page.waitForSelector('.pet-wrap [data-3d-ready=true]', { timeout: 30000 })
   await page.evaluate(() => window.finpet.controlDance({ action: 'stop' }))
   await page.waitForSelector('.pet-wrap [data-layered-ready=true]', { timeout: 60000 })
+  await page.waitForSelector('.pet-wrap [data-view=full][data-rendered-view=full]')
   assert.equal((await page.evaluate(() => window.finpet.getVoiceState())).active, false)
   assert.deepEqual(await app.evaluate(({ BrowserWindow }) => { const w = BrowserWindow.getAllWindows()[0]; return { visible: w.isVisible(), focused: w.isFocused(), muted: w.webContents.isAudioMuted() } }), { visible: false, focused: false, muted: true })
   assert.deepEqual(errors, [])

@@ -50,7 +50,7 @@ try {
   await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
   await page.mouse.down(); await page.mouse.move(bounds.x + bounds.width / 2 + 24, bounds.y + bounds.height / 2 + 12, { steps: 5 }); await page.mouse.up()
   await page.locator('[title="停止跳舞"]').click()
-  await page.waitForSelector('[data-view=portrait]')
+  await page.waitForSelector('[data-view=full]')
   await page.waitForFunction(() => document.querySelector('.three-pet-host').dataset.behavior !== 'lifted')
   await studio()
   await page.locator('[aria-label="选择舞蹈视频"]').setInputFiles(videoPath)
@@ -132,7 +132,7 @@ try {
   page = await app.firstWindow(); await page.waitForSelector('[data-3d-ready=true]', { timeout: 30000 })
   assert.equal((await page.evaluate(() => window.finpet.getDanceState())).library.length, 4)
   assert.deepEqual(errors, [])
-  console.log('Dance desktop E2E passed:', JSON.stringify({ quality: entry.quality, bones: asset.motion.tracks.length, localModel: true, pauseHoldsRig: true, portraitRestored: true, vrma: true, cancellation: true, importExport: true, restartPersistence: true }))
+  console.log('Dance desktop E2E passed:', JSON.stringify({ quality: entry.quality, bones: asset.motion.tracks.length, localModel: true, pauseHoldsRig: true, fullBodyRestored: true, vrma: true, cancellation: true, importExport: true, restartPersistence: true }))
 } catch (error) {
   if (page) {
     await page.screenshot({ path: resolve(root, 'work/dance-failure.png') }).catch(() => {})

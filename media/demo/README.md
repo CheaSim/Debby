@@ -8,4 +8,4 @@
 
 ## 鲸鱼娘多表情预览
 
-`debby-whale-expressions.mp4`（720×1280，22.4 秒）与 `debby-whale-expressions.png` 是同一位 DeepSeek 社区二创鲸鱼娘的八张分层立绘。视频使用 `examples/avatar/mount-layered-avatar.ts` 的真实网格运行时播放，静音，目光和口型为本地预览输入，没有调用云对话或采集设备；图集来自完整多立绘桌面 E2E。美术为 **CC BY-NC-SA 4.0**，署名链与完整许可见 [角色 NOTICE](../../src/renderer/public/models/whale-girl/NOTICE.md)。本段适用于新增鲸鱼娘预览，原有主片的说明见上文。
+`debby-whale-expressions.mp4`（720×1280，19.6 秒）与 `debby-whale-expressions.png` 展示同一位 DeepSeek 社区二创鲸鱼娘的七张分层全身立绘，已去除双手藏在背后的原好奇姿势。视频使用 `examples/avatar/mount-layered-avatar.ts` 的真实网格运行时播放，静音，目光和口型为本地预览输入，没有调用云对话或采集设备；图集来自完整多立绘桌面 E2E。美术为 **CC BY-NC-SA 4.0**，署名链与完整许可见 [角色 NOTICE](../../src/renderer/public/models/whale-girl/NOTICE.md)。本段适用于新增鲸鱼娘预览，原有主片的说明见上文。

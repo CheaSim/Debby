@@ -132,10 +132,10 @@ try {
   await seek.fill('0.5'); await page.waitForSelector('[data-emotion=shy][data-emotion-source=dance]')
   await seek.fill('3'); await page.waitForSelector('[data-emotion-source=""]')
   await page.getByTitle('停止跳舞', { exact: true }).click()
-  await page.waitForSelector('[data-view=portrait]')
+  await page.waitForSelector('[data-view=full]')
   assert.deepEqual(errors, [])
   if (process.env.FINPET_E2E_BACKGROUND === '1') assert.deepEqual(await app.evaluate(({ BrowserWindow }) => { const window = BrowserWindow.getAllWindows()[0]; return { visible: globalThis.performanceNativeVisible(), focused: window.isFocused(), muted: window.webContents.isAudioMuted() } }), { visible: false, focused: false, muted: true })
-  console.log('Performance E2E passed: dialogue faces, blush, dancing through chat, real PCM sentence sync, cancellation, imported cue timeline, pause/seek, portrait restoration.')
+  console.log('Performance E2E passed: dialogue faces, blush, dancing through chat, real PCM sentence sync, cancellation, imported cue timeline, pause/seek, full-body restoration.')
 } catch (error) {
   await page?.screenshot({ path: resolve(root, 'work/performance-failure.png') }).catch(() => {})
   throw error

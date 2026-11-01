@@ -58,7 +58,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   useEffect(() => { previousMood.current = mood }, [mood])
   const [behavior, setBehavior] = useState<PetBehavior>('idle')
   const direction = (indexQuote?.changePct ?? 0) >= 0 ? 'up' : 'down'
-  const [portrait, setPortrait] = useState(true)
+  const [portrait, setPortrait] = useState(false)
   const [viewReset, setViewReset] = useState(0)
   const [rotating, setRotating] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
@@ -96,7 +96,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </>}
       </div>
       <div className="pet-wrap no-drag">
-        {layeredAsset && !dancing ? <LayeredPet performance={performance} asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={dialogue || portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet performance={performance} cue={cue} activity={activity} mood={mood} portrait={dancing ? false : dialogue || portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
+        {layeredAsset && !dancing ? <LayeredPet performance={performance} asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet performance={performance} cue={cue} activity={activity} mood={mood} portrait={dancing ? false : portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
       </div>
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>

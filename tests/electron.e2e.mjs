@@ -13,6 +13,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(import.meta.url)
 const packagedExecutable = process.env.FINPET_E2E_EXECUTABLE
 const executablePath = packagedExecutable || require('electron')
+const background = process.env.FINPET_E2E_BACKGROUND === '1'
 const userData = await mkdtemp(resolve(tmpdir(), 'finpet-e2e-'))
 let electronApp
 let relay
@@ -52,7 +53,7 @@ try {
     throw new Error(`Renderer did not reach mascot state. Body: ${body}. Errors: ${pageErrors.join(' | ')}`, { cause: error })
   }
   await page.waitForSelector('[data-3d-ready="true"]', { timeout: 30_000 })
-  await page.waitForSelector('[data-view="portrait"]')
+  await page.waitForSelector('[data-view="full"]')
   await page.waitForFunction(() => document.querySelector('.three-pet-host').dataset.expression === 'wink' && Number(document.querySelector('.three-pet-host').dataset.emote) > 0.4)
   const faceChannels = (await page.locator('.three-pet-host').getAttribute('data-expression-channels')).split(',')
   assert.ok(['heart', 'star', 'wink', 'bright', 'smile', 'blush'].every((name) => faceChannels.includes(name)), 'Built-in model expressions were not bound')
@@ -98,7 +99,7 @@ try {
   assert.deepEqual(pageErrors, [], 'Renderer reported errors, including missing textures')
 
   await page.waitForSelector('[data-behavior="idle"]')
-  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'debby-default-upper-body.png') })
+  if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'debby-default-full-body.png') })
   const fullPet = await page.locator('.three-pet-host').boundingBox()
   await page.mouse.click(fullPet.x + fullPet.width / 2, fullPet.y + fullPet.height * 0.25)
   await page.waitForSelector('[data-behavior="pat"]')
@@ -106,8 +107,10 @@ try {
   assert.match(await page.locator('.speech p').innerText(), /鼓励/, 'Head pat did not change the companion response')
   if (process.env.FINPET_E2E_SCREENSHOTS) await page.screenshot({ path: resolve(root, 'work', 'finpet-pat.png') })
 
-  const beforeView = await page.locator('.three-pet-canvas').screenshot()
   await openPetOptions()
+  await page.locator('[title="上半身视图"]').click()
+  await page.waitForSelector('[data-view="portrait"]')
+  const beforeView = await page.locator('.three-pet-canvas').screenshot()
   await page.locator('[title="全身视图"]').click()
   await page.waitForSelector('[data-view="full"]')
   const fullView = await page.locator('.three-pet-canvas').screenshot()
@@ -129,21 +132,27 @@ try {
   assert.equal(snapshot.providerStatus, 'demo')
   assert.equal(snapshot.quotes.length, 4)
 
-  const windowState = await electronApp.evaluate(async ({ BrowserWindow }) => {
+  const windowState = await electronApp.evaluate(async ({ BrowserWindow }, background) => {
     const window = BrowserWindow.getAllWindows()[0]
-    if (!window.isVisible()) await new Promise((resolve, reject) => {
+    if (!background && !window.isVisible()) await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Pet window did not become visible')), 5_000)
       window.once('show', () => { clearTimeout(timer); resolve() })
     })
     return {
       bounds: window.getBounds(),
       visible: window.isVisible(),
+      focused: window.isFocused(),
+      muted: window.webContents.isAudioMuted(),
       alwaysOnTop: window.isAlwaysOnTop()
     }
-  })
+  }, background)
   assert.deepEqual([windowState.bounds.width, windowState.bounds.height], [380, 540])
-  assert.equal(windowState.alwaysOnTop, true)
-  assert.equal(windowState.visible, true)
+  assert.equal(windowState.alwaysOnTop, !background)
+  assert.equal(windowState.visible, !background)
+  if (background) {
+    assert.equal(windowState.focused, false)
+    assert.equal(windowState.muted, true)
+  }
 
   const getBounds = () => electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())
   await electronApp.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setPosition(300, 180))
@@ -157,7 +166,10 @@ try {
   await page.waitForSelector('[data-behavior="lifted"]')
   await page.mouse.up()
   await page.waitForSelector('[data-behavior="land"]')
-  await page.waitForFunction(() => window.screenX === 260 && window.screenY === 150)
+  await page.waitForFunction(async () => {
+    const { windowPosition } = (await window.finpet.getSnapshot()).settings
+    return windowPosition?.x === 260 && windowPosition?.y === 150
+  })
   const afterDrag = await getBounds()
   assert.deepEqual([afterDrag.x - beforeDrag.x, afterDrag.y - beforeDrag.y], [-40, -30], 'Dragging the pet did not move the window')
   await new Promise((resolve) => setTimeout(resolve, 350))
@@ -265,7 +277,7 @@ try {
 
   const checkDialogueLayout = async () => {
     await page.getByRole('tab', { name: '对话', exact: true }).click()
-    await page.waitForSelector('.app-dialogue [data-view="portrait"]')
+    await page.waitForSelector('.app-dialogue [data-view="full"]')
     await page.waitForFunction(() => {
       const canvas = document.querySelector('.three-pet-canvas')
       const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data

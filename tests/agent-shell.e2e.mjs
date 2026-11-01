@@ -72,7 +72,7 @@ try {
   await call(agent, 'dance', { taskId: 'build-1', action: 'pause' })
   assert.equal((await call(agent, 'list_dances')).playback.status, 'paused')
   await call(agent, 'dance', { taskId: 'build-1', action: 'stop' })
-  await page.waitForSelector('[data-view=portrait]')
+  await page.waitForSelector('[data-view=full]')
   await call(agent, 'say', { taskId: 'build-1', turnId: 'reply-1', text: '我在认真检查', done: false })
   await call(agent, 'say', { taskId: 'build-1', turnId: 'reply-1', text: '，马上就好啦。', append: true, done: true })
   await page.waitForFunction(() => document.querySelector('.agent-full-caption')?.textContent === '我在认真检查，马上就好啦。')

@@ -15,7 +15,7 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
   const [draft, setDraft] = useState(avatar.asset), [busy, setBusy] = useState(false), [progress, setProgress] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(''), [notice, setNotice] = useState(''), [ready, setReady] = useState(false)
-  const [portrait, setPortrait] = useState(true), [talking, setTalking] = useState(false), [cue, setCue] = useState<{ id: number; name: AvatarAction }>()
+  const [portrait, setPortrait] = useState(false), [talking, setTalking] = useState(false), [cue, setCue] = useState<{ id: number; name: AvatarAction }>()
   const [mouth, setMouth] = useState(0)
   const [previewEmotion, setPreviewEmotion] = useState<AvatarEmotion>('neutral')
   const [showSkeleton, setShowSkeleton] = useState(false)

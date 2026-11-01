@@ -5,7 +5,7 @@ import type { ExpressionDirective } from './avatar-performance'
 export const layeredAvatarLimits = { bytes: 64 * 1024 * 1024, timeout: 90_000 } as const
 export interface LayeredRig {
   canvas: { w: number; h: number }
-  layers: { name: string; z: number }[]
+  layers: { name: string; z: number; x?: number; y?: number; w?: number; h?: number }[]
   anchors: { face: { x0: number; x1: number; y0: number; y1: number }; neckPivot: { cx: number; cy: number } }
   warnings: string[]
   synth: { eye: boolean; mouth: boolean }
