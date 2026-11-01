@@ -105,6 +105,12 @@ const runtime = new CompanionRuntime({
 
 默认文字 / 视觉模型 `qwen3.8-flash`，最大输出 512 tokens，`enable_thinking: false`。ASR 模型 `qwen-audio-3.0-asr-flash`；TTS 模型 `qwen-audio-3.0-tts-plus`，音色 `longanhuan_v3.6`。音色和模型是否开放取决于账户，不内置可用性保证。
 
+`VoiceConfig.speech` 为可选的 `{ style, instruction, rate, pitch }`，旧配置缺省使用 `bright`（元气可爱）。预设与校验统一在 `src/shared/speech-style.ts`；支持 `bright / gentle / shy / professional / natural / custom`，自定义指令最多 500 字，语速与音调范围为 0.5–2。普通 MP3 与流式 PCM 请求共用 `input.instruction / rate / pitch`，不会把语气指令拼进朗读正文；`natural` 不发送指令。效果取决于模型和音色，不代表模型必然复现特定角色声线。
+
+开发环境可用 `DEBBY_QWEN_TTS_STYLE / DEBBY_QWEN_TTS_INSTRUCTION / DEBBY_QWEN_TTS_RATE / DEBBY_QWEN_TTS_PITCH` 设置默认值，桌面保存的配置优先。仅设置指令时自动选择 `custom`；已选预设时，其指令由共享预设生成。非有限数值或超界配置会被拒绝。
+
+`previewSpeech({ requestId, text, cloudConsent: true, voice?, ttsModel?, speech? })` 接受最多 200 字的试听台词，复用已配置的凭据和官方端点，不保存草稿配置，也不接受端点或 Key。用户主动点击即发起一次完整音频试听，`cancelSpeechPreview()` 可中止；日常朗读继续使用流式路径。UI 复用 `useReadAloud` 播放与 RMS 嘴型，关闭设置、改选项、切页、隐藏、锁屏和退出都会取消试听并丢弃迟到结果。入口位于对话页「更多 > 声音试听」，没有额外的每次授权弹窗。
+
 Chat 使用配置的 `/compatible-mode/v1/chat/completions`。Token Plan 音频不是 Chat Completions：ASR 使用 `/api/v1/services/aigc/multimodal-generation/generation` 的 `input_audio`；TTS 使用 `/api/v1/services/audio/tts/SpeechSynthesizer`。适配器兼容直接二进制、JSON 内联 Base64 和官方结果地址，下载结果不发送 Key、不跟随重定向。当前结果地址白名单仅含实测北京桶，其他地域须单独核实后扩展。
 
 流式 TTS 在同一接口发送 `X-DashScope-SSE: enable`，请求 `format: pcm` / `sample_rate: 24000`，逐事件解码 `output.audio.data`，以 `output.finish_reason: stop` 结束。解析器支持多行 data、CRLF、网络分块和 UTF-8 跨块；连接中途结束会报告错误，不把半段响应当作成功。兼容网关若返回完整文件或官方地址，会复用该次响应，不额外重复计费请求。
@@ -120,6 +126,7 @@ npm.cmd run typecheck
 npm.cmd test
 npm.cmd run test:voice-ui
 npm.cmd run test:read-aloud-ui
+npm.cmd run test:speech-preview
 ```
 
 领域测试覆盖真实 pi 循环、ASR/TTS 协议、关闭思考、密钥隔离、输入与响应上限、授权、取消及照片过期。桌面测试用隔离目录、虚拟摄像头和麦克风、模拟云端服务，检查真实录音 / 播放、嘴型、设备回收与窄屏像素；这些测试不能证明真实账户模型可用。
@@ -127,6 +134,8 @@ npm.cmd run test:read-aloud-ui
 2026-10-18 使用本地 `.env` 做一次短句真实 TTS 验证：取得 53,851 字节音频，浏览器解码约 2.688 秒且非静音；没有调用文字模型或采集设备。可用 `npm.cmd run test:tts-live` 主动复验，样本只写入被忽略的 `work/`，不输出 Key 或临时 URL。
 
 同日通过真实桌面 UI 验证流式 TTS：从首句提交到首块约 0.60 秒、播放约 0.79 秒，13 块 PCM 共 230,400 字节 / 4.8 秒，合成约 1.90 秒结束。文字来自确定性测试输入，首播时文字仍未结束；TTS 与播放器是真实路径，不调用真实 LLM、摄像头或麦克风。`npm.cmd run test:tts-stream-live` 可主动复验，会消耗本人的 TTS 额度。普通回归使用模拟服务，另外检查文字 / 音频都未结束时的首播、分句顺序、打断、锁屏、切页和迟到音频。
+
+2026-11-01 使用同一句台词实测自然、元气、温柔语气，真实音频分别约 6.14、5.66、7.32 秒，均可解码且非静音。`npm.cmd run test:tts-styles-live` 可主动生成对比样本，写入被忽略的 `work/tts-styles/`；验证不替代人工判断声音风格。同日默认元气设置的真实 SSE 复验通过，首块约 0.59 秒、首播约 0.79 秒，13 块约 4.82 秒音频，首播时文字仍在生成；这不是完整对话延迟保证。桌面试听回归使用隔离、隐藏、静音窗口和模拟服务，覆盖未保存试听、实际播放嘴型、保存恢复、取消与窄屏布局。
 
 2026-10-09 另做少量人工触发真实验证：`qwen3.8-flash` 正确识别绿色测试色块，思考关闭；TTS 返回北京 OSS 临时音频地址，生成短中文语音后由 ASR 识别。未使用真实摄像头、麦克风或个人画面，也不把密钥和临时 URL 提交仓库。Windows 虚拟摄像头测试关闭 D3D11 采集以避开该环境的 NV12 服务崩溃，生产启动不修改这一系统选项。
 
@@ -136,6 +145,7 @@ npm.cmd run test:read-aloud-ui
 - AAAAGENT 使用自定义 [Noncommercial and Attribution License 1.0](https://github.com/phoiex/AAAAGENT/blob/main/LICENSE)，不是 MIT / Apache，非商用也不意味着可以忽略署名或再分发限制；其条款不被本项目 MIT 声明覆盖。
 - [Token Plan 概览](https://help.aliyun.com/zh/model-studio/token-plan-team-overview)：模型能力、用途和账户边界。
 - [Token Plan 多模态生成](https://help.aliyun.com/zh/model-studio/token-plan-multimodal-gen)：音频服务和音色格式。
-- [Qwen-Audio TTS HTTP](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)：SSE 请求头、PCM 格式和流式事件，2026-10-18 查阅。
+- [Qwen-Audio TTS HTTP](https://help.aliyun.com/zh/model-studio/qwen-audio-tts-http-api)：语气指令、语速、音调、SSE 请求头与流式事件，2026-11-01 查阅。
+- [语音合成使用指南](https://help.aliyun.com/zh/model-studio/non-realtime-tts-user-guide)：指令控制及模型支持，2026-11-01 查阅。
 - [Flash 录音识别 HTTP](https://help.aliyun.com/zh/model-studio/fun-asr-flash-recorded-speech-recognition-http-api)：ASR 原生协议。
 - [OpenRouter 推理控制](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens)：关闭推理与仅隐藏推理文本的区别。

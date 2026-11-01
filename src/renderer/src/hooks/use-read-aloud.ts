@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SpeechMark, VoiceApi } from '../../../shared/voice'
+import type { SpeechMark, SpeechPreviewInput, VoiceApi } from '../../../shared/voice'
 import { BrowserSpeechPlayback } from '../media/speech-playback'
 import { platformApi } from '../platform-api'
 
 /** Cumulative text from any agent -> speech, without a microphone or companion session. */
-export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAloud' | 'onReadAloudAudio' | 'cancelReadAloud' | 'onReadAloudStop'> = platformApi) {
+export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAloud' | 'onReadAloudAudio' | 'cancelReadAloud' | 'onReadAloudStop' | 'previewSpeech' | 'cancelSpeechPreview'> = platformApi) {
   const [loading, setLoading] = useState(false)
   const [speaking, setSpeaking] = useState(false)
   const [mouth, setMouth] = useState(0)
@@ -14,12 +14,15 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
   const playback = useRef<BrowserSpeechPlayback>(undefined)
   const source = useRef<{ turn: string; requestId: string; lineId?: string; text?: string; done?: boolean; sequence: number }>(undefined)
   const blocked = useRef<string>(undefined), mounted = useRef(true), enabledRef = useRef(enabled)
+  const previewId = useRef<string>(undefined)
   enabledRef.current = enabled
   const stop = useCallback(() => {
     blocked.current = source.current?.turn ?? blocked.current
     source.current = undefined
+    previewId.current = undefined
     playback.current?.close(); playback.current = undefined
     void api.cancelReadAloud().catch(() => {})
+    void api.cancelSpeechPreview().catch(() => {})
     if (mounted.current) { setLoading(false); setSpeaking(false); setMouth(0); setCursor(undefined); setArmed(false) }
   }, [api])
   // Called from the user's speaker-button gesture so the audio engine is ready for later replies.
@@ -50,6 +53,21 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
       }
     }
   }, [api, prepare, stop])
+  const preview = useCallback(async (input: Omit<SpeechPreviewInput, 'requestId' | 'cloudConsent'>): Promise<boolean> => {
+    stop()
+    if (!prepare()) return false
+    const requestId = crypto.randomUUID(); previewId.current = requestId; setLoading(true)
+    try {
+      const result = await api.previewSpeech({ ...input, requestId, cloudConsent: true })
+      if (!mounted.current || !enabledRef.current || previewId.current !== requestId || result.requestId !== requestId) { result.bytes.fill(0); return false }
+      setLoading(false)
+      await playback.current!.enqueue({ bytes: result.bytes, format: 'encoded' })
+      return true
+    } catch (failure) {
+      if (mounted.current && previewId.current === requestId) { stop(); setError(failure instanceof Error ? failure.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : '试听暂时不可用。') }
+      return false
+    }
+  }, [api, prepare, stop])
   useEffect(() => {
     mounted.current = true
     const unsubscribe = api.onReadAloudStop(stop)
@@ -67,6 +85,6 @@ export function useReadAloud(enabled: boolean, api: Pick<VoiceApi, 'streamReadAl
     return () => { mounted.current = false; unsubscribe(); removeAudio(); stop(); window.removeEventListener('pagehide', stop); document.removeEventListener('visibilitychange', visibility) }
   }, [api, stop])
   useEffect(() => { if (!enabled) stop() }, [enabled, stop])
-  return { loading, speaking, mouth, cursor, armed, error, prepare, update, stop }
+  return { loading, speaking, mouth, cursor, armed, error, prepare, update, preview, stop }
 }
 export type ReadAloudController = ReturnType<typeof useReadAloud>

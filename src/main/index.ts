@@ -33,6 +33,7 @@ let chat: DebbyAgentRuntime
 let companion: CompanionRuntime
 let agentShell: ShellServer
 let readAloud: ReadAloudRuntime
+let speechPreview: ReadAloudRuntime
 let dances: DanceLibrary
 let quitting = false
 let moveTimer: NodeJS.Timeout | undefined
@@ -45,6 +46,7 @@ let windowDrag: { pointer: { x: number; y: number }; bounds: Electron.Rectangle 
 
 function stopReadAloud(): void {
   readAloud?.cancel()
+  speechPreview?.cancel()
   if (mainWindow && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('voice:read-aloud-stop')
 }
 function stopDancing(): void {
@@ -322,13 +324,19 @@ function registerIpc(): void {
   handleChat('chat:cancel', () => chat.cancel())
   handleChat('chat:clear', () => chat.clear())
   handleChat('voice:state', () => companion.getState())
+  handleChat('voice:preview-speech', (input) => {
+    if (!store.get().panelOpen || (!backgroundTest && !mainWindow?.isVisible())) throw new Error('请先打开对话面板。')
+    if (companion.getState().active) throw new Error('请先结束陪伴会话再试听。')
+    return speechPreview.preview(input)
+  })
+  handleChat('voice:cancel-preview', () => speechPreview.cancel())
   handleChat('voice:read-aloud', (input) => {
-    if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
+    if (!store.get().panelOpen || (!backgroundTest && !mainWindow?.isVisible())) throw new Error('请先打开对话面板。')
     return readAloud.read(input)
   })
   handleChat('voice:cancel-read-aloud', () => readAloud.cancel())
   handleChat('voice:stream-read-aloud', (input) => {
-    if (!store.get().panelOpen || !mainWindow?.isVisible()) throw new Error('请先打开对话面板。')
+    if (!store.get().panelOpen || (!backgroundTest && !mainWindow?.isVisible())) throw new Error('请先打开对话面板。')
     readAloud.stream(input, (event) => mainWindow?.webContents.send('voice:read-aloud-audio', event))
   })
   handleChat('voice:configure', (input) => { stopReadAloud(); return companion.configure(input) })
@@ -449,6 +457,7 @@ if (hasSingleInstanceLock) app.whenReady().then(async () => {
     encrypt: (text) => safeStorage.encryptString(text), decrypt: (value) => safeStorage.decryptString(value)
   }, process.env)
   readAloud = new ReadAloudRuntime(voiceCredentials.publicConfig, (config) => new QwenGateway(request, config, voiceCredentials.getKey))
+  speechPreview = new ReadAloudRuntime(voiceCredentials.publicConfig, (config) => new QwenGateway(request, config, voiceCredentials.getKey))
   companion = new CompanionRuntime({ credentials: voiceCredentials,
     createProvider: (config) => new QwenGateway(request, config, voiceCredentials.getKey),
     tools: registerTools([marketToolsPlugin, createDanceToolsPlugin(dances), companionTools], {
@@ -502,6 +511,7 @@ app.on('before-quit', () => {
   chat?.cancel()
   companion?.stop()
   readAloud?.cancel()
+  speechPreview?.cancel()
   agentShell?.dispose()
   dances?.dispose()
   if (pointerTimer) clearInterval(pointerTimer)

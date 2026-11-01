@@ -2,6 +2,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { parseEnv } from 'node:util'
 import { emptyVoiceState, type VoiceConfig, type VoiceConfigInput } from '../../shared/voice'
 import type { SecretCipher } from '../agent/key-store'
+import { validateSpeechStyle } from '../../shared/speech-style'
 
 export function loadLocalEnvironment(path: string, env: NodeJS.ProcessEnv): void {
   if (!existsSync(path)) return
@@ -20,7 +21,7 @@ export function validateVoiceConfig(input: VoiceConfigInput): VoiceConfigInput {
   for (const value of [input.textModel, input.asrModel, input.ttsModel]) if (typeof value !== 'string' || !/^qwen[a-z0-9.:-]{1,100}$/.test(value)) throw new Error('请输入有效的千问模型 ID。')
   if (typeof input.voice !== 'string' || !/^[a-zA-Z0-9_.-]{1,100}$/.test(input.voice)) throw new Error('音色 ID 格式无效。')
   if (input.apiKey !== undefined && (typeof input.apiKey !== 'string' || (input.apiKey.trim() && !/^\S{16,512}$/.test(input.apiKey.trim())))) throw new Error('API Key 格式无效。')
-  return { baseUrl: `${url.origin}/compatible-mode/v1`, textModel: input.textModel, asrModel: input.asrModel, ttsModel: input.ttsModel, voice: input.voice, apiKey: input.apiKey }
+  return { baseUrl: `${url.origin}/compatible-mode/v1`, textModel: input.textModel, asrModel: input.asrModel, ttsModel: input.ttsModel, voice: input.voice, speech: validateSpeechStyle(input.speech), apiKey: input.apiKey }
 }
 
 export class VoiceConfigStore {
@@ -32,6 +33,10 @@ export class VoiceConfigStore {
     this.input = validateVoiceConfig({ baseUrl: env.DEBBY_QWEN_BASE_URL || defaults.baseUrl, textModel: env.DEBBY_QWEN_TEXT_MODEL || defaults.textModel,
       asrModel: env.DEBBY_QWEN_ASR_MODEL || defaults.asrModel, ttsModel: env.DEBBY_QWEN_TTS_MODEL || defaults.ttsModel, voice: env.DEBBY_QWEN_VOICE || defaults.voice,
       apiKey: env.DEBBY_QWEN_API_KEY })
+    if (env.DEBBY_QWEN_TTS_STYLE || env.DEBBY_QWEN_TTS_INSTRUCTION || env.DEBBY_QWEN_TTS_RATE || env.DEBBY_QWEN_TTS_PITCH) this.input.speech = validateSpeechStyle({
+      style: env.DEBBY_QWEN_TTS_STYLE || (env.DEBBY_QWEN_TTS_INSTRUCTION ? 'custom' : 'bright'), instruction: env.DEBBY_QWEN_TTS_INSTRUCTION,
+      rate: env.DEBBY_QWEN_TTS_RATE ? Number(env.DEBBY_QWEN_TTS_RATE) : undefined, pitch: env.DEBBY_QWEN_TTS_PITCH ? Number(env.DEBBY_QWEN_TTS_PITCH) : undefined
+    })
     this.key = this.input.apiKey?.trim() || undefined
     delete this.input.apiKey
     this.storage = this.key ? 'env' : 'none'

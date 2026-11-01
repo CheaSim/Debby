@@ -37,6 +37,8 @@ const statusListeners = new Set<(status: ProviderStatus) => void>()
 const alertListeners = new Set<(event: AlertEvent) => void>()
 
 const browserApi: FinPetApi = {
+  previewSpeech: async () => { throw new Error('请在 Debby 桌面版试听声音。') },
+  cancelSpeechPreview: async () => {},
   getCursorPosition: async () => null,
   onCursorPosition(listener) {
     const move = (event: PointerEvent): void => listener({ x: event.clientX, y: event.clientY, source: 'browser' })

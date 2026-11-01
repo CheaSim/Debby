@@ -5,6 +5,7 @@ import type { SpeechChunk, VoiceConfig } from '../../shared/voice'
 import { voiceLimits } from '../../shared/voice'
 import type { AgentFetch } from '../agent/openrouter'
 import { sseData } from './sse'
+import { resolveSpeechStyle } from '../../shared/speech-style'
 
 export interface SpeechProvider {
   transcribe: (audio: Uint8Array, signal: AbortSignal) => Promise<string>
@@ -83,7 +84,7 @@ export class QwenGateway implements SpeechProvider {
     if (text.length > 1200) throw new Error('回复文本过长，已保留文字，请缩小问题范围。')
     // Token Plan exposes a binary HTTP TTS extension, not Chat Completions audio output.
     const response = await this.post('/api/v1/services/audio/tts/SpeechSynthesizer', {
-      model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'mp3', sample_rate: 24_000 }
+      model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'mp3', sample_rate: 24_000, ...this.speechSettings() }
     }, signal)
     return this.audioResponse(response, signal)
   }
@@ -91,7 +92,7 @@ export class QwenGateway implements SpeechProvider {
     if (!text.trim() || text.length > 1200) throw new Error('回复文本过长或为空，请缩小问题范围。')
     const timed = AbortSignal.any([signal, AbortSignal.timeout(60_000)])
     const response = await this.post('/api/v1/services/audio/tts/SpeechSynthesizer', {
-      model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'pcm', sample_rate: 24_000 }
+      model: this.config.ttsModel, input: { text, voice: this.config.voice, format: 'pcm', sample_rate: 24_000, ...this.speechSettings() }
     }, timed, true)
     if (!response.headers.get('content-type')?.includes('text/event-stream')) {
       // Some compatible gateways return a complete file even when SSE is requested; reuse that response once.
@@ -126,6 +127,10 @@ export class QwenGateway implements SpeechProvider {
       if (body.output?.finish_reason === 'stop') { ended = true; break }
     }
     if (!ended || carry !== undefined || !count) throw new Error('无效音频：语音流提前结束。')
+  }
+  private speechSettings(): { instruction?: string; rate: number; pitch: number } {
+    const { instruction, rate, pitch } = resolveSpeechStyle(this.config.speech)
+    return { ...(instruction ? { instruction } : {}), rate, pitch }
   }
   private async audioResponse(response: Response, signal: AbortSignal): Promise<Uint8Array> {
     const json = response.headers.get('content-type')?.includes('json')

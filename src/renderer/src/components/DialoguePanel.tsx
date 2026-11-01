@@ -45,6 +45,7 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
   const voiceStatus = companion.recording !== 'off' ? '正在听你说' : speaking ? '正在说话' : ({ off: '陪你聊聊', ready: '我在呢', transcribing: '听清你的话', thinking: '正在回复', synthesizing: '准备声音' })[companion.state.phase]
   const closeMenu = () => { if (menu.current) menu.current.open = false }
   const configure = async () => { closeMenu(); if (voice) { await companion.stop(); setVoiceConfig(true) } else onConfigure() }
+  const configureSound = async () => { closeMenu(); setAutoRead(false); reader.stop(); await companion.stop(); setVoiceConfig(true) }
   const beginSetup = () => { chosen.current = true; void configure() }
   const sendText = async (text: string): Promise<void> => {
     if (submitting.current || busy || recording || showcasing) return
@@ -87,6 +88,7 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
           {voice && configured && companion.state.config.vision && <button title={companion.camera ? '关闭摄像头' : '开启摄像头'} aria-pressed={Boolean(companion.camera)} onClick={() => { closeMenu(); void companion.toggleCamera() }}><Video size={16} />{companion.camera ? '关闭摄像头' : '开启摄像头'}</button>}
           {voice && companion.state.active && <button title="结束陪伴" onClick={() => { closeMenu(); void companion.stop() }}><Power size={16} />结束陪伴</button>}
           <button title="对话设置" disabled={busy || recording} onClick={() => void configure()}><Settings2 size={16} />模型设置</button>
+          <button title="声音试听" disabled={busy || recording} onClick={() => void configureSound()}><Volume2 size={16} />声音试听</button>
         </div>
       </details></div></header>
     {voice && companion.camera && <CameraPreview stream={companion.camera} onOff={() => void companion.toggleCamera()} />}
@@ -113,6 +115,6 @@ export function DialoguePanel({ chat, companion, reader, onConfigure, showcasing
         </>}
       </form>
     </div>
-    {voiceConfig && <VoiceConfigDialog companion={companion} onClose={() => setVoiceConfig(false)} />}
+    {voiceConfig && <VoiceConfigDialog companion={companion} reader={reader} onClose={() => setVoiceConfig(false)} />}
   </section>
 }

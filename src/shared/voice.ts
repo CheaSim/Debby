@@ -1,4 +1,5 @@
 import { emptyChatState, type ChatState } from './chat'
+import type { SpeechStyleConfig } from './speech-style'
 
 export interface VoiceConfig {
   configured: boolean
@@ -7,6 +8,7 @@ export interface VoiceConfig {
   asrModel: string
   ttsModel: string
   voice: string
+  speech?: SpeechStyleConfig
   storage: 'env' | 'encrypted' | 'none'
   vision: boolean
   tokenPlan: boolean
@@ -18,6 +20,7 @@ export interface VoiceConfigInput {
   asrModel: string
   ttsModel: string
   voice: string
+  speech?: SpeechStyleConfig
 }
 export interface VoiceState {
   revision: number
@@ -38,9 +41,12 @@ export interface SpeechPacket extends SpeechChunk { sequence: number; done: bool
 export interface VoiceAudio { sessionId: string; turnId: string; bytes: Uint8Array; format?: SpeechChunk['format']; sampleRate?: number; sequence?: number; done?: boolean; mark?: SpeechMark }
 export interface ReadAloudInput { requestId: string; text: string; cloudConsent: boolean }
 export interface ReadAloudAudio { requestId: string; bytes: Uint8Array }
+export interface SpeechPreviewInput extends ReadAloudInput { voice?: string; ttsModel?: string; speech?: SpeechStyleConfig }
 export interface ReadAloudStreamInput extends ReadAloudInput { lineId: string; done: boolean }
 export interface ReadAloudStreamEvent extends SpeechPacket { requestId: string; error?: string }
 export interface VoiceApi {
+  previewSpeech: (input: SpeechPreviewInput) => Promise<ReadAloudAudio>
+  cancelSpeechPreview: () => Promise<void>
   readAloud: (input: ReadAloudInput) => Promise<ReadAloudAudio>
   streamReadAloud: (input: ReadAloudStreamInput) => Promise<void>
   onReadAloudAudio: (listener: (event: ReadAloudStreamEvent) => void) => () => void

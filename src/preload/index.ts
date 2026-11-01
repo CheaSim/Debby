@@ -8,6 +8,8 @@ import type { AvatarCue } from '../shared/avatar'
 import type { CursorPosition } from '../shared/avatar-gaze'
 
 const api: FinPetApi = {
+  previewSpeech: (input) => ipcRenderer.invoke('voice:preview-speech', input),
+  cancelSpeechPreview: () => ipcRenderer.invoke('voice:cancel-preview'),
   getCursorPosition: () => ipcRenderer.invoke('window:cursor'),
   onCursorPosition: listener => subscribe<CursorPosition>('window:cursor-position', listener),
   onAvatarAction: listener => subscribe<AvatarCue>('avatar:action', listener),
