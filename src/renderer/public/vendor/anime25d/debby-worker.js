@@ -1,5 +1,5 @@
 /* Debby PSD authoring boundary. No devices, network or UI inside the parser. */
-importScripts('ag-psd.min.js', 'rigger.js', 'runtime.js');
+importScripts('ag-psd.min.js', 'rigger.js', 'runtime.js', 'debby-parts.js');
 agPsd.initializeCanvas(undefined, (width, height) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }));
 self.onmessage = ({ data: buffer }) => {
   try {
@@ -19,6 +19,7 @@ self.onmessage = ({ data: buffer }) => {
     check(meta.children);
     postMessage({ progress: '展开图像并自动绑定…' });
     const psd = agPsd.readPsd(new Uint8Array(buffer), options);
+    DebbyParts.normalizeLayerNames(psd);
     Rigger.cleanPsdLayers(psd);
     // Original procedural closed-eye / closed-mouth strokes, not upstream artwork.
     const stroke = mouth => {

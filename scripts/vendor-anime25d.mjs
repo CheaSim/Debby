@@ -22,7 +22,7 @@ const between = (a, b) => {
   return app.slice(start, end)
 }
 const prepare = between('function prepareLayers(rig)', 'function applyAnchors()').replace('L.thumb=makeThumb(image);', '// Debby does not build editor thumbnails.')
-const deformation = between('function fadeAlpha(L,e,alt)', '// Still pose used while editing anchors')
+const deformation = between('function fadeAlpha(L,e,alt)', '// Still pose used while editing anchors').replace('      y+=e.mouthCY*14*FS;', '      y+=e.mouthCY*14*FS;\n      const q=Math.pow(Math.abs(x-A.mouth.cx)/(mHalfW+4),1.5);\n      y-=e.mouthForm*6*FS*(q-0.35);')
 const defaults = between('const P={', 'const DEFAULTS=')
 const wrapper = `/*! Adapted from Anime2.5DRig app.js, MIT, Copyright (c) 2026 hakoniwa.
  * See LICENSE and provenance.json. Extracted mesh, deformation and physics only.
@@ -40,11 +40,14 @@ ${defaults}
 ${prepare}
 ${deformation}
 const layers=prepareLayers(rig);for(const L of layers)buildBangWeights(L);
-return {frame(params,dt,time){
- const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1},params);
- updateSprings(e,time,dt,true);
+return {frame(params,dt,time,expression,context){
+ const reduced=!!(context&&context.reducedMotion);
+ const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1},params,reduced?{physAmp:0,fhAmp:0,accAmp:0}:{});
+ updateSprings(e,time,dt,!reduced);
+ const hidden=context&&context.hiddenLayers||[];
  const alt={L:false,R:false},items=[],masks=[];
  for(const L of layers){
+  if(hidden.includes(L.z))continue;
   const alpha=fadeAlpha(L,e,alt)*L.opacity,isMask=L.bn==='eyewhite'&&!!L.side;
   if(alpha<.004&&!isMask)continue;
   deform(L,e);renderer.positions(L,L.cur);
@@ -57,5 +60,5 @@ return {frame(params,dt,time){
 })(self);
 `
 writeFileSync(resolve(target, 'debby-rig.js'), wrapper)
-writeFileSync(resolve(target, 'provenance.json'), JSON.stringify({ repository: 'https://github.com/852wa/Anime2.5DRig', commit: '7ddbd9943ea3152561b3dc8348fd752c850f3e95', license: 'MIT', sources: hashes, modifications: 'debby-rig.js mechanically extracts mesh/deformation/springs from app.js; disables bust physics; accepts host parameters. Other source files are unmodified. No artwork or device modules included.' }, null, 2) + '\n')
+writeFileSync(resolve(target, 'provenance.json'), JSON.stringify({ repository: 'https://github.com/852wa/Anime2.5DRig', commit: '7ddbd9943ea3152561b3dc8348fd752c850f3e95', license: 'MIT', sources: hashes, modifications: 'debby-rig.js extracts mesh/deformation/springs from app.js; disables bust physics; accepts host parameters, preview-only hiddenLayers and reduced-motion physics; closed-mouth mesh follows expression mouthForm. debby-parts.js normalizes See-through anatomical suffixes before spatial binding. Original rigger/runtime/renderer/ag-psd files are unmodified. No upstream artwork or device modules included.' }, null, 2) + '\n')
 console.log('Vendored pinned Anime2.5DRig rendering core.')

@@ -136,6 +136,8 @@ function deform(L,e){
     }
     if(L.fade==='mouthClose'){
       y+=e.mouthCY*14*FS;
+      const q=Math.pow(Math.abs(x-A.mouth.cx)/(mHalfW+4),1.5);
+      y-=e.mouthForm*6*FS*(q-0.35);
       const thM=e.mouthCAng*0.35;
       if(thM){const ct=Math.cos(thM),st=Math.sin(thM),rx=x-A.mouth.cx,ry=y-A.mouth.cy;x=A.mouth.cx+rx*ct-ry*st;y=A.mouth.cy+rx*st+ry*ct;}
     }
@@ -199,11 +201,14 @@ function updateSprings(e,t,dt,wind){
 }
 
 const layers=prepareLayers(rig);for(const L of layers)buildBangWeights(L);
-return {frame(params,dt,time){
- const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1},params);
- updateSprings(e,time,dt,true);
+return {frame(params,dt,time,expression,context){
+ const reduced=!!(context&&context.reducedMotion);
+ const e=Object.assign({},P,{bust:0,irisBounceX:1,irisBounceY:1},params,reduced?{physAmp:0,fhAmp:0,accAmp:0}:{});
+ updateSprings(e,time,dt,!reduced);
+ const hidden=context&&context.hiddenLayers||[];
  const alt={L:false,R:false},items=[],masks=[];
  for(const L of layers){
+  if(hidden.includes(L.z))continue;
   const alpha=fadeAlpha(L,e,alt)*L.opacity,isMask=L.bn==='eyewhite'&&!!L.side;
   if(alpha<.004&&!isMask)continue;
   deform(L,e);renderer.positions(L,L.cur);

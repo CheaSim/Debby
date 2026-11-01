@@ -2,7 +2,7 @@
 
 调研与接入验证日期：2026-10-27。
 
-2026-10-31 更新：[StandRig 与内置鲸鱼娘表情立绘](standrig-whale-girl.md) 已接入同一角色工坊，支持导入自包含 `.srig`。鲸鱼娘当前使用完整立绘差分，不包含此页 PSD 后端的独立五官与口型能力。
+2026-11-01 更新：工坊的内置鲸鱼娘已改用 See-through 实际生成并修整的分层 PSD，具备独立虹膜、眼睑和口型。详细制作与验收见 [单图语义拆层](image-to-parts.md)。[旧 StandRig 表情与骨架包](standrig-whale-girl.md) 和自包含 `.srig` 导入继续保留。
 
 两者适合组成「单张插画 → 分层 PSD → 自动绑定 → 桌宠实时驱动」的流程。这是一条 **2.5D 插画角色** 路线；原有 Three.js / VRM 负责完整 3D 视角与骨骼舞蹈。单张图片分层不会自动生成完整 3D 人体或舞蹈骨骼。
 
@@ -37,9 +37,11 @@ npm.cmd run avatar:decompose -- --repo D:/avatar-tools/see-through --python D:/e
 npm.cmd run avatar:decompose -- --repo D:/avatar-tools/see-through --python D:/envs/see-through/python.exe --input D:/art/character.png --output D:/art/debby-layers --offload
 ```
 
-`--check` 只检查 Python 包和可用 CUDA/ROCm；`--dry-run` 只输出计划，不运行模型。适配器用参数数组启动 Python（不经过 shell），设置子进程专用 PYTHONPATH，传入 `--save_to_psd --tblr_split` 保留分层与左右组件。支持 `--resolution 1024`、`--seed 42` 和 `--offload`，完成后返回本次新建/更新的 PSD 路径；Ctrl+C 取消。已有旧结果不会被当作本次成功。常规推理首次可能自动从 Hugging Face 下载权重。
+`--check` 只检查 Python 包和可用 CUDA/ROCm；`--dry-run` 只输出计划，不运行模型。适配器用参数数组启动 Python（不经过 shell），设置子进程专用 PYTHONPATH，传入 `--save_to_psd --tblr_split` 保留分层与左右组件。支持 `--resolution 1024`、`--seed 42` 和 `--offload`；`--layerdiff-model` / `--depth-model` 可指定预先校验的本地权重目录。Debby 的小型 Python 入口在部件生成后释放 LayerDiff，再加载深度模型，避免两套模型同时驻留显存。完成后返回本次新建/更新的 PSD 路径；Ctrl+C 取消，Windows 同时停止启动器及其工作进程。已有旧结果不会被当作本次成功。常规推理首次可能自动从 Hugging Face 下载权重。
 
-上游给出的 1280 分辨率 bf16 显存参考为 12–16 GB，group offload 约 10 GB。量化与 block swap 是上游独立脚本，当前适配器接的是标准 pipeline；尚未包装这两条模式。本次开发机为 Windows / AMD RX 9070 XT，未安装 Python 3.12 与对应的 PyTorch GPU 环境，因此 **尚未在此机器完成真实单图分层推理**。已验证转换器的参数、真实子进程启动、输出收集、失败与取消；不要将其理解为已验证该显卡的 See-through 推理兼容性。
+上游给出的 1280 分辨率 bf16 显存参考为 12–16 GB，group offload 约 10 GB。量化与 block swap 是上游独立脚本，当前适配器接的是标准 pipeline；尚未包装这两条模式。2026-11-01 本机已安装隔离的 Python 3.12.9、AMD 官方 PyTorch 2.9.1 / ROCm 7.2.1，RX 9070 XT 的 BF16 运算与依赖检查通过。实际人物生成与质量验收见 [单图拆层记录](image-to-parts.md)。
+
+AMD 首次卷积调优耗时较长时，可在运行命令前设置 `$env:MIOPEN_FIND_MODE='FAST'`。这是 AMD 的算法查找模式，减少首次自动调优开销，可能牺牲部分运行性能；不会更改模型采样步数或图片分辨率。只作用于当前终端及其子进程，不修改系统环境或驱动。参见 [AMD MIOpen 查找模式](https://rocm.docs.amd.com/projects/MIOpen/en/docs-7.2.1/how-to/find-and-immediate.html) 与 [Windows 安装说明](https://rocm.docs.amd.com/projects/radeon-ryzen/en/latest/docs/install/installrad/windows/install-pytorch.html)。
 
 ## 模块与集成
 

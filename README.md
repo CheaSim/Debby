@@ -14,11 +14,12 @@ Debby 是一位可爱、活泼的金融小助手：**陪你看懂行情，也陪
 
 ## 已实现
 
-- [鲸鱼娘与 StandRig](docs/standrig-whale-girl.md)：蓝白长裙鲸鱼娘以原生旋转关节和网格蒙皮跟随鼠标，头颈、头发、尾巴与呼吸分别驱动；工坊可显示骨架。八张立绘随对话、Agent 和指数心情切换，支持导入 StandRig `.srig`。独立口型与眼睑尚未绘制。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
+- [鲸鱼娘](docs/image-to-parts.md)：工坊内置角色使用真正拆分和补绘的 PSD，虹膜、眼白、睫毛、眉毛、嘴、前后发、衣服、手臂与尾巴分别驱动，支持跟随鼠标、眨眼和语音口型。[旧 StandRig 骨架包](docs/standrig-whale-girl.md) 保留兼容。美术为 CC BY-NC-SA 4.0，完整署名见角色目录。
 - [目光与自动动作](docs/avatar-motion.md)：桌面范围鼠标跟随、穿透模式、待机/说话姿态和控制优先级；可注入指针源，后台测试隐藏且静音。
 - [对话表情与舞蹈表演](docs/avatar-performance.md)：九种语义表情、同一回复内变脸、按实际语音分句同步；聊天时继续跳舞，舞台风格与 JSON 表情时间轴可扩展，MCP 发台词时一并控制表情
 - [Debby Expression v1](docs/expression-protocol.md)：AI 在回答中输出 `[[emotion:shy|0.7]]` 即可变脸，内置对话与外部 Agent / MCP 都支持跨块流式标记，正文和朗读不会显示标记
 - [2.5D 角色工坊](docs/layered-avatar-integration.md)：本机 PSD 自动绑定、上半身/全身预览、真实语音口型、眨眼/头发物理、行情情绪与 Agent 表情控制；See-through 单图分层提供独立 GPU 转换入口，与原有 VRM / 舞蹈模式共存
+- [单图语义拆层](docs/image-to-parts.md)：本机 GPU / 显式 Gradio 作者接口、部件单独检查、左右眼与手臂兼容、取消和来源记录；模型权重独立于桌宠安装包
 - [发现金融日常与陪伴](docs/companion-experiences.md)：盘前清单、收盘手记、金融/情绪对话草稿、22 张大阿卡纳塔罗、今日签、一分钟放松、动作小剧场与舞蹈入口；本地小仪式无需模型 Key
 - 12 个可点选动作，配合聆听/回复/说话姿态与空闲小动作；内置 pi 与外部 MCP 均可调用，纯数据内容注册器方便增加新入口
 

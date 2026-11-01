@@ -10,11 +10,12 @@ Debby 在桌面窗口外也会继续看向鼠标，移出角色后不再回正�
 | --- | --- | --- | --- |
 | VRM / Zome | 原生 LookAt、眼球与头骨 | 骨骼待机、说话手势、倾听与工作姿态 | 具体表情取决于模型通道 |
 | 分层 PSD / 普通 StandRig | 已绑定的头部和眼部参数 | 已绑定部件形变、真实音频口型 | 效果取决于图层及绑定 |
-| 内置鲸鱼娘 | StandRig 旋转层级和 ArtMesh 蒙皮，眼部区域独立关节 | 头颈转动、躯干呼吸、头发和尾巴弹性跟随、待机/说话姿态 | 2D 立绘网格，无独立眼睑、虹膜和嘴部贴图；闭眼立绘保持闭眼 |
+| 内置鲸鱼娘 PSD | 真实独立虹膜、眼白裁剪、脸部与头发形变 | 独立眨眼/口型、眉眼与闭口表情、发丝物理、手臂与呼吸 | 2.5D 插画形变，VRMA 舞蹈仍切换 3D |
+| 旧鲸鱼娘 StandRig 包 | 旋转层级和 ArtMesh 蒙皮，眼部区域独立关节 | 头颈、躯干、头发与尾巴弹性跟随、待机/说话姿态 | 旧包没有独立五官贴图；闭眼立绘保持闭眼 |
 
-角色工坊提供「试试说话动作」和骨架包的「显示骨架」，可先预览再应用。系统开启“减少动态效果”后，鲸鱼娘停止骨架运动，保留当前表情。原封未改的两版旧内置包会在恢复时使用新骨架包；通过 SHA-256 精确识别，用户改过的文件与自导入文件不会替换，原存储也不会被自动覆盖。
+角色工坊提供分层 PSD 的「试试口型」「查看拆分图层」，以及旧骨架包的「试试说话动作」「显示骨架」。系统开启“减少动态效果”后停止待机、身体和发丝物理，保留表情与实际语音口型。原封未改的三版内置立绘/骨架包会在恢复时加载新 PSD；通过 SHA-256 精确识别，改过的文件不会替换，原存储也不会被自动覆盖。
 
-## 骨架与蒙皮
+## 旧包的骨架与蒙皮
 
 基于 [StandRig 0.2.0 原生运行时](https://github.com/sayaka-aiart/StandRig/tree/d639ea5b123c37c1c3b7981b01b2cf64d3bd9e91)，固定上游源码，无编辑器服务依赖。骨架层级为 body-root → torso → neck → head；头发和每张立绘的眼部关节挂在 head 下，尾巴挂在 body-root 下。共 7 个共享关节及 14 个按表情独立的眼部关节；闭眼差分没有眼部关节。头部最大倾斜 ±4°，颈部 ±1.3°，头发 ±2.4°、尾巴 ±2°，视线只移动局部眼部网格。
 
@@ -38,7 +39,7 @@ avatar.setInput({ gaze: direction, behavior: 'talking', mouth: speechAmplitude }
 // 卸载宿主时：gaze.dispose(); avatar.dispose()
 ```
 
-渲染仍使用统一 `LayeredAvatarDriver.frame`。可选第五个参数 `{ behavior, reducedMotion, showSkeleton }` 允许适配器消费动作语义和调试骨架；旧的四参宿主继续可用。浏览器示例 [mount-layered-avatar.ts](../examples/avatar/mount-layered-avatar.ts) 额外暴露 `setSkeletonPreview(true)`。适配器不访问模型供应商、设备或 Electron。
+渲染仍使用统一 `LayeredAvatarDriver.frame`。可选第五个参数 `{ behavior, reducedMotion, showSkeleton, hiddenLayers }` 允许适配器消费动作语义、骨架与部件预览；旧的四参宿主继续可用。浏览器示例 [mount-layered-avatar.ts](../examples/avatar/mount-layered-avatar.ts) 额外暴露 `setSkeletonPreview(true)`。适配器不访问模型供应商、设备或 Electron。
 
 可选 `metadata.debby.skeleton` version 1 包含 `jointIds`（至多 64 个原生 deformer ID）及 `poseParts`（表情 ID → 蒙皮部件 ID 数组）；导入时验证引用、数量和版本。运动参数与关节的具体绑定保存在标准 `.srig` 内，宿主不需要了解网格拓扑。作者适配器 `integrations/portrait-skeleton.mjs` 是无 IO 的纯函数，可复用或为其他人物编写独立 profile；`npm run avatar:rig` 可重现内置角色与哈希记录。
 

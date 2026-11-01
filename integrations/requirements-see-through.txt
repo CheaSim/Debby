@@ -1,0 +1,21 @@
+# Python 3.12 authoring only. Install the GPU vendor's matching torch/torchvision
+# first; do not install CUDA wheels on an AMD ROCm environment.
+diffusers==0.37.0
+transformers==5.0.0
+accelerate==1.13.0
+huggingface-hub==1.7.2
+tokenizers==0.22.2
+safetensors==0.7.0
+einops==0.8.2
+numpy==2.2.6
+opencv-python-headless==4.13.0.92
+pillow==12.1.1
+psd-tools[composite]==1.14.2
+pycocotools==2.0.11
+scikit-learn==1.7.2
+scikit-image==0.26.0
+matplotlib==3.10.3
+pyyaml==6.0.3
+tqdm==4.67.3
+requests==2.32.5
+click==8.3.1

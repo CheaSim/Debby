@@ -80,7 +80,7 @@ try {
   await sharp({ create: { width: 1290, height: 1800, channels: 4, background: '#f5f1eb' } }).composite(contacts).png().toFile(resolve(evidence, 'attachment-extremes.png'))
   await writeFile(resolve(evidence, 'measurements.json'), JSON.stringify(measurements, null, 2))
   await page.getByTitle('桌宠选项', { exact: true }).click(); await page.getByTitle('角色工坊', { exact: true }).click()
-  await page.getByRole('button', { name: '遇见鲸鱼娘', exact: false }).click()
+  await page.getByLabel('导入角色 PSD', { exact: true }).setInputFiles({ name: 'legacy-whale.srig', mimeType: 'application/json', buffer: Buffer.concat([await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl-rigged.srig')), Buffer.from('\n')]) })
   await page.waitForSelector('.avatar-preview [data-skeleton-joints="21"][data-layered-ready=true]', { timeout: 30000 })
   await page.getByRole('button', { name: '显示骨架', exact: true }).click()
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.setZoomFactor(1.25))

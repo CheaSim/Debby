@@ -6,6 +6,7 @@ import { LayeredPet } from './LayeredPet'
 import { avatarEmotions, emotionLabels, type AvatarEmotion } from '../../../shared/avatar-performance'
 import { isPortraitRig, isStandRig } from '../../../shared/standrig-avatar'
 import { builtinWhalePath } from '../avatar/builtin-avatar'
+import { layeredPartLabel } from '../../../shared/layered-parts'
 
 export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof useLayeredAvatar>; onClose: () => void }): React.JSX.Element {
   const dialog = useRef<HTMLDialogElement>(null), controller = useRef<AbortController | undefined>(undefined), alive = useRef(true)
@@ -15,10 +16,12 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
   const [mouth, setMouth] = useState(0)
   const [previewEmotion, setPreviewEmotion] = useState<AvatarEmotion>('neutral')
   const [showSkeleton, setShowSkeleton] = useState(false)
+  const [hiddenLayers, setHiddenLayers] = useState<number[]>([])
   const poseOnly = Boolean(draft && isPortraitRig(draft.rig))
   const skeleton = draft && isStandRig(draft.rig) ? draft.rig.document.metadata?.debby?.skeleton : undefined
   useEffect(() => { alive.current = true; dialog.current?.showModal(); return () => { alive.current = false; controller.current?.abort() } }, [])
   useEffect(() => { if (!draft && avatar.asset) setDraft(avatar.asset) }, [avatar.asset])
+  useEffect(() => setHiddenLayers([]), [draft])
   useEffect(() => {
     if (!talking) { setMouth(0); return }
     const timer = setInterval(() => setMouth(.15 + .7 * Math.abs(Math.sin(performance.now() / 170))), 50)
@@ -58,11 +61,11 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
     <p className="avatar-studio-intro">一张喜欢的立绘，也可以拥有呼吸、目光和表情。</p>
     <div className="avatar-studio-layout">
       <div className="avatar-preview">
-        {draft ? <LayeredPet showSkeleton={showSkeleton} performance={{ id: 'studio-preview', emotion: previewEmotion, intensity: .8, source: 'preview', expiresAt: Number.MAX_SAFE_INTEGER }} asset={draft} portrait={portrait} mouthLevel={mouth} activity={talking ? 'talking' : undefined} cue={cue} onReady={() => setReady(true)} onError={message => { setReady(false); setError(message) }} /> : <div className="avatar-empty"><Sparkles size={34} /><strong>在这里，遇见新的 Debby</strong><span>导入 PSD 或 StandRig 角色，即可预览</span></div>}
+        {draft ? <LayeredPet hiddenLayers={hiddenLayers} showSkeleton={showSkeleton} performance={{ id: 'studio-preview', emotion: previewEmotion, intensity: .8, source: 'preview', expiresAt: Number.MAX_SAFE_INTEGER }} asset={draft} portrait={portrait} mouthLevel={mouth} activity={talking ? 'talking' : undefined} cue={cue} onReady={() => setReady(true)} onError={message => { setReady(false); setError(message) }} /> : <div className="avatar-empty"><Sparkles size={34} /><strong>在这里，遇见新的 Debby</strong><span>导入 PSD 或 StandRig 角色，即可预览</span></div>}
         <span className="avatar-preview-badge">{draft ? skeleton ? '骨架立绘 · 本地预览' : poseOnly ? '表情立绘 · 本地预览' : '2.5D · 本地预览' : '你的专属角色'}</span>
       </div>
       <div className="avatar-studio-controls">
-        <button className="whale-character-card" disabled={busy || avatar.loading} onClick={() => void whale()}><img alt="蓝白长裙鲸鱼娘" src={new URL('models/whale-girl/cover.webp', document.baseURI).href} /><span><strong>遇见鲸鱼娘</strong><small>蓝白长裙 · 随对话变换表情</small></span><Sparkles size={17} /></button>
+        <button className="whale-character-card" disabled={busy || avatar.loading} onClick={() => void whale()}><img alt="蓝白长裙鲸鱼娘" src={new URL('models/whale-girl/cover.webp', document.baseURI).href} /><span><strong>遇见鲸鱼娘</strong><small>会眨眼，也会开口说话</small></span><Sparkles size={17} /></button>
         <details className="avatar-authoring"><summary>导入自己的角色 · PSD / StandRig</summary><label className="avatar-import"><ImagePlus size={20} /><strong>导入角色</strong><span>PSD / StandRig .srig · 最大 64 MB</span><input type="file" accept=".psd,.srig" aria-label="导入角色 PSD" disabled={busy || avatar.loading} onChange={e => { void choose(e.target.files?.[0]); e.target.value = '' }} /></label></details>
         {draft && <><div className="avatar-model-info"><Layers3 size={15} /><strong>{draft.name}</strong><span>{skeleton ? `${skeleton.jointIds.length} 个关节` : poseOnly && isStandRig(draft.rig) ? `${draft.rig.document.assets.length} 张立绘` : `${draft.rig.layers.length} 个部件`}</span></div>
           <div className="avatar-preview-controls" role="group" aria-label="预览角色效果">
@@ -73,10 +76,11 @@ export function AvatarStudio({ avatar, onClose }: { avatar: ReturnType<typeof us
             {!poseOnly && <button disabled={!ready || busy} onClick={() => setCue({ id: Date.now(), name: 'heart' })}><Heart size={13} />小心意</button>}
           </div>
           <label className="avatar-expression-select">试试表情<select aria-label="预览表情" value={previewEmotion} disabled={!ready || busy} onChange={e => setPreviewEmotion(e.target.value as AvatarEmotion)}>{avatarEmotions.map(emotion => <option key={emotion} value={emotion}>{emotionLabels[emotion]}</option>)}</select></label>
+          {!isStandRig(draft.rig) && <details className="avatar-authoring avatar-parts"><summary>查看拆分图层</summary><p>勾选部件查看遮挡关系，只影响这里的预览。</p><div className="avatar-part-list">{draft.rig.layers.map(layer => <label key={layer.z}><input type="checkbox" checked={!hiddenLayers.includes(layer.z)} onChange={e => setHiddenLayers(hidden => e.target.checked ? hidden.filter(z => z !== layer.z) : [...hidden, layer.z])} />{layeredPartLabel(layer.name)}</label>)}</div><button onClick={() => setHiddenLayers([])}>显示全部部件</button></details>}
           <button className="primary-button avatar-apply" disabled={!ready || busy || avatar.loading} onClick={() => void change(draft)}><Check size={15} />用这个角色陪我</button>
           {(draft.rig.synth.eye || draft.rig.synth.mouth) && <p className="avatar-small-note">已补上通用闭眼或闭口差分，可在 PSD 中绘制专属差分以提升效果。</p>}
           <p className="avatar-small-note">{skeleton ? '头颈随鼠标轻转，头发和尾巴轻摆；待机时自然呼吸。立绘暂不支持独立口型。' : poseOnly ? isStandRig(draft.rig) && draft.rig.document.metadata?.debby?.motion ? '目光随鼠标轻轻转动，也会呼吸和点头；立绘暂不支持独立口型。' : '此角色以立绘切换表情，暂不支持独立口型与目光。' : '2.5D 支持目光、表情与口型。'}播放骨骼舞蹈时会暂时使用 3D 角色。</p>
-          {poseOnly && <details className="avatar-authoring"><summary>角色作者与许可</summary><p>上善 → ZipZipPipe → Small-tailqwq → JAdpp。Debby 清理边缘、适配表情并绑定骨架网格。</p><p>美术按 CC BY-NC-SA 4.0 提供：署名、非商用、相同方式共享。</p></details>}
+          {(poseOnly || draft.name === 'Debby · 鲸鱼娘') && <details className="avatar-authoring"><summary>角色作者与许可</summary><p>上善 → ZipZipPipe → Small-tailqwq → JAdpp。{poseOnly ? 'Debby 清理边缘、适配表情并绑定骨架网格。' : 'Debby 使用 See-through 拆层补绘，并修整独立五官差分。'}</p><p>美术按 CC BY-NC-SA 4.0 提供：署名、非商用、相同方式共享。</p></details>}
         </>}
         <details className="avatar-authoring"><summary>准备自己的角色</summary><p>已有分层 PSD 可以直接导入。精细绑定可用 StandRig 制作，再导出含贴图的 .srig。</p><p>只有单张插画时，可用 See-through 拆分图层；该流程需要单独准备 GPU 推理环境。</p></details>
         <div className="avatar-library-actions"><button disabled={busy || avatar.loading} onClick={() => void run(avatar.use3d, '已切回 3D，保存的立绘仍然保留。')}>使用原来的 3D</button>{avatar.asset && <button title="移除保存的立绘" disabled={busy} onClick={() => void run(async () => { await avatar.remove(); setDraft(undefined); setReady(false) }, '已移除本机保存的立绘。')}><Trash2 size={14} /></button>}</div>

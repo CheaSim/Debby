@@ -23,7 +23,9 @@ try {
   await file.setInputFiles({ name: 'broken.srig', mimeType: 'application/json', buffer: Buffer.from('{"schemaVersion":"future"}') })
   await page.getByRole('alert').filter({ hasText: '模型版本' }).waitFor()
   assert.equal(await page.locator('.pet-wrap [data-3d-ready=true]').count(), 1)
-  await page.getByRole('button', { name: '遇见鲸鱼娘', exact: false }).click()
+  // A harmless trailing newline makes this an explicit custom legacy pack;
+  // exact shipped bytes now migrate to the new layered PSD on restore.
+  await file.setInputFiles({ name: 'legacy-whale.srig', mimeType: 'application/json', buffer: Buffer.concat([await readFile(resolve(root, 'src/renderer/public/models/whale-girl/debby-whale-girl-rigged.srig')), Buffer.from('\n')]) })
   await page.waitForSelector(ready, { timeout: 30000 })
   assert.equal(await page.getByRole('button', { name: '试试口型', exact: true }).count(), 0)
   await page.getByRole('button', { name: '查看全身', exact: true }).click()

@@ -1,5 +1,7 @@
 # 鲸鱼娘角色与 StandRig 接入
 
+2026-11-01：角色工坊「遇见鲸鱼娘」现在加载 [独立五官的分层 PSD](image-to-parts.md)。本页保留旧 `.srig` 表情立绘与骨架的结构和兼容接入说明；可手动导入 `public/models/whale-girl/debby-whale-girl-rigged.srig` 继续使用它。下面的无独立口型等限制仅属于旧包。
+
 来源核查：2026-11-01。角色外观仍由 Debby 的金融陪伴人格驱动，外观不绑定底层 LLM。
 
 ## 现在可以用的内容

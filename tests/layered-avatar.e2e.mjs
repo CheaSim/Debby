@@ -41,6 +41,20 @@ try {
   assert.equal(await page.locator('.pet-wrap [data-3d-ready=true]').count(), 1, 'Bad import keeps the active 3D avatar')
   await input.setInputFiles({ name: 'Debby-original-test.psd', mimeType: 'application/octet-stream', buffer: Buffer.from(bytes) })
   await page.waitForSelector('.avatar-preview [data-layered-ready=true]', { timeout: 30000 })
+  await page.getByText('查看拆分图层', { exact: true }).click()
+  const partToggles = page.locator('.avatar-part-list input')
+  assert.ok(await partToggles.count() > 9, 'Real parser exposes separate facial and body parts')
+  for (const toggle of await partToggles.all()) await toggle.uncheck()
+  await page.waitForFunction(() => {
+    const c = document.querySelector('.avatar-preview canvas'), p = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+    return !p.some((value, i) => i % 4 === 3 && value > 10)
+  })
+  await page.getByRole('button', { name: '显示全部部件', exact: true }).click()
+  await page.waitForFunction(() => {
+    const c = document.querySelector('.avatar-preview canvas'), p = c.getContext('2d').getImageData(0, 0, c.width, c.height).data
+    return p.some((value, i) => i % 4 === 3 && value > 10)
+  })
+  await page.getByText('查看拆分图层', { exact: true }).click()
   await page.getByRole('button', { name: '试试口型', exact: true }).click()
   await page.waitForFunction(() => Number(document.querySelector('.avatar-preview .layered-pet-host').dataset.mouth) > .3)
   await page.getByRole('button', { name: '小心意', exact: true }).click()

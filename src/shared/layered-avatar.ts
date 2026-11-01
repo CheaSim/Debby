@@ -29,7 +29,7 @@ export function applyLayeredPerformance(params: Record<string, number>, expressi
 export interface LayeredAvatarAsset { name: string; file: Blob; rig: LayeredRig }
 export interface LayeredFrameInput { time: number; mood: PetMood; behavior: PetBehavior; mouth: number; gaze: { x: number; y: number }; reducedMotion?: boolean }
 export interface LayeredAvatarDriver {
-  frame(params: Record<string, number>, dt: number, time: number, expression?: ExpressionDirective, context?: { behavior: PetBehavior; reducedMotion: boolean; showSkeleton?: boolean }): void
+  frame(params: Record<string, number>, dt: number, time: number, expression?: ExpressionDirective, context?: { behavior: PetBehavior; reducedMotion: boolean; showSkeleton?: boolean; hiddenLayers?: readonly number[] }): void
   dispose(): void
 }
 export interface LayeredAvatarSurface extends LayeredAvatarDriver { canvas: HTMLCanvasElement; visible(): boolean }

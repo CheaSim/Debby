@@ -13,6 +13,7 @@ import { createAvatarGaze } from '../../../shared/avatar-gaze'
 interface Props {
   performance?: AvatarPerformance
   showSkeleton?: boolean
+  hiddenLayers?: readonly number[]
   asset: LayeredAvatarAsset; portrait?: boolean; mouthLevel?: number; mood?: PetMood; cue?: AvatarCue
   activity?: 'listening' | 'talking' | 'working'; agentShell?: AgentShellState; draggable?: boolean
   onBehavior?: (behavior: PetBehavior) => void; onReady?: () => void; onError: (message: string) => void
@@ -89,7 +90,7 @@ export function LayeredPet(props: Props): React.JSX.Element {
       for (const key of Object.keys(target)) filtered[key] += (target[key] - filtered[key]) * (1 - Math.exp(-dt * (key.startsWith('eyeOpen') ? 55 : 18)))
       const params = filtered
       try {
-        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton })
+        driver!.frame(params, dt, elapsed, performance, { behavior: active, reducedMotion: reduced.matches, showSkeleton: p.showSkeleton, hiddenLayers: p.hiddenLayers })
         host.dataset.renderedExpression = source.dataset.standrigExpression ?? ''
         host.dataset.portraitMotion = source.dataset.portraitMotion ?? ''
         host.dataset.skeletonJoints = source.dataset.skeletonJoints ?? ''
