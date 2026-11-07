@@ -10,6 +10,8 @@ src/renderer/public/mocap/pose.worker.js
 agent-bridge.json
 src/renderer/public/models/mate-engine/*.vrm
 src/renderer/public/models/mate-engine/*.download
+src/renderer/public/models/vrm-sample/*.vrm
+src/renderer/public/models/vrm-sample/*.download
 *.log
 .env
 .env.*

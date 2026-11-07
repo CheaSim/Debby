@@ -546,6 +546,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .agent-speech p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .agent-open { position: absolute; inset: 0; border: 0; background: transparent; border-radius: inherit; cursor: pointer; }
 .agent-open:focus-visible { outline: 2px solid #ce8fa6; outline-offset: 3px; }
+.preview-actions { position: relative; z-index: 1; display: flex; gap: 8px; margin-top: 10px; }
+.preview-actions button { border: 0; border-radius: 6px; background: #f4eef5; color: #82678e; padding: 5px 9px; font: inherit; font-size: 10px; cursor: pointer; }
+.preview-actions button:first-child:not(:last-child) { background: #8371a2; color: white; }
+.preview-error { position: absolute; bottom: 110px; z-index: 10; background: white; color: #a54b5c; padding: 10px; border-radius: 8px; }
+.avatar-loading { position: absolute; inset: 0; display: grid; place-items: center; }
+.avatar-loading img { width: 100%; height: 100%; object-fit: contain; opacity: .55; }
+.avatar-loading span { position: absolute; bottom: 10px; font-size: 11px; color: #82678e; background: #fffe; border-radius: 12px; padding: 6px 12px; }
 .app-dialogue .speech.agent-speech { display: block; top: 16px; left: 24px; width: 200px; z-index: 8; pointer-events: auto; }
 .app-expanded .agent-speech p { -webkit-line-clamp: 1; }
 .app-expanded .agent-speech progress { margin-top: 6px; }

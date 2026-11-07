@@ -27,7 +27,7 @@
 | [video2bvh](https://github.com/KevinLTT/video2bvh) | MIT；旧式 2D → VideoPose3D → BVH/Blender 工具链 | 不额外引入旧 Python 环境；外部制作完成的动作走标准格式 |
 | [vrm-motion-capture](https://github.com/camenduru/vrm-motion-capture) | Python RTMPose/ONNX、WebSocket 与浏览器 VRM 组合 | 参考分层，未复制其代码；调研时未找到明确仓库许可 |
 
-这轮没有安装庞大的 Unity/Python 动捕环境，也未打包第三方舞蹈素材。MediaPipe 模型卡与完整上游许可证见 [资源来源](../src/renderer/public/mocap/SOURCE.md)。默认 Zome 模型原有分发约束仍适用。
+不依赖 Unity/Python 动捕环境，未打包第三方舞蹈素材。MediaPipe 模型卡与完整上游许可证见 [资源来源](../src/renderer/public/mocap/SOURCE.md)。发行版骨骼舞蹈使用 [pixiv 官方 VRM 示例身体](../src/renderer/public/models/vrm-sample/NOTICE.md)，停止后恢复用户选择的鲸鱼娘；鲸鱼娘本身仍为 2.5D。
 
 ## 数据流与替换位置
 

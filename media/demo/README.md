@@ -1,5 +1,11 @@
 # Debby 竖屏演示
 
+## 当前主推：鲸鱼娘 × Agent
+
+`debby-agent-15s.mp4` 为 15 秒、1080×1920、30 fps 的真实打包版录制，配温柔版阿里云 TTS 旁白；封面为 `debby-agent-cover.png`。本地 Demo Harness 通过安装包自带 MCP 程序发送工作 / 等待 / 完成及表情事件；任务与行情均为演示。媒体信息、实际事件和来源说明见 `agent-validation.json`。该片人物美术为 CC BY-NC-SA 4.0，署名链与完整许可见 [角色 NOTICE](../../src/renderer/public/models/whale-girl/NOTICE.md)，不适用根目录 MIT 代码许可。
+
+下文是旧版 3D 主片的单独说明。
+
 主片、封面、字幕和发布文案放在此目录。参数见 `validation.json`，复现方式见 [演示说明](../../docs/community-demo.md)。
 
 原有主片、封面与 GIF 含第三方角色，不能将根目录的 MIT 代码许可证理解为第三方美术素材的再授权。角色 Zome：Yorshka；素材来源 Shiny / Mate-Engine。演示为个人非商用预览，角色使用遵循 [上游固定版本许可](https://github.com/shinyflvre/Mate-Engine/blob/2c5ea6b8f4cf5e1773a0816b46d9267cda5174d4/LICENSE.md)。VRM、贴图和独立角色素材不在此目录分发。

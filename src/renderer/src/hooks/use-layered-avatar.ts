@@ -15,14 +15,19 @@ export function useLayeredAvatar(store: LayeredAvatarStore = defaultStore, backe
     const controller = new AbortController()
     void (async () => {
       const saved = await store.load()
-      if (!saved || controller.signal.aborted) return
-      const file = await refreshBuiltinAvatar(saved.file, async () => {
+      if (controller.signal.aborted || (!saved && import.meta.env.MODE !== 'release')) return
+      const loadBuiltin = async () => {
         const response = await fetch(new URL(builtinWhalePath, document.baseURI), { signal: controller.signal })
         if (!response.ok) throw Error('内置角色包不可用')
         return response.blob()
-      }, controller.signal)
+      }
+      const file = saved ? await refreshBuiltinAvatar(saved.file, loadBuiltin, controller.signal) : await loadBuiltin()
       const rig = await backend.parse(file, { signal: controller.signal })
-      if (!controller.signal.aborted) { setAsset({ name: saved.name, file, rig, motionScale: layeredMotionScale(saved.motionScale) }); setSelected(saved.selected) }
+      if (!controller.signal.aborted) {
+        const initial = { name: saved?.name ?? 'Debby · 鲸鱼娘', file, motionScale: layeredMotionScale(saved?.motionScale), selected: saved?.selected ?? true }
+        if (!saved) await store.save(initial)
+        if (!controller.signal.aborted) { setAsset({ ...initial, rig }); setSelected(initial.selected) }
+      }
     })().catch(e => { if (!controller.signal.aborted) setError(`角色恢复失败，已使用 3D：${e.message}`) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => { active.current = false; controller.abort() }

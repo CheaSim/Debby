@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A local-first financial desktop companion",
   "main": "out/main/index.js",
-  "author": "FinPet contributors",
+  "author": "Debby contributors",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "postinstall": "npm run assets",
     "prebuild": "node scripts/setup-avatar.mjs && node scripts/setup-dance.mjs",
     "build": "electron-vite build",
+    "build:release": "node scripts/setup-avatar.mjs && node scripts/setup-dance.mjs && electron-vite build --mode release && node scripts/build-mcp.mjs",
     "preview": "electron-vite preview",
     "relay:demo": "node server/demo-relay.mjs",
     "mate-engine:setup": "node scripts/setup-mate-engine.mjs",
@@ -46,7 +47,7 @@
     "test:live": "npm run build && node scripts/verify-live.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "package:win": "npm run assets && npm run build && node scripts/check-release-assets.mjs && electron-builder --win nsis"
+    "package:win": "npm run assets && npm run build:release && node scripts/check-release-assets.mjs && electron-builder --win nsis zip"
   },
   "dependencies": {
     "@earendil-works/pi-agent-core": "1.0.4",
@@ -71,6 +72,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "@modelcontextprotocol/client": "2.3.1",
     "@types/node": "latest",
     "@types/react": "latest",
@@ -93,22 +95,44 @@
     "productName": "Debby",
     "asar": true,
     "files": [
-      "out/**/*"
+      "out/**/*",
+      "!out/mcp/**/*",
+      "!out/renderer/models/mate-engine/**/*",
+      "!out/renderer/live2d/**/*",
+      "!out/renderer/vendor/live2dcubismcore.min.js"
     ],
     "extraResources": [
       {
         "from": "build/tray.png",
         "to": "tray.png"
+      },
+      {
+        "from": "out/mcp",
+        "to": "mcp"
+      },
+      {
+        "from": "RELEASE-NOTICES.md",
+        "to": "RELEASE-NOTICES.md"
+      },
+      {
+        "from": "LICENSE",
+        "to": "LICENSE"
       }
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "signExecutable": false
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
-    }
+      "createDesktopShortcut": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "runAfterFinish": false
+    },
+    "afterPack": "./scripts/verify-release.mjs",
+    "artifactName": "Debby-${version}-${arch}.${ext}"
   }
 }

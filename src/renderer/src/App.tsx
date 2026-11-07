@@ -168,7 +168,7 @@ export function App(): React.JSX.Element {
         performance={performance} cue={avatarCue} activity={companion.recording !== 'off' ? 'listening' : companion.speaking || reader.speaking ? 'talking' : chat.state.busy || companion.busy ? 'working' : undefined} onDiscover={() => void openDiscovery().catch(() => {})}
         onTogglePanel={() => void state.togglePanel()} onQuickChat={() => void openQuickChat()} onClickThrough={() => void state.setClickThrough(!state.settings?.clickThrough)} agentShell={agentShell} onAgentConnect={() => setAgentDialog(true)}
         layeredAsset={layeredAvatar.selected ? layeredAvatar.asset : undefined} onLayeredError={layeredAvatar.failed} onAvatarStudio={() => { exitShowcase(); setDanceStudio(false); setAvatarStudio(true); void platformApi.stopVoice(); void platformApi.cancelReadAloud(); if (!state.settings?.panelOpen) void state.togglePanel() }}
-        dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={openDanceStudio} />
+        avatarLoading={layeredAvatar.loading} dances={dancer.state} danceAsset={dancer.asset} onDanceControl={dancer.control} onDanceStudio={openDanceStudio} />
       {avatarStudio && <AvatarStudio avatar={layeredAvatar} onClose={() => setAvatarStudio(false)} />}
       {layeredAvatar.error && !avatarStudio && <div className="dance-error-toast no-drag" role="alert">{layeredAvatar.error}</div>}
       {danceStudio && <DanceStudio state={dancer.state} onClose={() => setDanceStudio(false)} onPlay={async (id, speed, loop, expressionStyle) => {

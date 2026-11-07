@@ -8,9 +8,17 @@ Debby 是一位可爱、活泼的金融小助手：**陪你看懂行情，也陪
 
 > 默认本机获取腾讯公开 A 股行情，新浪自动备用。公开接口可能延迟、变更或限流，不构成投资建议，也不代表获得行情再分发授权。
 
-🎬 [40 秒竖屏 Demo](media/demo/debby-companion-vertical.mp4) · [封面](media/demo/debby-cover-3x4.png) · [发布素材与新用户动线](docs/community-demo.md)
+🎬 [15 秒鲸鱼娘 × MCP 演示](media/demo/debby-agent-15s.mp4) · [七张表情预览](media/demo/debby-whale-expressions.mp4) · [发布素材与新用户动线](docs/community-demo.md)
 
-<a href="media/demo/debby-companion-vertical.mp4"><img src="media/demo/debby-preview.gif" width="280" alt="Debby 真实桌面录制：摸头与回应，点击查看完整演示" /></a>
+<a href="media/demo/debby-agent-15s.mp4"><img src="media/demo/debby-agent-preview.gif" width="280" alt="全身鲸鱼娘通过真实 MCP 展示等待与完成庆祝，点击查看 15 秒演示" /></a>
+
+## 先用起来
+
+从 [GitHub Releases](https://github.com/CheaSim/Debby/releases) 下载 Windows x64 的 `.exe` 安装包，或解压 `.zip` 后运行 `Debby.exe`。安装版不需要 Node.js、Unity 或 GPU 模型转换环境，首次直接显示全身鲸鱼娘。
+
+点击「更多 → 体验 Debby · 不用 Key」即可体验任务进行、等待和完成庆祝；不联网、不需要模型账户。点击「对话」直接输入，首次再配置自己的模型 Key。想让自己的 Agent 驱动她，在「更多 → Agent 接入」开启本机接入并复制 MCP 配置；安装包自带连接程序。详见 [MCP 接入](docs/mcp-integration.md)。
+
+此版本为个人非商用预览，美术 CC BY-NC-SA 4.0；程序代码 MIT。预览安装包未进行代码签名。[发行素材与许可说明](RELEASE-NOTICES.md)。
 
 ## 已实现
 
@@ -25,7 +33,7 @@ Debby 是一位可爱、活泼的金融小助手：**陪你看懂行情，也陪
 
 - 透明无边框桌宠窗口、置顶、拖动、托盘、鼠标穿透和位置记忆
 - 保留 Live2D Cubism 4 渲染组件，默认使用以下 3D 桌宠
-- 默认加载 Mate-Engine 的 Zome VRM 3D 角色，保留完整服装、贴图、Toon 材质与头发物理
+- 安装版默认全身鲸鱼娘，另带允许再分发的 pixiv VRM 示例身体用于 3D 骨骼舞蹈；支持 Toon 材质与 VRM 物理
 - 眨眼、视线跟随、待机呼吸、摸头爱心眼、招呼 Wink、开心星星眼、偶尔歪头微笑；提起/落地、安慰与提醒动作通过 Three.js 动画混合器过渡
 - 默认全身视图，对话舞台保持当前视图，支持拖动移动窗口、独立旋转模式、滚轮缩放和视角复位
 - [视频学舞蹈](docs/dance-integration.md)：本机 MediaPipe 识别、动作平滑与持久动作库、VRMA 导入、全身播放/暂停/进度/变速/循环，内置 pi 和外部 MCP 都能调用已保存的舞蹈
@@ -87,11 +95,11 @@ Token Plan 官方对自动化脚本、应用后端和共享 Key 用途有限制�
 
 模块划分、可替换语音提供商与媒体接口见 [陪伴扩展接入](docs/companion-integration.md)。
 
-### 默认 3D 角色
+### 默认鲸鱼娘与 3D 舞蹈角色
 
-`npm.cmd run dev` 首次启动会下载约 26 MB 的 Zome 模型，之后使用经过校验的本地缓存。主窗口直接用 Three.js + `@pixiv/three-vrm` 显示角色，无需安装 Unity 或下载完整的 Mate-Engine 运行包。构建前也会自动检查模型。
+安装版首次使用内置的鲸鱼娘多表情分层包；后续保留用户保存的角色选择。它是可变脸、有部件动作的 2.5D 插画。3D 骨骼舞蹈使用另一具 pixiv 官方 VRM 示例身体，不会把平面鲸鱼娘称为完整 3D 模型。
 
-模型来源、固定版本、内容校验值和作者署名见 [模型来源](src/renderer/public/models/mate-engine/SOURCE.md)。模型仅用于本机非商用预览，被 Git 忽略；含该模型的本地构建也不要单独再分发。
+源码开发默认进入 3D；「角色工坊 → 遇见鲸鱼娘」可选用内置角色。首次开发会下载约 10.8 MB、经过固定哈希校验的 `VRM1_Constraint_Twist_Sample`。该模型的 VRM Public License 和内嵌设置允许再分发，来源与完整条件见 [3D 素材说明](src/renderer/public/models/vrm-sample/NOTICE.md)。角色具体表情取决于模型具备的形态键。
 
 默认拖动角色会移动桌宠并保存位置；气泡和工具栏移动图标也可拖动窗口。
 每次启动默认全身，打开对话不会自动切成半身；分层立绘取景保留完整高度，只收拢空白侧边并给动作留出余量。工具栏“更多”或右键桌宠打开角色菜单，仍可手动选择近景。摸头时会歪头露出爱心眼，打招呼会 Wink，庆祝时会出现星星眼；空闲时偶尔歪头、眨眼或微笑。工作、等待和行情担忧各有表情，离线或担忧时不会随机切到开心的待机表情。语音嘴型保留实际播放音量控制，支持系统减少动态效果偏好。开启旋转模式后，拖动只旋转角色，不移动窗口；菜单中的复位按钮还原视角。
@@ -109,7 +117,7 @@ npm.cmd run mate-engine:setup
 npm.cmd run dev
 ```
 
-安装包约 831 MB，首次下载需要一些时间。Mate-Engine 的源代码、许可证和默认资产仍受上游条款约束；请只在非商用环境使用，并保留上游许可证与署名。这个独立窗口是可选功能，不影响主窗口直接显示 Zome 角色。
+独立运行时约 831 MB，首次下载需要一些时间。Mate-Engine 的源代码、许可证和默认资产仍受上游条款约束；请只在非商用环境使用，并保留上游许可证与署名。这个独立窗口是可选功能，不进入 Debby 安装包。
 
 验证：
 
@@ -131,13 +139,13 @@ npm.cmd run build
 
 `npm.cmd run test:tts-stream-live` 验证真实阿里云 SSE → 桌面播放 → 嘴型的完整语音路径，文字输入使用确定性测试台词，不调用 LLM 或采集设备。2026-10-18 本机样本从提交首句起约 0.60 秒收到音频、0.79 秒开始播放，当时后续文字仍在生成；这是单次 TTS 样本，不是完整对话延迟保证。输出首块、首播、完成耗时与音频长度，截图写入被忽略的 `work/debby-streaming-live.png`。
 
-Windows 安装包命令（当前模型许可未解决，检查会阻止打包）：
+Windows 安装包命令（NSIS + 解压即用 ZIP）：
 
 ```powershell
 npm.cmd run package:win
 ```
 
-本地开发与 `build` 不受影响。发布前必须替换默认模型、下载脚本与构建资源为明确允许再分发的资产；不要绕过检查发布含 Zome 的安装包。现有 Haru/Cubism 资产也需要独立审查。
+输出位于 `dist/`。打包前核对批准的模型哈希与许可，打包后直接检查实际 `app.asar`：Zome、Haru、Cubism Core、本地 `.env` 和 Agent 连接令牌均不得进入发行包。可选旧素材仍可留在开发机，不能随安装包分发。`node tests/release.e2e.mjs` 在隔离、隐藏、静音的配置中验证真实打包产物，无需云模型账户。
 
 ### 互动、演示与复盘
 

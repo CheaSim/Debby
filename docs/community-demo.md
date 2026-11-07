@@ -1,5 +1,21 @@
 # Debby 社区演示与第一次对话
 
+## 15 秒鲸鱼娘 × Agent 主推版
+
+[新主片](../media/demo/debby-agent-15s.mp4) · [封面](../media/demo/debby-agent-cover.png) · [实际 MCP 事件与媒体核验](../media/demo/agent-validation.json)。1080×1920 / 30 fps / 15 秒，使用真实 Windows 打包版和其自带的 MCP 程序录制，全身鲸鱼娘从好奇分析、等待陪伴过渡到开心庆祝、害羞道别。任务由本地 Demo Harness 经真实 MCP 发出，属于演示任务，不声称 Claude / Codex 实际完成了某个工作。行情标记为演示。
+
+温柔版阿里云 TTS 是短片旁白；它不是外部 Agent 自动合成的对话，也不代表 MCP 会擅自调用收费语音。美术按角色目录的 CC BY-NC-SA 4.0 提供并保留完整署名链。
+
+复现：先 `npm.cmd run package:win`，再 `node scripts/create-agent-demo.mjs --voice`。旁白使用本机忽略的 Qwen BYOK，主动调用一次短句 TTS；不调用 LLM、不采集麦克风或摄像头。去掉 `--voice` 可制作完全本地的静音版。录制在隔离、隐藏、静音窗口中进行，原始帧保存在 `work/agent-demo/`。
+
+安装版新用户路径：下载 → 看到鲸鱼娘 → 更多中的免 Key 演示 → 气泡直接继续 / 结束。想接 Agent 再复制 MCP 配置；想聊天直接点击对话，再根据需要设置 BYOK。主页面保持三个按钮，不增加欢迎弹窗。
+
+建议发布文案：
+
+> 我给 Agent 做了个可爱的身体。它忙的时候陪着我，需要我决定时提醒我，任务完成还会开心一下。她叫 Debby，Windows 可直接下载，支持同一套 MCP 接你自己的 Agent。你最想让她学会什么？
+
+## 旧版 40 秒产品演示
+
 这版面向小红书 / 抖音的竖屏观看：先看到角色回应，再理解怎么开口，最后看到 Agent 接入。主片约 40 秒，使用实际 Electron 产品画面、真实阿里云对话和语音。素材与录制脚本一起保留，方便其他开发者换角色、换后端后重新制作。
 
 ## 可交付素材

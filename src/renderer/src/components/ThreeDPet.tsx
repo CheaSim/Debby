@@ -32,7 +32,7 @@ interface ThreeDPetProps {
   onBehavior: (behavior: PetBehavior) => void
 }
 
-const modelUrl = new URL('models/mate-engine/Zome.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
+const modelUrl = new URL('models/vrm-sample/Avatar.vrm', new URL(import.meta.env.BASE_URL, window.location.href)).href
 
 export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBehavior, mouthLevel = 0, agentShell, danceAsset, dancePlayback, cue, activity, performance }: ThreeDPetProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -211,7 +211,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
         loaded.lookAt.target = lookTarget
         loaded.lookAt.autoUpdate = true
       }
-      host.dataset.avatar = 'zome'
+      host.dataset.avatar = 'pixiv-vrm-sample'
       expressionBindings = bindPetExpressions(loaded)
       host.dataset.expressionChannels = [...expressionBindings.keys()].join(',')
       animator = new PetAnimator(loaded)
@@ -224,7 +224,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
       if (!disposed && event.total > 0) setProgress(Math.min(99, Math.round(event.loaded / event.total * 100)))
     }, (error) => {
       if (!disposed) {
-        console.error('Zome avatar failed to load', error)
+        console.error('VRM avatar failed to load', error)
         setState('error')
       }
     })
@@ -429,7 +429,7 @@ export function ThreeDPet({ mood, portrait, viewReset, rotating, draggable, onBe
 
   return (
     <div ref={hostRef} className={'three-pet-host three-pet-' + state} data-3d-ready={state === 'ready'} data-mood={mood} data-view={portrait ? 'portrait' : 'full'} data-interaction={rotating ? 'rotate' : 'move'}>
-      <canvas ref={canvasRef} className="three-pet-canvas" aria-label="Zome 3D 桌宠" />
+      <canvas ref={canvasRef} className="three-pet-canvas" aria-label="3D 桌宠" />
       {state === 'loading' && <div className="three-pet-loading" role="status"><span className="avatar-spinner" /><span>{progress}%</span></div>}
       {state === 'error' && <div className="avatar-error" role="alert"><span>角色加载失败</span><button className="icon-button" title="重新加载角色" onClick={() => setAttempt((value) => value + 1)}><RefreshCw size={16} /></button></div>}
     </div>

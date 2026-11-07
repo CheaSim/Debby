@@ -1,0 +1,88 @@
+{
+  "durationSeconds": 15,
+  "width": 1080,
+  "height": 1920,
+  "fps": "30/1",
+  "capturedFrames": 265,
+  "realMcp": true,
+  "packagedApp": true,
+  "voice": {
+    "provider": "Qwen TTS",
+    "style": "gentle",
+    "role": "narration, not an Agent-generated reply",
+    "text": "给你的 Agent，找个可爱的搭档。忙的时候陪着你，需要你时提醒你。完成啦，一起开心一下。"
+  },
+  "artwork": "CC BY-NC-SA 4.0, see whale-girl/NOTICE.md",
+  "simulatedTaskAndQuotes": true,
+  "pageErrors": [],
+  "events": [
+    {
+      "at": 0,
+      "state": "working",
+      "source": "real MCP set_task + say before recording"
+    },
+    {
+      "at": 4.008,
+      "tool": "set_task",
+      "arguments": {
+        "taskId": "film",
+        "title": "有个决定，想听听你的",
+        "status": "waiting",
+        "progress": 0.65
+      }
+    },
+    {
+      "at": 4.017,
+      "tool": "say",
+      "arguments": {
+        "taskId": "film",
+        "turnId": "wait",
+        "text": "[[emotion:caring|0.8]]需要你啦，我在这里等你。"
+      }
+    },
+    {
+      "at": 4.024,
+      "tool": "animate",
+      "arguments": {
+        "taskId": "film",
+        "name": "notify"
+      }
+    },
+    {
+      "at": 8.025,
+      "tool": "set_task",
+      "arguments": {
+        "taskId": "film",
+        "title": "完成啦！来看看吧",
+        "status": "completed",
+        "progress": 1
+      }
+    },
+    {
+      "at": 8.036,
+      "tool": "say",
+      "arguments": {
+        "taskId": "film",
+        "turnId": "done",
+        "text": "[[emotion:happy|0.9]]今天也一起向前了一小步。"
+      }
+    },
+    {
+      "at": 8.043,
+      "tool": "animate",
+      "arguments": {
+        "taskId": "film",
+        "name": "celebrate"
+      }
+    },
+    {
+      "at": 12.016,
+      "tool": "say",
+      "arguments": {
+        "taskId": "film",
+        "turnId": "bye",
+        "text": "[[emotion:shy|0.75]]我是 Debby，明天也一起加油呀。"
+      }
+    }
+  ]
+}

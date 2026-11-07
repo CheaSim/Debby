@@ -19,6 +19,7 @@ import { debbyMoodLines } from '../../../shared/debby-character'
 import { isPortraitRig } from '../../../shared/standrig-avatar'
 
 interface MascotProps {
+  avatarLoading?: boolean
   performance?: AvatarPerformance
   layeredAsset?: LayeredAvatarAsset
   onAvatarStudio: () => void
@@ -51,7 +52,7 @@ const behaviorText: Partial<Record<PetBehavior, string>> = {
   land: '站稳啦！继续陪你。', greet: '我在呀！看行情，还是聊聊天？'
 }
 
-export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError, performance }: MascotProps): React.JSX.Element {
+export function Mascot({ avatarLoading, indexQuote, providerStatus, alerting, panelOpen, clickThrough, onTogglePanel, onQuickChat, onClickThrough, demo, dialogue, mouthLevel = 0, agentShell, onAgentConnect, dances, danceAsset, onDanceStudio, onDanceControl, cue, activity, onDiscover, layeredAsset, onAvatarStudio, onLayeredError, performance }: MascotProps): React.JSX.Element {
   const [now, setNow] = useState(Date.now)
   const previousMood = useRef<PetMood>('idle')
   const mood = stableIndexMood(indexQuote, previousMood.current, alerting, providerStatus, now)
@@ -62,6 +63,11 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
   const [viewReset, setViewReset] = useState(0)
   const [rotating, setRotating] = useState(false)
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [previewError, setPreviewError] = useState('')
+  const preview = async (advance = false): Promise<void> => {
+    setPreviewError('')
+    try { await platformApi.previewShell(advance) } catch (error) { setPreviewError(error instanceof Error ? error.message : '演示暂时不可用') }
+  }
   const [chatHint, setChatHint] = useState(() => { try { return localStorage.getItem('debby:chat-intro') !== 'seen' } catch { return true } })
   const optionsRef = useRef<HTMLDivElement>(null)
   const [mateEngine, setMateEngine] = useState<{ installed: boolean; running: boolean }>({ installed: false, running: false })
@@ -89,6 +95,10 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
           <p>{agentShell.caption?.text || '随时把进度告诉我吧。'}</p>
           {agentShell.task?.progress !== undefined && <progress aria-label="任务进度" value={agentShell.task.progress} max={1} />}
           <button className="agent-open" aria-label="查看 Agent 任务" title="查看 Agent 任务" onClick={onAgentConnect} />
+          {agentShell.controller.preview && <div className="preview-actions">
+            {agentShell.task?.status === 'waiting' && <button onClick={() => void preview(true)}>继续演示</button>}
+            <button onClick={() => void platformApi.releaseShell().catch(() => setPreviewError('结束演示失败，请重试'))}>结束演示</button>
+          </div>}
         </> : <>
         <span className="speech-kicker"><span>{demo ? `${brand.name} · 演示数据` : brand.name}</span><span className="mood-badge"><i />{moodLabel[mood]}</span></span>
         <strong>{indexQuote ? `${indexQuote.name} ${direction === 'up' ? '+' : ''}${indexQuote.changePct.toFixed(2)}%` : '等待指数行情'}</strong>
@@ -96,8 +106,11 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         </>}
       </div>
       <div className="pet-wrap no-drag">
+        {avatarLoading ? <div className="avatar-loading" role="status"><img src={new URL('models/whale-girl/cover.webp', document.baseURI).href} alt="" /><span>Debby 马上就来…</span></div> : <>
         {layeredAsset && !dancing ? <LayeredPet performance={performance} asset={layeredAsset} cue={cue} activity={activity} mood={mood} portrait={portrait} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} onError={onLayeredError} /> : <ThreeDPet performance={performance} cue={cue} activity={activity} mood={mood} portrait={dancing ? false : portrait} viewReset={viewReset} rotating={dialogue ? false : rotating} draggable={!clickThrough && !dialogue} onBehavior={setBehavior} mouthLevel={mouthLevel} agentShell={agentShell} danceAsset={danceAsset} dancePlayback={dances.playback} />}
+        </>}
       </div>
+      {previewError && <p className="preview-error" role="alert">{previewError}</p>}
       <div className="pet-tools no-drag">
         <span className="window-drag-handle" title="拖动桌宠" role="img" aria-label="拖动桌宠"><GripVertical size={14} /></span>
         <span className="dock-name"><i className={mood} /><strong>{brand.name}</strong></span>
@@ -115,6 +128,7 @@ export function Mascot({ indexQuote, providerStatus, alerting, panelOpen, clickT
         <label className="switch-row" title={layeredAsset ? isPortraitRig(layeredAsset.rig) ? '此角色使用表情立绘' : '2.5D 使用目光跟随' : '旋转角色模式'}><Rotate3D size={16} /><span>{layeredAsset ? isPortraitRig(layeredAsset.rig) ? '表情立绘' : '2.5D · 目光跟随' : '旋转模式'}</span><input type="checkbox" disabled={Boolean(layeredAsset)} checked={!layeredAsset && rotating} onChange={(event) => setRotating(event.target.checked)} /><i /></label>
         <label className="switch-row" title={clickThrough ? '关闭鼠标穿透' : '开启鼠标穿透'}><MousePointer2 size={16} /><span>鼠标穿透</span><input type="checkbox" checked={clickThrough} onChange={onClickThrough} /><i /></label>
         <button className="menu-command" title="Agent 接入" onClick={() => { optionsRef.current?.hidePopover(); onAgentConnect() }}><Cable size={16} /><span>Agent 接入</span></button>
+        <button className="menu-command" title="体验 Debby" disabled={Boolean(agentShell.controller && !agentShell.controller.preview)} onClick={() => { optionsRef.current?.hidePopover(); void preview() }}><BellRing size={16} /><span>体验 Debby · 不用 Key</span></button>
         <button className="menu-command" title="学跳舞" onClick={() => { optionsRef.current?.hidePopover(); onDanceStudio() }}><Music2 size={16} /><span>学跳舞</span></button>
         <button className="menu-command" title="角色工坊" onClick={() => { optionsRef.current?.hidePopover(); onAvatarStudio() }}><ScanFace size={16} /><span>角色工坊 · 2.5D 立绘</span></button>
         <button className="menu-command" title="发现更多陪伴" onClick={() => { optionsRef.current?.hidePopover(); onDiscover() }}><MessageCircle size={16} /><span>发现 · 塔罗与日常</span></button>

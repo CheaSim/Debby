@@ -20,6 +20,7 @@ import { DanceLibrary } from './dance-library'
 import { createDanceToolsPlugin } from './agent/dance-plugin'
 import { createCompanionToolsPlugin } from './agent/companion-plugin'
 import type { CursorPosition } from '../shared/avatar-gaze'
+import { makeMcpConfig } from './bridge/config'
 
 const currentDir = dirname(fileURLToPath(import.meta.url))
 const collapsedSize = { width: 380, height: 540 }
@@ -309,12 +310,8 @@ function registerIpc(): void {
     agentShell.preview(Boolean(advance))
   })
   handleChat('shell:copy-config', (format = 'json') => {
-    if (app.isPackaged) throw new Error('当前 MCP 接入请使用源码运行版。')
     if (format !== 'json' && format !== 'codex') throw new Error('Invalid MCP config format')
-    const args = [join(app.getAppPath(), 'scripts', 'debby-mcp.mjs'), '--connection', agentShell.connectionPath, '--name', format === 'codex' ? 'Codex' : 'MCP Agent']
-    clipboard.writeText(format === 'codex'
-      ? `[mcp_servers.debby]\ncommand = "node"\nargs = ${JSON.stringify(args)}\n`
-      : JSON.stringify({ mcpServers: { debby: { command: 'node', args } } }, null, 2))
+    clipboard.writeText(makeMcpConfig({ packaged: app.isPackaged, appPath: app.getAppPath(), resourcesPath: process.resourcesPath, executable: process.execPath, connectionPath: agentShell.connectionPath }, format))
   })
   handleChat('chat:configure', (input) => chat.configure(input))
   handleChat('chat:models', () => chat.listModels())

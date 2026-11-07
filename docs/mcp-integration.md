@@ -4,28 +4,29 @@ Debby 是表现层，你的 Agent 负责推理、执行和停止任务。内置 
 
 ## 三步运行
 
-1. 在项目目录 `npm.cmd install`，然后 `npm.cmd run dev`。需要 Node.js 22.19+，并让 MCP 客户端能够找到 `node`。
+1. 安装或解压 Windows 版 Debby 并运行。安装版自带 MCP 连接程序及 Node 运行时，不需要另外安装 Node.js。源码开发者可在项目目录 `npm.cmd install`，然后 `npm.cmd run dev`，此方式需要 Node.js 22.19+。
 2. Debby 的「更多 → Agent 接入」中开启「允许本机 Agent 接入」，点击「复制 MCP 配置」。展开和桌宠模式的更多菜单都有入口。
 3. 选择客户端格式：通用 JSON 用于支持 `mcpServers` 的客户端；Codex 选择 TOML。复制后合并配置，重新加载该客户端的 MCP 连接。将 `--name` 后的显示名改成 `Claude Code`、`DeepSeek Harness` 或其他名称。Debby 不会修改客户端配置。
 
-复制得到的结构如下，实际路径由 Debby 自动生成：
+安装版复制得到的结构如下，实际路径由 Debby 自动生成。`ELECTRON_RUN_AS_NODE` 让同一个可执行文件只运行连接程序，不会再打开一个桌宠窗口：
 
 ```json
 {
   "mcpServers": {
     "debby": {
-      "command": "node",
+      "command": "C:/Apps/Debby/Debby.exe",
       "args": [
-        "C:/path/to/finpet/scripts/debby-mcp.mjs",
+        "C:/Apps/Debby/resources/mcp/debby-mcp.mjs",
         "--connection", "C:/Users/you/AppData/Roaming/finpet/agent-bridge.json",
         "--name", "My Agent"
-      ]
+      ],
+      "env": { "ELECTRON_RUN_AS_NODE": "1" }
     }
   }
 }
 ```
 
-配置中没有令牌。不要提交、分享实际的 `agent-bridge.json`，也不要把内容放入提示词。源码目录移动后重新复制配置。
+配置中没有令牌。不要提交、分享实际的 `agent-bridge.json`，也不要把内容放入提示词。安装或源码目录移动后重新复制配置。源码模式仍输出 `node + scripts/debby-mcp.mjs`；下方 CLI 示例针对源码模式，安装版请使用界面复制的完整配置（包括 env）。
 
 ### Codex
 
@@ -107,7 +108,7 @@ node examples/agent-shell.mjs "复制配置中 --connection 后的完整路径"
 
 状态与台词只驻内存。控制接口不暴露 Key、原始行情、自定义网络请求、文件读写、任意脚本、摄像头或麦克风；金融数据工具仍由独立的 Agent 插件提供。每秒最多 60 次认证请求，正文最多 16 KiB，同时最多 16 个连接。主机上能读取用户目录的其他进程仍属于用户自身的信任范围。
 
-当前为源码运行版接入。NSIS 发布仍受现有 Zome 模型分发许可检查限制，尚未提供安装包内独立 Node 旁车。验证使用官方 MCP 客户端执行真实 stdio 握手和工具调用；不等同于逐个客户端产品完成配置验收。
+Windows 安装版与 ZIP 版均自带独立 MCP 脚本，并复用 Debby 自带的 Electron Node 运行时。`tests/release.e2e.mjs` 对真实打包产物执行官方 MCP 客户端 stdio 握手、七项工具发现、任务与表情控制、舞蹈切换和保存后重启测试；源码版保留独立 Node 运行方式。该验证不等同于逐个客户端产品完成配置验收。
 
 ## 验证
 
