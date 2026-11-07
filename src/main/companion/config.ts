@@ -2,7 +2,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { parseEnv } from 'node:util'
 import { emptyVoiceState, type VoiceConfig, type VoiceConfigInput } from '../../shared/voice'
 import type { SecretCipher } from '../agent/key-store'
-import { validateSpeechStyle } from '../../shared/speech-style'
+import { defaultSpeechStyle, validateSpeechStyle } from '../../shared/speech-style'
 
 export function loadLocalEnvironment(path: string, env: NodeJS.ProcessEnv): void {
   if (!existsSync(path)) return
@@ -34,7 +34,7 @@ export class VoiceConfigStore {
       asrModel: env.DEBBY_QWEN_ASR_MODEL || defaults.asrModel, ttsModel: env.DEBBY_QWEN_TTS_MODEL || defaults.ttsModel, voice: env.DEBBY_QWEN_VOICE || defaults.voice,
       apiKey: env.DEBBY_QWEN_API_KEY })
     if (env.DEBBY_QWEN_TTS_STYLE || env.DEBBY_QWEN_TTS_INSTRUCTION || env.DEBBY_QWEN_TTS_RATE || env.DEBBY_QWEN_TTS_PITCH) this.input.speech = validateSpeechStyle({
-      style: env.DEBBY_QWEN_TTS_STYLE || (env.DEBBY_QWEN_TTS_INSTRUCTION ? 'custom' : 'bright'), instruction: env.DEBBY_QWEN_TTS_INSTRUCTION,
+      style: env.DEBBY_QWEN_TTS_STYLE || (env.DEBBY_QWEN_TTS_INSTRUCTION ? 'custom' : defaultSpeechStyle), instruction: env.DEBBY_QWEN_TTS_INSTRUCTION,
       rate: env.DEBBY_QWEN_TTS_RATE ? Number(env.DEBBY_QWEN_TTS_RATE) : undefined, pitch: env.DEBBY_QWEN_TTS_PITCH ? Number(env.DEBBY_QWEN_TTS_PITCH) : undefined
     })
     this.key = this.input.apiKey?.trim() || undefined

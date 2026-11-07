@@ -1,5 +1,6 @@
 export const speechStyles = ['bright', 'gentle', 'shy', 'professional', 'natural', 'custom'] as const
 export type SpeechStyle = typeof speechStyles[number]
+export const defaultSpeechStyle: Exclude<SpeechStyle, 'custom'> = 'gentle'
 export interface SpeechStyleConfig { style?: SpeechStyle; instruction?: string; rate?: number; pitch?: number }
 export const speechPresets: Record<Exclude<SpeechStyle, 'custom'>, { label: string; instruction: string; rate: number; pitch: number }> = {
   bright: { label: '元气 · 可爱', instruction: '请用自然的普通话，以可爱活泼的动漫少女口吻说话，声音轻盈明亮，语调有自然起伏，带一点笑意，像熟悉的朋友聊天。表达清楚，不要尖叫，不要过度撒娇。', rate: 1.03, pitch: 1.02 },
@@ -10,7 +11,7 @@ export const speechPresets: Record<Exclude<SpeechStyle, 'custom'>, { label: stri
 }
 export const speechPreviewText = '嗨，我是 Debby！今天也陪你一起看行情。慢慢来，我们一步一步就好。'
 export function resolveSpeechStyle(input?: SpeechStyleConfig) {
-  const style = input?.style ?? 'bright', preset = speechPresets[style === 'custom' ? 'bright' : style]
+  const style = input?.style ?? defaultSpeechStyle, preset = speechPresets[style === 'custom' ? defaultSpeechStyle : style]
   return { style, instruction: style === 'custom' ? input?.instruction?.trim() ?? '' : preset.instruction, rate: input?.rate ?? preset.rate, pitch: input?.pitch ?? preset.pitch }
 }
 export function validateSpeechStyle(value: unknown): SpeechStyleConfig {

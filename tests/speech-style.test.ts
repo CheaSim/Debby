@@ -10,7 +10,8 @@ import { join } from 'node:path'
 
 const config = { ...emptyVoiceState().config, configured: true }
 describe('speech delivery independent of text and visual expressions', () => {
-  it('defaults old configurations to a bright voice and bounds optional controls', () => {
+  it('defaults old configurations to a gentle voice and bounds optional controls', () => {
+    expect(resolveSpeechStyle()).toMatchObject({ style: 'gentle', rate: .96, pitch: 1 })
     expect(resolveSpeechStyle().instruction).toContain('动漫少女')
     expect(resolveSpeechStyle({ style: 'natural' })).toMatchObject({ instruction: '', rate: 1, pitch: 1 })
     for (const value of [null, [], { style: 'unknown' }, { rate: Infinity }, { rate: .49 }, { pitch: 2.1 }, { pitch: '1' }, { instruction: '长'.repeat(501) }]) expect(() => validateSpeechStyle(value)).toThrow()
@@ -24,7 +25,7 @@ describe('speech delivery independent of text and visual expressions', () => {
       expect(store.publicConfig().speech).toMatchObject({ style: 'gentle', rate: .92 })
       store.configure({ ...config, speech: { style: 'shy', pitch: 1.04 } })
       expect(new VoiceConfigStore(path, cipher).publicConfig().speech).toMatchObject({ style: 'shy', pitch: 1.04 })
-      expect(validateVoiceConfig(config).speech?.style).toBe('bright')
+      expect(validateVoiceConfig(config).speech?.style).toBe('gentle')
     } finally { rmSync(folder, { recursive: true, force: true }) }
   })
   it('sends identical instructions, rate and pitch through file and SSE synthesis without modifying spoken text', async () => {

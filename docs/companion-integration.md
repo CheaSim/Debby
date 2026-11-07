@@ -105,7 +105,7 @@ const runtime = new CompanionRuntime({
 
 默认文字 / 视觉模型 `qwen3.8-flash`，最大输出 512 tokens，`enable_thinking: false`。ASR 模型 `qwen-audio-3.0-asr-flash`；TTS 模型 `qwen-audio-3.0-tts-plus`，音色 `longanhuan_v3.6`。音色和模型是否开放取决于账户，不内置可用性保证。
 
-`VoiceConfig.speech` 为可选的 `{ style, instruction, rate, pitch }`，旧配置缺省使用 `bright`（元气可爱）。预设与校验统一在 `src/shared/speech-style.ts`；支持 `bright / gentle / shy / professional / natural / custom`，自定义指令最多 500 字，语速与音调范围为 0.5–2。普通 MP3 与流式 PCM 请求共用 `input.instruction / rate / pitch`，不会把语气指令拼进朗读正文；`natural` 不发送指令。效果取决于模型和音色，不代表模型必然复现特定角色声线。
+`VoiceConfig.speech` 为可选的 `{ style, instruction, rate, pitch }`，旧配置缺省使用 `gentle`（温柔陪伴，语速 0.96×、音调 1.00×）。预设与校验统一在 `src/shared/speech-style.ts`；支持 `bright / gentle / shy / professional / natural / custom`，自定义指令最多 500 字，语速与音调范围为 0.5–2。普通 MP3 与流式 PCM 请求共用 `input.instruction / rate / pitch`，不会把语气指令拼进朗读正文；`natural` 不发送指令。效果取决于模型和音色，不代表模型必然复现特定角色声线。
 
 开发环境可用 `DEBBY_QWEN_TTS_STYLE / DEBBY_QWEN_TTS_INSTRUCTION / DEBBY_QWEN_TTS_RATE / DEBBY_QWEN_TTS_PITCH` 设置默认值，桌面保存的配置优先。仅设置指令时自动选择 `custom`；已选预设时，其指令由共享预设生成。非有限数值或超界配置会被拒绝。
 
